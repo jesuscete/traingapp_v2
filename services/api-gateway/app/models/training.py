@@ -22,6 +22,11 @@ class TrainingSession(Base):
     duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     volume_kg: Mapped[float] = mapped_column(Float, default=0)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    workout_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    distance_meters: Mapped[float | None] = mapped_column(Float, nullable=True)
+    avg_heart_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
+    max_heart_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
+    elevation_gain_m: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

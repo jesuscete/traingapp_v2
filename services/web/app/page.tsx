@@ -26,6 +26,7 @@ export default function Home() {
           ? await api.login({ email, password })
           : await api.register({ email, password, name });
       localStorage.setItem("traingapp_token", data.access_token);
+      localStorage.setItem("traingapp_user", JSON.stringify(data.user));
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error de autenticación");

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.crud import sessions
+from app.crud import sessions, users
 from app.models import TrainingSession
 from app.schemas.session import SessionIn, SessionOut
 
@@ -39,4 +39,8 @@ async def create_session_internal(
     body: InternalSessionIn,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> TrainingSession:
-    return await sessions.create(session, body.userId, body.session)
+    user = await users.get_by_id(session, body.userId)
+    weight_kg = user.weight_kg if user is not None else None
+    return await sessions.create(
+        session, body.userId, body.session, weight_kg=weight_kg
+    )

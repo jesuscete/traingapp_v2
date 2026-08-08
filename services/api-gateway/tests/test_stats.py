@@ -2,6 +2,56 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
+
+def _register(client: TestClient, body: dict | None = None) -> dict[str, str]:
+    payload = body or {
+        "email": "stats@example.com",
+        "password": "password123",
+        "name": "Stats",
+    }
+    response = client.post("/auth/register", json=payload)
+    assert response.status_code == 201
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_energy_requires_full_profile(client: TestClient) -> None:
+    headers = _register(client)
+    response = client.get("/stats/energy", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["bmrKcal"] is None
+    assert data["tdeeKcal"] is None
+
+
+def test_energy_calculates_mifflin(client: TestClient) -> None:
+    headers = _register(client)
+    client.put(
+        "/profile",
+        headers=headers,
+        json={"weightKg": 80, "heightCm": 180, "birthYear": 1990, "sex": "male"},
+    )
+    response = client.get("/stats/energy", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["age"] == 36
+    # Mifflin hombre: 10*80 + 6.25*180 - 5*36 + 5 = 800 + 1125 - 180 + 5 = 1750
+    assert abs(data["bmrKcal"] - 1750) < 1
+    assert data["tdeeKcal"] == 1750 * 1.55
+    assert data["targetKcal"] == 1750 * 1.55
+
+
+def test_energy_target_follows_goal(client: TestClient) -> None:
+    headers = _register(client)
+    client.put(
+        "/profile",
+        headers=headers,
+        json={"weightKg": 80, "heightCm": 180, "birthYear": 1990, "sex": "male", "goal": "loss"},
+    )
+    response = client.get("/stats/energy", headers=headers)
+    data = response.json()
+    assert data["targetKcal"] == data["tdeeKcal"] - 500
+
 REGISTER = {"email": "stats@example.com", "password": "password123", "name": "Stats"}
 
 

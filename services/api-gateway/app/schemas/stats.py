@@ -1,5 +1,7 @@
 from datetime import date
 
+from pydantic import Field
+
 from app.schemas.session import CamelModel
 
 
@@ -89,3 +91,51 @@ class ProgressOut(CamelModel):
     volume_delta_pct: float | None
     session_delta_pct: float | None
     insights: list[InsightOut]
+
+
+class EnergyOut(CamelModel):
+    weight_kg: float | None
+    height_cm: float | None
+    age: int | None
+    goal: str | None
+    bmr_kcal: float | None
+    tdee_kcal: float | None
+    target_kcal: float | None
+
+
+class FatigueMuscleOut(CamelModel):
+    muscle_group: str
+    fatigue: float
+    impulse_today: float
+    level: str
+    acwr: float
+
+
+class FatigueRiskOut(CamelModel):
+    muscle_group: str
+    level: str
+    reasons: list[str]
+
+
+class ReadinessOut(CamelModel):
+    date: date
+    sleep_hours: float | None
+    doms: int | None
+    rest_day: bool
+
+
+class ReadinessIn(CamelModel):
+    date: date
+    sleep_hours: float | None = Field(default=None, ge=0, le=24)
+    doms: int | None = Field(default=None, ge=1, le=10)
+    rest_day: bool = False
+
+
+class FatigueOut(CamelModel):
+    as_of: date
+    projected: date
+    muscles: list[FatigueMuscleOut]
+    max_fatigue: float
+    avg_fatigue: float
+    readiness: ReadinessOut | None
+    risks: list[FatigueRiskOut]

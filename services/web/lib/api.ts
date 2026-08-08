@@ -1,11 +1,15 @@
 import type {
   ChatEnqueue,
+  Energy,
+  Fatigue,
+  Readiness,
   Session,
   StatsCardio,
   StatsOverview,
   StatsProgress,
   StatsVolume,
   TokenResponse,
+  User,
 } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
@@ -43,8 +47,22 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  getProfile: (token: string) =>
+    request<User>("/profile", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  updateProfile: (token: string, body: Partial<User>) =>
+    request<User>("/profile", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
   listSessions: (token: string) =>
     request<Session[]>("/sessions", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  getSession: (token: string, id: string) =>
+    request<Session>(`/sessions/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
   sendChat: (token: string, text: string) =>
@@ -57,8 +75,8 @@ export const api = {
     request<StatsOverview>("/stats/overview", {
       headers: { Authorization: `Bearer ${token}` },
     }),
-  statsVolume: (token: string) =>
-    request<StatsVolume>("/stats/volume", {
+  statsVolume: (token: string, days = 90) =>
+    request<StatsVolume>(`/stats/volume?days=${days}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
   statsCardio: (token: string) =>
@@ -68,5 +86,23 @@ export const api = {
   statsProgress: (token: string) =>
     request<StatsProgress>("/stats/progress", {
       headers: { Authorization: `Bearer ${token}` },
+    }),
+  statsEnergy: (token: string) =>
+    request<Energy>("/stats/energy", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  statsFatigue: (token: string, projectDays = 0) =>
+    request<Fatigue>(`/stats/fatigue?projectDays=${projectDays}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  getReadiness: (token: string) =>
+    request<Readiness | null>("/stats/readiness", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  saveReadiness: (token: string, body: Partial<Readiness>) =>
+    request<Readiness>("/stats/readiness", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
     }),
 };

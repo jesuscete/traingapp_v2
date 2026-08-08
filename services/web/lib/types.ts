@@ -4,6 +4,8 @@ export type Exercise = {
   sets: number | null;
   reps: number | null;
   weightKg: number | null;
+  durationMinutes: number | null;
+  distanceMeters: number | null;
   volumeKg: number;
 };
 
@@ -14,6 +16,7 @@ export type Session = {
   performedAt: string;
   durationMinutes: number | null;
   volumeKg: number;
+  estimatedKcal: number | null;
   note: string | null;
   createdAt: string;
   exercises: Exercise[];
@@ -23,6 +26,22 @@ export type User = {
   id: string;
   email: string;
   name: string;
+  weightKg: number | null;
+  heightCm: number | null;
+  birthYear: number | null;
+  sex: string | null;
+  goal: string | null;
+  sports: string[] | null;
+};
+
+export type Energy = {
+  weightKg: number | null;
+  heightCm: number | null;
+  age: number | null;
+  goal: string | null;
+  bmrKcal: number | null;
+  tdeeKcal: number | null;
+  targetKcal: number | null;
 };
 
 export type TokenResponse = {
@@ -116,4 +135,35 @@ export type StatsProgress = {
   volumeDeltaPct: number | null;
   sessionDeltaPct: number | null;
   insights: Insight[];
+};
+
+export type FatigueMuscle = {
+  muscleGroup: string;
+  fatigue: number;
+  impulseToday: number;
+  level: "ok" | "warning" | "danger";
+  acwr: number;
+};
+
+export type FatigueRisk = {
+  muscleGroup: string;
+  level: string;
+  reasons: string[];
+};
+
+export type Readiness = {
+  date: string;
+  sleepHours: number | null;
+  doms: number | null;
+  restDay: boolean;
+};
+
+export type Fatigue = {
+  asOf: string;
+  projected: string;
+  muscles: FatigueMuscle[];
+  maxFatigue: number;
+  avgFatigue: number;
+  readiness: Readiness | null;
+  risks: FatigueRisk[];
 };

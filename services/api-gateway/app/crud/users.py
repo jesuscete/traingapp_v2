@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
 from app.models import User
+from app.schemas.auth import ProfileIn
 
 
 async def get_by_email(session: AsyncSession, email: str) -> User | None:
@@ -25,6 +26,16 @@ async def create(
         name=name,
     )
     session.add(user)
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+async def update_profile(session: AsyncSession, user: User, body: ProfileIn) -> User:
+    for field in ("weight_kg", "height_cm", "birth_year", "sex", "goal", "sports"):
+        value = getattr(body, field)
+        if value is not None:
+            setattr(user, field, value)
     await session.commit()
     await session.refresh(user)
     return user

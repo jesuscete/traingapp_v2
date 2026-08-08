@@ -19,7 +19,9 @@ async def create_session(
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> TrainingSession:
-    return await sessions.create(session, current_user.id, body)
+    return await sessions.create(
+        session, current_user.id, body, weight_kg=current_user.weight_kg
+    )
 
 
 @router.get("", response_model=list[SessionListItem])

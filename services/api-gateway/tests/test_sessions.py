@@ -50,6 +50,64 @@ def test_create_boxing_session(client: TestClient) -> None:
     assert data["exercises"] == []
 
 
+def test_create_session_with_flexible_details(client: TestClient) -> None:
+    headers = _auth_headers(client)
+    payload = {
+        "discipline": "gym",
+        "rawText": "sesión con detalles",
+        "performedAt": "2026-08-08T18:30:00Z",
+        "durationMinutes": 45,
+        "details": {"plan": "A", "nivel": "intermedio"},
+        "exercises": [
+            {
+                "name": "press banca",
+                "sets": 3,
+                "reps": 10,
+                "weightKg": 60,
+                "details": {"rpe": 8, "descanso": 90},
+            }
+        ],
+    }
+    response = client.post("/sessions", json=payload, headers=headers)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["details"] == {"plan": "A", "nivel": "intermedio"}
+    assert data["exercises"][0]["details"] == {"rpe": 8, "descanso": 90}
+
+
+def test_estimated_kcal_boxing_with_user_weight(client: TestClient) -> None:
+    response = client.post(
+        "/auth/register",
+        json={"email": "luc@example.com", "password": "password123", "name": "Luc"},
+    )
+    headers = {"Authorization": f"Bearer {response.json()['access_token']}"}
+    client.put("/profile", headers=headers, json={"weightKg": 70, "sex": "male"})
+
+    session = client.post(
+        "/sessions",
+        json={
+            "discipline": "boxing",
+            "rawText": "clase de boxeo de 1h",
+            "performedAt": "2026-08-09T19:00:00Z",
+            "durationMinutes": 60,
+            "exercises": [],
+        },
+        headers=headers,
+    )
+    assert session.status_code == 201
+    data = session.json()
+    # 7.8 MET × 70 kg × 1h ≈ 546 kcal
+    assert data["estimatedKcal"] is not None
+    assert abs(data["estimatedKcal"] - 7.8 * 70) < 1
+
+
+def test_estimated_kcal_null_without_weight(client: TestClient) -> None:
+    headers = _auth_headers(client)
+    response = client.post("/sessions", json=BOXING_SESSION, headers=headers)
+    assert response.status_code == 201
+    assert response.json()["estimatedKcal"] is None
+
+
 def test_list_sessions_ordered_by_date(client: TestClient) -> None:
     headers = _auth_headers(client)
     client.post("/sessions", json=BOXING_SESSION, headers=headers)

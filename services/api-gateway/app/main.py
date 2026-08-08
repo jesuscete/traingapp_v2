@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, chat, internal, sessions, stats
+from app.api import auth, chat, internal, profile, sessions, stats
 from app.core.config import settings
 
 app = FastAPI(
@@ -18,6 +18,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(profile.router)
 app.include_router(sessions.router)
 app.include_router(chat.router)
 app.include_router(internal.router)

@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     internal_token: str = "internal-dev-token"
+    ai_parser_url: str = "http://localhost:8100"
+    chat_draft_ttl_seconds: int = 1800
 
 
 settings = Settings()

@@ -74,13 +74,18 @@ class SessionData:
 
 @dataclass(frozen=True)
 class ReadinessData:
-    """Readiness diaria (entradas subjetivas + futuras de agentes externos)."""
+    """Readiness diaria (entradas subjetivas + futuras de agentes externos).
+
+    `doms_by_group` (opcional) es el mapa corporal ADR-011: penaliza la
+    recuperacion del grupo con dolor reportado sin cambiar el resto.
+    """
 
     sleep_hours: float | None = None
     doms: int | None = None
     rest_day: bool = False
     hrv_score: float | None = None
     nutrition_score: float | None = None
+    doms_by_group: dict[str, int] | None = None
 
 
 # Tabla de ponderaciones por disciplina (N_g en [0, 1]). Referencia semilla de
@@ -206,6 +211,16 @@ def decay(mod: float) -> float:
     return K1 * math.exp(-mod / TAU1) + K2 * math.exp(-mod / TAU2)
 
 
+def decay_for_group(mod: float, tau2_factor: float = 1.0) -> float:
+    """Decaimiento diario con tau2 ajustado por la calibracion del grupo.
+
+    `tau2_factor > 1` (mas dolor del predicho) hace mas lenta la recuperacion
+    periferica: el daño dura mas dias (ADR-015).
+    """
+    tau2 = max(0.1, TAU2 * tau2_factor)
+    return K1 * math.exp(-mod / TAU1) + K2 * math.exp(-mod / tau2)
+
+
 def mod_from_readiness(readiness: ReadinessData | None) -> float:
     """Dias efectivos de recuperacion m: >1 acelera, <1 frena.
 
@@ -233,6 +248,27 @@ def mod_from_readiness(readiness: ReadinessData | None) -> float:
         + 0.15 * rest
         + 0.05 * (nutrition - 0.5)
     )
+
+
+def mod_for_group(
+    readiness: ReadinessData | None, day_doms: dict[str, int] | None, group: str
+) -> float:
+    """Modulador por grupo: m global ajustado por el DOMS localizado del grupo.
+
+    El dolor reportado en el mapa corporal (ADR-011) penaliza la recuperacion
+    del grupo: si `day_doms` trae el grupo, se sustituye el DOMS global por el
+    local; si no, se usa el global.
+    """
+    if day_doms is not None and group in day_doms:
+        local = ReadinessData(
+            sleep_hours=readiness.sleep_hours if readiness else None,
+            doms=day_doms[group],
+            rest_day=readiness.rest_day if readiness else False,
+            hrv_score=readiness.hrv_score if readiness else None,
+            nutrition_score=readiness.nutrition_score if readiness else None,
+        )
+        return mod_from_readiness(local)
+    return mod_from_readiness(readiness)
 
 
 def estimate_strikes(data: SessionData) -> int:
@@ -298,6 +334,8 @@ def simulate(
     readiness: dict[date, ReadinessData],
     weights: dict[str, dict[str, float]],
     today: date,
+    doms_by_group: dict[date, dict[str, int]] | None = None,
+    tau2_factors: dict[str, float] | None = None,
 ) -> tuple[dict[date, dict[str, float]], dict[date, dict[str, float]]]:
     """Recorre dias aplicando decay + impulso; devuelve (estado, impulsos) por dia."""
     if events:
@@ -313,13 +351,21 @@ def simulate(
     previous_date: date | None = None
     current = start
     while current <= today:
-        mod = (
-            mod_from_readiness(readiness.get(previous_date))
-            if previous_date is not None
-            else 1.0
-        )
-        factor = decay(mod)
-        state = {g: factor * previous[g] for g in MUSCLE_GROUPS}
+        if previous_date is not None:
+            prior = readiness.get(previous_date)
+            day_doms = (
+                doms_by_group.get(previous_date) if doms_by_group is not None else None
+            )
+            factors = {
+                g: decay_for_group(
+                    mod_for_group(prior, day_doms, g),
+                    (tau2_factors or {}).get(g, 1.0),
+                )
+                for g in MUSCLE_GROUPS
+            }
+        else:
+            factors = {g: 1.0 for g in MUSCLE_GROUPS}
+        state = {g: factors[g] * previous[g] for g in MUSCLE_GROUPS}
         day_impulses: dict[str, float] = {g: 0.0 for g in MUSCLE_GROUPS}
         for data in events.get(current, []):
             loads = session_load(data, weights)

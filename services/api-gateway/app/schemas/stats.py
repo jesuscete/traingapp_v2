@@ -163,3 +163,62 @@ class FatigueOut(CamelModel):
     avg_fatigue: float
     readiness: ReadinessOut | None
     risks: list[FatigueRiskOut]
+    projection: list["FatigueProjectionOut"] = Field(default_factory=list)
+
+
+class FatigueProjectionOut(CamelModel):
+    days_ahead: int
+    date: date
+    max_fatigue: float
+    avg_fatigue: float
+
+
+class FatigueSeriesMuscleOut(CamelModel):
+    muscle_group: str
+    fatigue: float
+
+
+class FatigueSeriesDayOut(CamelModel):
+    date: date
+    max_fatigue: float
+    avg_fatigue: float
+    muscles: list[FatigueSeriesMuscleOut]
+
+
+class FatigueSeriesOut(CamelModel):
+    period_days: int
+    series: list[FatigueSeriesDayOut]
+
+
+class LoadMuscleOut(CamelModel):
+    muscle_group: str
+    accumulated_load: float
+    recovery: float
+    trend: str
+
+
+class LoadOut(CamelModel):
+    period_days: int
+    total_load: float
+    monotony: float
+    strain: float
+    by_muscle_group: list[LoadMuscleOut]
+
+
+class CalibrationGroupOut(CamelModel):
+    muscle_group: str
+    predicted_fatigue: float
+    reported_doms: int
+    delta: float
+    ng_delta: float
+    ng_factor: float
+    tau2_factor: float
+    sample_count: int
+    confidence_level: str
+
+
+class CalibrationOut(CamelModel):
+    as_of: date
+    confidence_level: str
+    pearson_r: float | None = None
+    groups: list[CalibrationGroupOut]

@@ -91,3 +91,34 @@ class DailyMuscleDoms(Base):
             "user_id", "date", "muscle_group", name="uq_user_date_muscle_group"
         ),
     )
+
+
+class UserMuscleCalibration(Base):
+    """Calibracion personal del modelo de fatiga (spec 7.3, ADR-015).
+
+    El DOMS reportado por el usuario corrige la ponderacion `N_g` y la
+    velocidad de recuperacion del dano (`tau2`) de cada grupo. `ng_delta` es
+    la correccion aditiva acotada (ej. +0.15) y `tau2_factor` el multiplicador
+    de `tau2` (1.0 = neutro, >1 recuperacion mas lenta).
+    """
+
+    __tablename__ = "user_muscle_calibration"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    muscle_group: Mapped[str] = mapped_column(String(40))
+    ng_delta: Mapped[float] = mapped_column(Float, default=0.0)
+    tau2_factor: Mapped[float] = mapped_column(Float, default=1.0)
+    sample_count: Mapped[int] = mapped_column(Integer, default=0)
+    pearson_r: Mapped[float | None] = mapped_column(Float, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "muscle_group", name="uq_user_calibration_muscle_group"
+        ),
+    )

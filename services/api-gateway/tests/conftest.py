@@ -20,6 +20,17 @@ class FakeRedis:
         self.lists[name].insert(0, value)
         return 1
 
+    async def setex(self, name: str, time: int, value: str) -> int:
+        self.lists[name] = [value]
+        return 1
+
+    async def get(self, name: str) -> str | None:
+        values = self.lists.get(name)
+        return values[0] if values else None
+
+    async def delete(self, name: str) -> int:
+        return 1 if self.lists.pop(name, None) is not None else 0
+
 
 @pytest.fixture(autouse=True)
 def _fake_redis() -> FakeRedis:

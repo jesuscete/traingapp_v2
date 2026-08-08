@@ -71,7 +71,9 @@ def test_create_session_with_flexible_details(client: TestClient) -> None:
     response = client.post("/sessions", json=payload, headers=headers)
     assert response.status_code == 201
     data = response.json()
-    assert data["details"] == {"plan": "A", "nivel": "intermedio"}
+    assert data["details"]["plan"] == "A"
+    assert data["details"]["nivel"] == "intermedio"
+    assert data["details"]["kcal_confidence_level"] in ("alta", "media", "baja")
     assert data["exercises"][0]["details"] == {"rpe": 8, "descanso": 90}
 
 

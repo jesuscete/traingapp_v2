@@ -5,7 +5,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics import fatigue as fatigue_analytics
-from app.models.fatigue import DailyMuscleDoms, DailyReadiness, DisciplineMuscleLoad
+from app.models.fatigue import (
+    DailyMuscleDoms,
+    DailyReadiness,
+    DisciplineMuscleLoad,
+    UserMuscleCalibration,
+)
 
 
 async def load_map(
@@ -134,3 +139,42 @@ async def upsert_doms(
     for record in saved:
         await session.refresh(record)
     return saved
+
+
+async def get_calibration(
+    session: AsyncSession, user_id: uuid.UUID
+) -> dict[str, UserMuscleCalibration]:
+    """Mapa muscle_group -> calibracion persistida del usuario."""
+    result = await session.execute(
+        select(UserMuscleCalibration).where(
+            UserMuscleCalibration.user_id == user_id
+        )
+    )
+    return {row.muscle_group: row for row in result.scalars().all()}
+
+
+async def save_calibration(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    params: dict[str, tuple[float, float, int, float | None]],
+) -> None:
+    """Persiste ng_delta, tau2_factor, sample_count y pearson_r por grupo."""
+    current = await get_calibration(session, user_id)
+    for group, (ng_delta, tau2_factor, samples, pearson_r) in params.items():
+        record = current.get(group)
+        if record is None:
+            record = UserMuscleCalibration(
+                user_id=user_id,
+                muscle_group=group,
+                ng_delta=ng_delta,
+                tau2_factor=tau2_factor,
+                sample_count=samples,
+                pearson_r=pearson_r,
+            )
+            session.add(record)
+        else:
+            record.ng_delta = ng_delta
+            record.tau2_factor = tau2_factor
+            record.sample_count = samples
+            record.pearson_r = pearson_r
+    await session.commit()

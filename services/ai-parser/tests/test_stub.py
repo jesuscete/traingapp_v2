@@ -33,3 +33,25 @@ def test_parse_decimal_weight() -> None:
     exercise = result.exercises[0]
     assert exercise.weight_kg == 102.5
     assert exercise.name == "sentadilla"
+
+
+def test_parse_series_per_set() -> None:
+    result = parse_text("press banca: 8,7,7,5 x80kg")
+    exercise = result.exercises[0]
+    assert exercise.per_set_reps == [8, 7, 7, 5]
+    assert exercise.sets == 4
+    assert exercise.reps == 7
+    assert exercise.weight_kg == 80.0
+    assert result.suggestedRpe == 8.0
+
+
+def test_parse_series_per_set_parens_weight() -> None:
+    result = parse_text("sentadilla: 10,10,8,6 (90 kg)")
+    exercise = result.exercises[0]
+    assert exercise.per_set_reps == [10, 10, 8, 6]
+    assert exercise.weight_kg == 90.0
+
+
+def test_suggested_rpe_cardio() -> None:
+    result = parse_text("carrera de 45 min")
+    assert result.suggestedRpe == 6.5

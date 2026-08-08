@@ -43,6 +43,7 @@ class SessionIn(CamelModel):
     raw_text: str = Field(min_length=1)
     performed_at: datetime
     duration_minutes: int | None = Field(default=None, ge=0)
+    distance_meters: float | None = Field(default=None, ge=0)
     note: str | None = None
     details: dict[str, object] | None = None
     exercises: list[ExerciseIn] = Field(default_factory=list)

@@ -6,11 +6,40 @@ import httpx
 import redis.asyncio as aioredis
 
 from app.core.config import settings
-from app.parsing.stub import parse_text
+from app.parsing.service import parse_workout
+from app.schemas.parse import ParseResponse
 
 WORKOUT_PARSE_QUEUE = "workout:parse"
 
 logger = logging.getLogger(__name__)
+
+
+def _session_from_draft(draft: ParseResponse) -> dict[str, object]:
+    exercises = []
+    for exercise in draft.exercises:
+        per_set = (
+            {"perSetReps": exercise.per_set_reps}
+            if exercise.per_set_reps is not None
+            else None
+        )
+        exercises.append(
+            {
+                "name": exercise.name,
+                "sets": exercise.sets,
+                "reps": exercise.reps,
+                "weightKg": exercise.weight_kg,
+                "details": per_set,
+            }
+        )
+    details = {"rpe": draft.suggestedRpe} if draft.suggestedRpe is not None else None
+    return {
+        "discipline": draft.discipline,
+        "rawText": draft.rawText,
+        "performedAt": draft.performedAt,
+        "durationMinutes": draft.durationMinutes,
+        "details": details,
+        "exercises": exercises,
+    }
 
 
 async def process_one(redis: aioredis.Redis) -> bool:
@@ -19,10 +48,10 @@ async def process_one(redis: aioredis.Redis) -> bool:
         return False
     _, payload = item
     data = json.loads(payload)
-    draft = parse_text(data["rawText"])
+    draft = await parse_workout(data["rawText"])
     body = {
         "userId": data["userId"],
-        "session": draft.model_dump(mode="json"),
+        "session": _session_from_draft(draft),
     }
     async with httpx.AsyncClient() as client:
         response = await client.post(

@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [master, dev]
+  pull_request:
+
+jobs:
+  contracts:
+    name: contracts (lint + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: cd shared/contracts && uv sync && uv run ruff check . && uv run pytest
+
+  api-gateway:
+    name: api-gateway (lint + test + type-check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: cd services/api-gateway && uv sync && uv run ruff check . && uv run pytest && uv run mypy app
+
+  ai-parser:
+    name: ai-parser (lint + test + type-check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: cd services/ai-parser && uv sync && uv run ruff check . && uv run pytest && uv run mypy app

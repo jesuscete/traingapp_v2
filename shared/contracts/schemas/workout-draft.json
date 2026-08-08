@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://traingapp.dev/contracts/workout-draft.json",
+  "title": "WorkoutDraft",
+  "description": "Resultado estructurado del parser (ai-parser) antes de persistir.",
+  "type": "object",
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "rawText": {
+      "type": "string",
+      "minLength": 1
+    },
+    "discipline": {
+      "$ref": "definitions.json#/$defs/discipline"
+    },
+    "performedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "durationMinutes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "exercises": {
+      "type": "array",
+      "items": {
+        "$ref": "exercise.json"
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confianza del parseo (0-1)."
+    },
+    "unresolved": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Fragmentos del texto que el parser no pudo interpretar."
+    }
+  },
+  "required": [
+    "requestId",
+    "rawText",
+    "discipline",
+    "performedAt"
+  ],
+  "additionalProperties": false
+}

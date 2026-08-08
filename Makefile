@@ -11,10 +11,12 @@ infra-down:
 	$(DOCKER) compose -f infra/docker-compose.yml down
 
 test:
+	cd shared/contracts && uv run pytest
 	cd services/api-gateway && uv run pytest
 	cd services/ai-parser && uv run pytest
 
 lint:
+	cd shared/contracts && uv run ruff check .
 	cd services/api-gateway && uv run ruff check .
 	cd services/api-gateway && uv run mypy app
 	cd services/ai-parser && uv run ruff check .

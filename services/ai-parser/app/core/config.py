@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     app_name: str = "ai-parser"
     app_env: str = "development"
     redis_url: str = "redis://localhost:6379/0"
+    internal_api_url: str = "http://localhost:8000"
+    internal_token: str = "internal-dev-token"
 
 
 settings = Settings()

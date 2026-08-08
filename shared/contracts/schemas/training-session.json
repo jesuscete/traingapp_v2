@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://traingapp.dev/contracts/training-session.json",
+  "title": "TrainingSession",
+  "description": "Sesión de entrenamiento registrada y persistida tras el parseo.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "userId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "discipline": {
+      "$ref": "definitions.json#/$defs/discipline"
+    },
+    "rawText": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Texto original en lenguaje natural enviado por el usuario."
+    },
+    "performedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "durationMinutes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "volumeKg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "exercises": {
+      "type": "array",
+      "items": {
+        "$ref": "exercise.json"
+      }
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "userId",
+    "discipline",
+    "rawText",
+    "performedAt",
+    "exercises"
+  ],
+  "additionalProperties": false
+}

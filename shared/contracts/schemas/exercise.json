@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://traingapp.dev/contracts/exercise.json",
+  "title": "Exercise",
+  "description": "Ejercicio individual dentro de una sesión de entrenamiento.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sets": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "reps": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "weightKg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "durationMinutes": {
+      "type": "number",
+      "minimum": 0
+    },
+    "distanceMeters": {
+      "type": "number",
+      "minimum": 0
+    },
+    "volumeKg": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Volumen del ejercicio (sets * reps * weightKg) cuando aplica."
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

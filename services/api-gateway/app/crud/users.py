@@ -31,8 +31,23 @@ async def create(
     return user
 
 
+_PROFILE_FIELDS = (
+    "weight_kg",
+    "height_cm",
+    "birth_year",
+    "sex",
+    "goal",
+    "sports",
+    "body_fat_pct",
+    "fitness_level",
+    "weekly_availability",
+    "injuries",
+    "goals",
+)
+
+
 async def update_profile(session: AsyncSession, user: User, body: ProfileIn) -> User:
-    for field in ("weight_kg", "height_cm", "birth_year", "sex", "goal", "sports"):
+    for field in _PROFILE_FIELDS:
         value = getattr(body, field)
         if value is not None:
             setattr(user, field, value)

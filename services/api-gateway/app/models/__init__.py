@@ -1,8 +1,13 @@
-from app.models.fatigue import DailyReadiness, DisciplineMuscleLoad
+from app.models.fatigue import (
+    DailyMuscleDoms,
+    DailyReadiness,
+    DisciplineMuscleLoad,
+)
 from app.models.training import Exercise, TrainingSession
 from app.models.user import User
 
 __all__ = [
+    "DailyMuscleDoms",
     "DailyReadiness",
     "DisciplineMuscleLoad",
     "Exercise",

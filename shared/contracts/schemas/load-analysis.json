@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://traingapp.dev/contracts/load-analysis.json",
+  "title": "LoadAnalysis",
+  "description": "Analisis de carga de entrenamiento para un periodo. Volumen, intensidad, carga total, monotonia y strain (Banister) por grupo muscular.",
+  "type": "object",
+  "properties": {
+    "periodDays": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "totalLoad": {
+      "type": "number",
+      "description": "Carga total del periodo (suma de impulsos de sesion)."
+    },
+    "monotony": {
+      "type": "number",
+      "description": "Monotonia = media / desviacion de la carga diaria (Banister)."
+    },
+    "strain": {
+      "type": "number",
+      "description": "Strain = carga total x monotonia."
+    },
+    "byMuscleGroup": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "muscleGroup": {
+            "$ref": "definitions.json#/$defs/muscleGroup"
+          },
+          "accumulatedLoad": {
+            "type": "number",
+            "description": "Carga acumulada del grupo en el periodo."
+          },
+          "recovery": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Recuperacion estimada del grupo (100 - fatiga actual)."
+          },
+          "trend": {
+            "type": "string",
+            "enum": ["increasing", "stable", "decreasing"],
+            "description": "Tendencia de la carga acumulada (compara ultimo 1/3 vs primer 1/3)."
+          }
+        },
+        "required": ["muscleGroup", "accumulatedLoad", "recovery", "trend"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["periodDays", "totalLoad", "monotony", "strain", "byMuscleGroup"],
+  "additionalProperties": false
+}

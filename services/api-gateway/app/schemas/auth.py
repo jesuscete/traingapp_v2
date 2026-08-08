@@ -6,6 +6,16 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from pydantic.alias_generators import to_camel
 
 Goal = Literal["loss", "maintenance", "performance"]
+Goals = Literal[
+    "loss",
+    "muscle",
+    "performance",
+    "boxing",
+    "running",
+    "triathlon",
+    "maintenance",
+]
+FitnessLevel = Literal["beginner", "intermediate", "advanced"]
 
 
 class CamelModel(BaseModel):
@@ -37,6 +47,11 @@ class UserOut(CamelModel):
     sex: Literal["male", "female"] | None = None
     goal: Goal | None = None
     sports: list[str] | None = None
+    body_fat_pct: float | None = None
+    fitness_level: FitnessLevel | None = None
+    weekly_availability: int | None = None
+    injuries: list[object] | None = None
+    goals: list[Goals] | None = None
     created_at: datetime
 
 
@@ -47,6 +62,11 @@ class ProfileIn(CamelModel):
     sex: Literal["male", "female"] | None = None
     goal: Goal | None = None
     sports: list[str] | None = None
+    body_fat_pct: float | None = Field(default=None, ge=5, le=60)
+    fitness_level: FitnessLevel | None = None
+    weekly_availability: int | None = Field(default=None, ge=0, le=7)
+    injuries: list[object] | None = None
+    goals: list[Goals] | None = None
 
 
 class TokenOut(BaseModel):

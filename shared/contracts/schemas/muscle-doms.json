@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://traingapp.dev/contracts/muscle-doms.json",
+  "title": "MuscleDoms",
+  "description": "Dolor muscular localizado (DOMS) por grupo muscular (0-10). Alimenta directamente el modulador de recuperacion de la fatiga.",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "muscleGroup": {
+            "$ref": "definitions.json#/$defs/muscleGroup"
+          },
+          "pain": {
+            "$ref": "definitions.json#/$defs/painScale"
+          }
+        },
+        "required": ["muscleGroup", "pain"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["date", "entries"],
+  "additionalProperties": false
+}

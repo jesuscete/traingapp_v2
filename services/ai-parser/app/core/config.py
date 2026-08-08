@@ -10,5 +10,13 @@ class Settings(BaseSettings):
     internal_api_url: str = "http://localhost:8000"
     internal_token: str = "internal-dev-token"
 
+    # Adaptador LLM plug-and-play (ADR-012): ollama | openai | stub
+    llm_provider: str = "stub"
+    llm_model: str = "qwen2.5:3b"
+    ollama_url: str = "http://localhost:11434"
+    openai_api_key: str = ""
+    openai_base_url: str = "https://api.openai.com/v1"
+    llm_timeout_seconds: int = 30
+
 
 settings = Settings()

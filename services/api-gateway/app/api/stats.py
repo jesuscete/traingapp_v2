@@ -189,6 +189,8 @@ async def stats_readiness(
         sleep_hours=row.sleep_hours,
         doms=row.doms,
         rest_day=row.rest_day,
+        hrv_score=row.hrv_score,
+        resting_hr=row.resting_hr,
     )
 
 
@@ -198,7 +200,7 @@ async def upsert_readiness(
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> stats_schemas.ReadinessOut:
-    """Registra sueno/DOMS/descanso del dia (afecta a la recuperacion)."""
+    """Registra sueno/DOMS/descanso/HRV del dia (afecta a la recuperacion)."""
     row = await fatigue_crud.upsert_readiness(
         session,
         current_user.id,
@@ -206,12 +208,52 @@ async def upsert_readiness(
         sleep_hours=body.sleep_hours,
         doms=body.doms,
         rest_day=body.rest_day,
+        hrv_score=body.hrv_score,
+        resting_hr=body.resting_hr,
     )
     return stats_schemas.ReadinessOut(
         date=row.date,
         sleep_hours=row.sleep_hours,
         doms=row.doms,
         rest_day=row.rest_day,
+        hrv_score=row.hrv_score,
+        resting_hr=row.resting_hr,
+    )
+
+
+@router.get("/doms", response_model=stats_schemas.DomsOut | None)
+async def stats_doms(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    day: date | None = None,
+) -> stats_schemas.DomsOut | None:
+    """DOMS localizado por grupo muscular del dia (mapa corporal)."""
+    target = day or datetime.now(UTC).date()
+    rows = await fatigue_crud.get_doms(session, current_user.id, target)
+    return stats_schemas.DomsOut(
+        date=target,
+        entries=[
+            stats_schemas.DomsEntryOut(muscle_group=row.muscle_group, pain=row.pain)
+            for row in rows
+        ],
+    )
+
+
+@router.post("/doms", response_model=stats_schemas.DomsOut)
+async def upsert_doms(
+    body: stats_schemas.DomsIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> stats_schemas.DomsOut:
+    """Registra el dolor muscular (0-10) por grupo para un dia (mapa corporal)."""
+    entries = {entry.muscle_group: entry.pain for entry in body.entries}
+    rows = await fatigue_crud.upsert_doms(session, current_user.id, body.date, entries)
+    return stats_schemas.DomsOut(
+        date=body.date,
+        entries=[
+            stats_schemas.DomsEntryOut(muscle_group=row.muscle_group, pain=row.pain)
+            for row in rows
+        ],
     )
 
 

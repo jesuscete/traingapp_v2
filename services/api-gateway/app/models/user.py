@@ -23,6 +23,11 @@ class User(Base):
     sex: Mapped[str | None] = mapped_column(String(10), nullable=True)
     goal: Mapped[str | None] = mapped_column(String(40), nullable=True)
     sports: Mapped[list[str] | None] = mapped_column(_JSONB, nullable=True)
+    body_fat_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    fitness_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    weekly_availability: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    injuries: Mapped[list[object] | None] = mapped_column(_JSONB, nullable=True)
+    goals: Mapped[list[str] | None] = mapped_column(_JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

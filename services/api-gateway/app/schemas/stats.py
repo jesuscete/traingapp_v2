@@ -122,6 +122,8 @@ class ReadinessOut(CamelModel):
     sleep_hours: float | None
     doms: int | None
     rest_day: bool
+    hrv_score: float | None = None
+    resting_hr: float | None = None
 
 
 class ReadinessIn(CamelModel):
@@ -129,6 +131,28 @@ class ReadinessIn(CamelModel):
     sleep_hours: float | None = Field(default=None, ge=0, le=24)
     doms: int | None = Field(default=None, ge=1, le=10)
     rest_day: bool = False
+    hrv_score: float | None = Field(default=None, ge=0, le=1)
+    resting_hr: float | None = Field(default=None, ge=25, le=220)
+
+
+class DomsEntryIn(CamelModel):
+    muscle_group: str = Field(min_length=1, max_length=40)
+    pain: int = Field(ge=0, le=10)
+
+
+class DomsIn(CamelModel):
+    date: date
+    entries: list[DomsEntryIn] = Field(default_factory=list)
+
+
+class DomsEntryOut(CamelModel):
+    muscle_group: str
+    pain: int
+
+
+class DomsOut(CamelModel):
+    date: date
+    entries: list[DomsEntryOut]
 
 
 class FatigueOut(CamelModel):

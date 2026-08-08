@@ -40,7 +40,12 @@ class DisciplineMuscleLoad(Base):
 
 
 class DailyReadiness(Base):
-    """Readiness diaria del usuario (sueno, DOMS, descanso; HRV/nutricion futuras)."""
+    """Readiness diaria del usuario (sueño, DOMS global, descanso; HRV/nutrición).
+
+    `hrv_score` (0-1 percentil semanal) y `resting_hr` alimentan la proyección
+    futura de recuperación (ADR-013). El DOMS localizado por grupo vive en
+    `DailyMuscleDoms` (ADR-011).
+    """
 
     __tablename__ = "daily_readiness"
 
@@ -52,8 +57,37 @@ class DailyReadiness(Base):
     sleep_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
     doms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rest_day: Mapped[bool] = mapped_column(Boolean, default=False)
+    hrv_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    resting_hr: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
     __table_args__ = (UniqueConstraint("user_id", "date", name="uq_user_readiness_date"),)
+
+
+class DailyMuscleDoms(Base):
+    """DOMS localizado por grupo muscular (0-10) para un día (mapa corporal).
+
+    Alimenta el modulador de recuperación por grupo (ADR-011): penaliza la
+    recuperación del grupo con dolor reportado.
+    """
+
+    __tablename__ = "daily_muscle_doms"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    date: Mapped[date] = mapped_column(Date)
+    muscle_group: Mapped[str] = mapped_column(String(40))
+    pain: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "date", "muscle_group", name="uq_user_date_muscle_group"
+        ),
+    )

@@ -1,4 +1,12 @@
-import type { ChatEnqueue, Session, TokenResponse } from "@/lib/types";
+import type {
+  ChatEnqueue,
+  Session,
+  StatsCardio,
+  StatsOverview,
+  StatsProgress,
+  StatsVolume,
+  TokenResponse,
+} from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
@@ -44,5 +52,21 @@ export const api = {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({ text }),
+    }),
+  statsOverview: (token: string) =>
+    request<StatsOverview>("/stats/overview", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  statsVolume: (token: string) =>
+    request<StatsVolume>("/stats/volume", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  statsCardio: (token: string) =>
+    request<StatsCardio>("/stats/cardio", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  statsProgress: (token: string) =>
+    request<StatsProgress>("/stats/progress", {
+      headers: { Authorization: `Bearer ${token}` },
     }),
 };

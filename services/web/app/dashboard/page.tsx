@@ -4,7 +4,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
-import type { Session } from "@/lib/types";
+import type {
+  Session,
+  StatsCardio,
+  StatsOverview,
+  StatsProgress,
+  StatsVolume,
+} from "@/lib/types";
 
 const TOKEN_KEY = "traingapp_token";
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -13,6 +19,10 @@ export default function Dashboard() {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [overview, setOverview] = useState<StatsOverview | null>(null);
+  const [volume, setVolume] = useState<StatsVolume | null>(null);
+  const [cardio, setCardio] = useState<StatsCardio | null>(null);
+  const [progress, setProgress] = useState<StatsProgress | null>(null);
   const [chatText, setChatText] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,17 +35,27 @@ export default function Dashboard() {
       return;
     }
     setToken(stored);
-    loadSessions(stored);
+    loadAll(stored);
   }, [router]);
 
-  const loadSessions = useCallback(async (accessToken: string) => {
+  const loadAll = useCallback(async (accessToken: string) => {
     setLoading(true);
     try {
-      const data = await api.listSessions(accessToken);
-      setSessions(data);
+      const [s, o, v, c, p] = await Promise.all([
+        api.listSessions(accessToken),
+        api.statsOverview(accessToken),
+        api.statsVolume(accessToken),
+        api.statsCardio(accessToken),
+        api.statsProgress(accessToken),
+      ]);
+      setSessions(s);
+      setOverview(o);
+      setVolume(v);
+      setCardio(c);
+      setProgress(p);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar sesiones");
+      setError(err instanceof Error ? err.message : "Error al cargar datos");
     } finally {
       setLoading(false);
     }
@@ -55,7 +75,7 @@ export default function Dashboard() {
       await api.sendChat(token, chatText);
       setChatText("");
       setMessage("Entrenamiento enviado a la IA. Procesando...");
-      setTimeout(() => loadSessions(token), 2000);
+      setTimeout(() => loadAll(token), 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al enviar el chat");
     }
@@ -65,6 +85,8 @@ export default function Dashboard() {
   const weeklyVolume = sessions
     .filter((s) => now - new Date(s.performedAt).getTime() < WEEK_MS)
     .reduce((sum, s) => sum + (s.volumeKg ?? 0), 0);
+
+  const maxGroupVolume = volume?.byMuscleGroup[0]?.volumeKg ?? 0;
 
   return (
     <main className="dashboard">
@@ -81,8 +103,20 @@ export default function Dashboard() {
           <span className="stat-value">{Math.round(weeklyVolume)} kg</span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Sesiones</span>
-          <span className="stat-value">{sessions.length}</span>
+          <span className="stat-label">Sesiones (30d)</span>
+          <span className="stat-value">{overview?.totalSessions ?? "—"}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Adherencia</span>
+          <span className="stat-value">
+            {overview ? `${overview.sessionsPerWeek.toFixed(1)}/sem` : "—"}
+          </span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Volumen (90d)</span>
+          <span className="stat-value">
+            {Math.round(volume?.totalVolumeKg ?? 0)} kg
+          </span>
         </div>
       </section>
 
@@ -99,7 +133,105 @@ export default function Dashboard() {
       {message && <p className="ok">{message}</p>}
       {error && <p className="error">{error}</p>}
 
-      <section className="sessions">
+      {progress && progress.insights.length > 0 && (
+        <section className="insights">
+          <h2>Observaciones</h2>
+          {progress.insights.map((insight) => (
+            <p
+              key={insight.kind}
+              className={`insight insight-${insight.severity}`}
+            >
+              {insight.message}
+            </p>
+          ))}
+        </section>
+      )}
+
+      {volume && volume.byMuscleGroup.length > 0 && (
+        <section className="block">
+          <h2>Volumen por grupo muscular</h2>
+          <div className="bars">
+            {volume.byMuscleGroup.map((group) => (
+              <div key={group.muscleGroup} className="bar-row">
+                <span className="bar-label">{group.muscleGroup}</span>
+                <div className="bar-track">
+                  <div
+                    className="bar-fill"
+                    style={{
+                      width: `${
+                        maxGroupVolume ? (group.volumeKg / maxGroupVolume) * 100 : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+                <span className="bar-value">
+                  {Math.round(group.volumeKg)} kg · {group.sessions} ses
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {volume && volume.exerciseProgress.length > 0 && (
+        <section className="block">
+          <h2>Progresión 1RM estimada</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Ejercicio</th>
+                <th>1RM</th>
+                <th>Delta</th>
+              </tr>
+            </thead>
+            <tbody>
+              {volume.exerciseProgress.slice(0, 8).map((item) => (
+                <tr key={item.exercise}>
+                  <td>{item.exercise}</td>
+                  <td>{item.best1Rm != null ? `${item.best1Rm.toFixed(0)} kg` : "—"}</td>
+                  <td>
+                    {item.deltaPct != null ? (
+                      <span className={item.deltaPct >= 0 ? "ok" : "error"}>
+                        {item.deltaPct >= 0 ? "▲" : "▼"} {item.deltaPct.toFixed(1)}%
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      {cardio && cardio.byDiscipline.length > 0 && (
+        <section className="block">
+          <h2>Cardio</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Disciplina</th>
+                <th>Sesiones</th>
+                <th>Duración total</th>
+                <th>Media</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cardio.byDiscipline.map((item) => (
+                <tr key={item.discipline}>
+                  <td>{item.discipline}</td>
+                  <td>{item.sessions}</td>
+                  <td>{item.durationMinutes} min</td>
+                  <td>{item.avgDurationMinutes} min</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      <section className="block sessions">
         <h2>Historial</h2>
         {loading ? (
           <p>Cargando...</p>

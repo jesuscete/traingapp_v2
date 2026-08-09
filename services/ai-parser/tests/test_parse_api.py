@@ -18,7 +18,7 @@ def test_parse_endpoint() -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["discipline"] == "gym"
-    assert data["exercises"][0]["weight_kg"] == 80.0
+    assert data["exercises"][0]["weightKg"] == 80.0
 
 
 def test_health() -> None:

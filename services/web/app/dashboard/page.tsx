@@ -4,23 +4,32 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
+import { HelpTip } from "@/components/HelpTip";
+import { RadarChart } from "@/components/RadarChart";
+import { TopNav } from "@/components/TopNav";
+import {
+  translateDiscipline,
+  translateInsightMessage,
+  translateMuscleGroup,
+} from "@/lib/labels";
 import type {
-  Session,
   StatsCardio,
   StatsOverview,
   StatsProgress,
   StatsVolume,
+  User,
 } from "@/lib/types";
 
 const TOKEN_KEY = "traingapp_token";
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const USER_KEY = "traingapp_user";
 
 export default function Dashboard() {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [user, setUser] = useState<User | null>(null);
   const [overview, setOverview] = useState<StatsOverview | null>(null);
   const [volume, setVolume] = useState<StatsVolume | null>(null);
+  const [volumeWeek, setVolumeWeek] = useState<StatsVolume | null>(null);
   const [cardio, setCardio] = useState<StatsCardio | null>(null);
   const [progress, setProgress] = useState<StatsProgress | null>(null);
   const [chatText, setChatText] = useState("");
@@ -35,22 +44,30 @@ export default function Dashboard() {
       return;
     }
     setToken(stored);
+    const storedUser = localStorage.getItem(USER_KEY);
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        setUser(null);
+      }
+    }
     loadAll(stored);
   }, [router]);
 
   const loadAll = useCallback(async (accessToken: string) => {
     setLoading(true);
     try {
-      const [s, o, v, c, p] = await Promise.all([
-        api.listSessions(accessToken),
+      const [o, v, vw, c, p] = await Promise.all([
         api.statsOverview(accessToken),
         api.statsVolume(accessToken),
+        api.statsVolume(accessToken, 7),
         api.statsCardio(accessToken),
         api.statsProgress(accessToken),
       ]);
-      setSessions(s);
       setOverview(o);
       setVolume(v);
+      setVolumeWeek(vw);
       setCardio(c);
       setProgress(p);
       setError(null);
@@ -63,6 +80,7 @@ export default function Dashboard() {
 
   function logout() {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     router.replace("/");
   }
 
@@ -81,189 +99,183 @@ export default function Dashboard() {
     }
   }
 
-  const now = Date.now();
-  const weeklyVolume = sessions
-    .filter((s) => now - new Date(s.performedAt).getTime() < WEEK_MS)
-    .reduce((sum, s) => sum + (s.volumeKg ?? 0), 0);
-
-  const maxGroupVolume = volume?.byMuscleGroup[0]?.volumeKg ?? 0;
+  const disciplines = overview?.byDiscipline ?? [];
+  const maxGroupVolume = volumeWeek?.byMuscleGroup[0]?.volumeKg ?? 0;
+  const radarData = (volumeWeek?.byMuscleGroup ?? [])
+    .filter((g) => g.volumeKg > 0)
+    .map((g) => ({
+      label: translateMuscleGroup(g.muscleGroup),
+      value: maxGroupVolume ? g.volumeKg / maxGroupVolume : 0,
+    }));
 
   return (
     <main className="dashboard">
-      <header className="topbar">
-        <h1>TraingApp</h1>
-        <button type="button" className="link" onClick={logout}>
-          Salir
-        </button>
-      </header>
+      <TopNav onLogout={logout} />
+
+      <section className="welcome">
+        <h2>
+          Hola{user?.name ? `, ${user.name}` : ""} 👋
+        </h2>
+        <p className="subtitle">Resumen de tu semana</p>
+      </section>
 
       <section className="stats">
         <div className="stat-card">
-          <span className="stat-label">Volumen semanal</span>
-          <span className="stat-value">{Math.round(weeklyVolume)} kg</span>
+          <span className="stat-label">
+            <HelpTip tip="Suma de kilos levantados en la última semana (series × repeticiones × peso).">
+              Volumen semanal
+            </HelpTip>
+          </span>
+          <span className="stat-value">
+            {Math.round(volumeWeek?.totalVolumeKg ?? 0)} kg
+          </span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Sesiones (30d)</span>
+          <span className="stat-label">
+            <HelpTip tip="Número de entrenamientos registrados en los últimos 30 días.">
+              Sesiones (30d)
+            </HelpTip>
+          </span>
           <span className="stat-value">{overview?.totalSessions ?? "—"}</span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Adherencia</span>
+          <span className="stat-label">
+            <HelpTip tip="Media de sesiones registradas por semana.">
+              Adherencia
+            </HelpTip>
+          </span>
           <span className="stat-value">
             {overview ? `${overview.sessionsPerWeek.toFixed(1)}/sem` : "—"}
           </span>
         </div>
         <div className="stat-card">
-          <span className="stat-label">Volumen (90d)</span>
+          <span className="stat-label">
+            <HelpTip tip="Kilos totales levantados en los últimos 90 días.">
+              Volumen (90d)
+            </HelpTip>
+          </span>
           <span className="stat-value">
             {Math.round(volume?.totalVolumeKg ?? 0)} kg
           </span>
         </div>
       </section>
 
-      <form className="chat" onSubmit={handleChat}>
-        <input
-          type="text"
-          placeholder='Ej: "5x5 press banca 80kg" o "clase de boxeo de 1h30m"'
-          value={chatText}
-          onChange={(e) => setChatText(e.target.value)}
-          required
-        />
-        <button type="submit">Registrar</button>
-      </form>
-      {message && <p className="ok">{message}</p>}
-      {error && <p className="error">{error}</p>}
-
-      {progress && progress.insights.length > 0 && (
-        <section className="insights">
-          <h2>Observaciones</h2>
-          {progress.insights.map((insight) => (
-            <p
-              key={insight.kind}
-              className={`insight insight-${insight.severity}`}
-            >
-              {insight.message}
-            </p>
-          ))}
-        </section>
-      )}
-
-      {volume && volume.byMuscleGroup.length > 0 && (
-        <section className="block">
-          <h2>Volumen por grupo muscular</h2>
-          <div className="bars">
-            {volume.byMuscleGroup.map((group) => (
-              <div key={group.muscleGroup} className="bar-row">
-                <span className="bar-label">{group.muscleGroup}</span>
-                <div className="bar-track">
-                  <div
-                    className="bar-fill"
-                    style={{
-                      width: `${
-                        maxGroupVolume ? (group.volumeKg / maxGroupVolume) * 100 : 0
-                      }%`,
-                    }}
-                  />
-                </div>
-                <span className="bar-value">
-                  {Math.round(group.volumeKg)} kg · {group.sessions} ses
-                </span>
+      {loading ? (
+        <p className="muted">Cargando...</p>
+      ) : (
+        <>
+          {disciplines.length > 0 && (
+            <section className="block">
+              <h2>Disciplinas practicadas</h2>
+              <div className="chips">
+                {disciplines.map((item) => (
+                  <span key={item.discipline} className="chip">
+                    {translateDiscipline(item.discipline)} · {item.sessions}{" "}
+                    {item.sessions === 1 ? "sesión" : "sesiones"}
+                  </span>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
-      )}
+            </section>
+          )}
 
-      {volume && volume.exerciseProgress.length > 0 && (
-        <section className="block">
-          <h2>Progresión 1RM estimada</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Ejercicio</th>
-                <th>1RM</th>
-                <th>Delta</th>
-              </tr>
-            </thead>
-            <tbody>
-              {volume.exerciseProgress.slice(0, 8).map((item) => (
-                <tr key={item.exercise}>
-                  <td>{item.exercise}</td>
-                  <td>{item.best1Rm != null ? `${item.best1Rm.toFixed(0)} kg` : "—"}</td>
-                  <td>
-                    {item.deltaPct != null ? (
-                      <span className={item.deltaPct >= 0 ? "ok" : "error"}>
-                        {item.deltaPct >= 0 ? "▲" : "▼"} {item.deltaPct.toFixed(1)}%
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      )}
+          <section className="home-grid">
+            {radarData.length >= 3 && (
+              <div className="block">
+                <h2>Carga por grupo muscular (7d)</h2>
+                <RadarChart data={radarData} />
+              </div>
+            )}
 
-      {cardio && cardio.byDiscipline.length > 0 && (
-        <section className="block">
-          <h2>Cardio</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Disciplina</th>
-                <th>Sesiones</th>
-                <th>Duración total</th>
-                <th>Media</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cardio.byDiscipline.map((item) => (
-                <tr key={item.discipline}>
-                  <td>{item.discipline}</td>
-                  <td>{item.sessions}</td>
-                  <td>{item.durationMinutes} min</td>
-                  <td>{item.avgDurationMinutes} min</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      )}
+            <div className="block">
+              <h2>Registrar entreno</h2>
+              <form className="chat" onSubmit={handleChat}>
+                <input
+                  type="text"
+                  placeholder='Ej: "5x5 press banca 80kg" o "clase de boxeo de 1h30m"'
+                  value={chatText}
+                  onChange={(e) => setChatText(e.target.value)}
+                  required
+                />
+                <button type="submit">Registrar</button>
+              </form>
+              {message && <p className="ok">{message}</p>}
+              {error && <p className="error">{error}</p>}
+            </div>
+          </section>
 
-      <section className="block sessions">
-        <h2>Historial</h2>
-        {loading ? (
-          <p>Cargando...</p>
-        ) : sessions.length === 0 ? (
-          <p>No hay entrenamientos registrados todavía.</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Disciplina</th>
-                <th>Entrenamiento</th>
-                <th>Duración</th>
-                <th>Volumen</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessions.map((s) => (
-                <tr key={s.id}>
-                  <td>{new Date(s.performedAt).toLocaleDateString()}</td>
-                  <td>{s.discipline}</td>
-                  <td>{s.rawText}</td>
-                  <td>
-                    {s.durationMinutes != null ? `${s.durationMinutes} min` : "—"}
-                  </td>
-                  <td>{Math.round(s.volumeKg)} kg</td>
-                </tr>
+          {progress && progress.insights.length > 0 && (
+            <section className="block insights">
+              <h2>Observaciones</h2>
+              {progress.insights.map((insight) => (
+                <p
+                  key={insight.kind}
+                  className={`insight insight-${insight.severity}`}
+                >
+                  {translateInsightMessage(insight.message)}
+                </p>
               ))}
-            </tbody>
-          </table>
-        )}
-      </section>
+            </section>
+          )}
+
+          {volume && volume.byMuscleGroup.length > 0 && (
+            <section className="block">
+              <h2>Volumen por grupo muscular (90d)</h2>
+              <div className="bars">
+                {volume.byMuscleGroup.map((group) => (
+                  <div key={group.muscleGroup} className="bar-row">
+                    <span className="bar-label">
+                      {translateMuscleGroup(group.muscleGroup)}
+                    </span>
+                    <div className="bar-track">
+                      <div
+                        className="bar-fill"
+                        style={{
+                          width: `${
+                            maxGroupVolume
+                              ? (group.volumeKg / volume.byMuscleGroup[0].volumeKg) *
+                                100
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+                    <span className="bar-value">
+                      {Math.round(group.volumeKg)} kg · {group.sessions}{" "}
+                      {group.sessions === 1 ? "ses" : "ses"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {cardio && cardio.byDiscipline.length > 0 && (
+            <section className="block">
+              <h2>Cardio</h2>
+              <table className="plain">
+                <thead>
+                  <tr>
+                    <th>Disciplina</th>
+                    <th>Sesiones</th>
+                    <th>Duración total</th>
+                    <th>Media</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cardio.byDiscipline.map((item) => (
+                    <tr key={item.discipline}>
+                      <td>{translateDiscipline(item.discipline)}</td>
+                      <td>{item.sessions}</td>
+                      <td>{item.durationMinutes} min</td>
+                      <td>{item.avgDurationMinutes} min</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
+        </>
+      )}
     </main>
   );
 }

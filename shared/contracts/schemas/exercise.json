@@ -17,6 +17,14 @@
       "type": "integer",
       "minimum": 1
     },
+    "perSetReps": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "description": "Repeticiones por serie cuando no son uniformes, p. ej. [8, 7, 7, 5]."
+    },
     "weightKg": {
       "type": "number",
       "minimum": 0
@@ -28,6 +36,17 @@
     "distanceMeters": {
       "type": "number",
       "minimum": 0
+    },
+    "restSeconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Descanso aproximado entre series (opcional)."
+    },
+    "rpe": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "description": "Esfuerzo percibido del ejercicio (opcional)."
     },
     "volumeKg": {
       "type": "number",

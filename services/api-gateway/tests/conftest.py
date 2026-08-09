@@ -12,6 +12,36 @@ from app.core.redis import get_redis
 from app.main import app
 
 
+@pytest.fixture
+def db_session_factory() -> async_sessionmaker[AsyncSession]:
+    return factory
+
+
+@pytest.fixture
+def seed_catalog(db_session_factory: async_sessionmaker[AsyncSession]) -> None:
+    from app.analytics.exercise_seed import EXERCISE_CATALOG_SEED
+    from app.models import ExerciseCatalog
+
+    async def run() -> None:
+        async with db_session_factory() as session:
+            for entry in EXERCISE_CATALOG_SEED:
+                session.add(
+                    ExerciseCatalog(
+                        name=entry["name"],
+                        normalized_name=entry["normalized_name"],
+                        exercise_type=entry["exercise_type"],
+                        muscle_map=entry["muscles"],
+                        uses_bodyweight=entry.get("uses_bodyweight", False),
+                        unilateral=entry.get("unilateral", False),
+                    )
+                )
+            await session.commit()
+
+    asyncio.run(run())
+
+
+
+
 class FakeRedis:
     def __init__(self) -> None:
         self.lists: dict[str, list[str]] = defaultdict(list)
@@ -19,6 +49,17 @@ class FakeRedis:
     async def lpush(self, name: str, value: str) -> int:
         self.lists[name].insert(0, value)
         return 1
+
+    async def setex(self, name: str, time: int, value: str) -> int:
+        self.lists[name] = [value]
+        return 1
+
+    async def get(self, name: str) -> str | None:
+        values = self.lists.get(name)
+        return values[0] if values else None
+
+    async def delete(self, name: str) -> int:
+        return 1 if self.lists.pop(name, None) is not None else 0
 
 
 @pytest.fixture(autouse=True)
@@ -33,6 +74,8 @@ engine = create_async_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+
+factory = async_sessionmaker(engine, expire_on_commit=False)
 
 
 @pytest.fixture(autouse=True)
@@ -53,8 +96,6 @@ def client() -> TestClient:
             await conn.run_sync(Base.metadata.create_all)
 
     asyncio.run(init_db())
-
-    factory = async_sessionmaker(engine, expire_on_commit=False)
 
     async def override_get_db() -> AsyncIterator[AsyncSession]:
         async with factory() as session:

@@ -23,6 +23,7 @@ class ExerciseIn(CamelModel):
     weight_kg: float | None = Field(default=None, ge=0)
     duration_minutes: float | None = Field(default=None, ge=0)
     distance_meters: float | None = Field(default=None, ge=0)
+    details: dict[str, object] | None = None
 
 
 class ExerciseOut(CamelModel):
@@ -34,6 +35,7 @@ class ExerciseOut(CamelModel):
     duration_minutes: float | None
     distance_meters: float | None
     volume_kg: float
+    details: dict[str, object] | None = None
 
 
 class SessionIn(CamelModel):
@@ -41,8 +43,15 @@ class SessionIn(CamelModel):
     raw_text: str = Field(min_length=1)
     performed_at: datetime
     duration_minutes: int | None = Field(default=None, ge=0)
+    distance_meters: float | None = Field(default=None, ge=0)
     note: str | None = None
+    details: dict[str, object] | None = None
     exercises: list[ExerciseIn] = Field(default_factory=list)
+
+
+class MuscleImpactOut(CamelModel):
+    muscle_group: str
+    activation: float
 
 
 class SessionOut(CamelModel):
@@ -51,10 +60,14 @@ class SessionOut(CamelModel):
     raw_text: str
     performed_at: datetime
     duration_minutes: int | None
+    distance_meters: float | None = None
     volume_kg: float
+    estimated_kcal: float | None = None
     note: str | None
+    details: dict[str, object] | None = None
     created_at: datetime
     exercises: list[ExerciseOut]
+    muscle_impacts: list[MuscleImpactOut] = Field(default_factory=list)
 
 
 class SessionListItem(CamelModel):
@@ -64,3 +77,4 @@ class SessionListItem(CamelModel):
     performed_at: datetime
     duration_minutes: int | None
     volume_kg: float
+    estimated_kcal: float | None = None

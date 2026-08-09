@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from app.analytics import catalog
+from app.analytics.gym import flatten_workout_exercises
 from app.models import TrainingSession
 
 CARDIO_DISCIPLINES = frozenset({"running", "cycling", "swimming", "boxing"})
@@ -178,7 +179,8 @@ def compute_volume(sessions: list[TrainingSession]) -> VolumeResult:
     unclassified = 0.0
 
     for ts in sessions:
-        for exercise in ts.exercises:
+        exercises = list(ts.exercises) + flatten_workout_exercises(ts.workout_exercises)
+        for exercise in exercises:
             volume = exercise.volume_kg or 0.0
             group = catalog.muscle_group_of(exercise.name)
             if group is None:

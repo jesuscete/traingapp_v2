@@ -7,6 +7,47 @@
     "discipline": {
       "type": "string",
       "enum": ["gym", "boxing", "running", "cycling", "swimming", "other"]
+    },
+    "muscleGroup": {
+      "type": "string",
+      "enum": [
+        "quadriceps",
+        "hamstrings",
+        "glutes",
+        "calves",
+        "core",
+        "back",
+        "chest",
+        "shoulders",
+        "biceps",
+        "triceps",
+        "forearms",
+        "neck"
+      ],
+      "description": "Clave interna en ingles; etiquetas en espanol en la UI."
+    },
+    "fitnessLevel": {
+      "type": "string",
+      "enum": ["beginner", "intermediate", "advanced"]
+    },
+    "goal": {
+      "type": "string",
+      "enum": [
+        "loss",
+        "muscle",
+        "performance",
+        "boxing",
+        "running",
+        "triathlon",
+        "maintenance"
+      ],
+      "description": "Objetivos soportados (multiples permitidos en users.goals)."
+    },
+    "painScale": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "description": "Dolor muscular percibido (0 = nada, 10 = maximo)."
     }
   }
 }

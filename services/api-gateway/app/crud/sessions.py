@@ -5,8 +5,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.analytics import kcal as kcal_analytics
-from app.models import Exercise, TrainingSession
+from app.models import Exercise, TrainingSession, WorkoutExercise, WorkoutSet
 from app.schemas.session import SessionIn
+
+_GYM_LOADS = (
+    selectinload(TrainingSession.workout_exercises)
+    .selectinload(WorkoutExercise.sets)
+    .selectinload(WorkoutSet.entries),
+    selectinload(TrainingSession.summary),
+)
 
 
 def _exercise_volume(exercise: Exercise) -> float:
@@ -129,7 +136,7 @@ async def get_for_user(
     result = await session.execute(
         select(TrainingSession)
         .where(TrainingSession.id == session_id, TrainingSession.user_id == user_id)
-        .options(selectinload(TrainingSession.exercises))
+        .options(selectinload(TrainingSession.exercises), *_GYM_LOADS)
     )
     return result.scalar_one_or_none()
 

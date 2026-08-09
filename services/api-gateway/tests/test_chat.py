@@ -197,7 +197,8 @@ def test_confirm_with_edited_exercises(client: TestClient, _fake_redis, monkeypa
     )
     assert response.status_code == 201
     created = response.json()
-    assert created["volumeKg"] == 4 * 7 * 80
+    # El modelo de 4 niveles respeta perSetReps por serie: 8+7+7+5 = 27 reps
+    assert created["volumeKg"] == 27 * 80
     assert created["details"]["rpe"] == 7
 
 

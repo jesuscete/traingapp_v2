@@ -1,11 +1,15 @@
 import uuid
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text, Uuid, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.gym import WorkoutExercise, WorkoutSessionSummary
 
 _JSONB = JSON().with_variant(JSONB(), "postgresql")
 
@@ -22,6 +26,10 @@ class TrainingSession(Base):
     performed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
+    start_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    intensity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fatigue: Mapped[int | None] = mapped_column(Integer, nullable=True)
     duration_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     volume_kg: Mapped[float] = mapped_column(Float, default=0)
     estimated_kcal: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -40,6 +48,16 @@ class TrainingSession(Base):
         back_populates="session",
         cascade="all, delete-orphan",
         order_by="Exercise.id",
+    )
+    workout_exercises: Mapped[list["WorkoutExercise"]] = relationship(
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="WorkoutExercise.order_index",
+    )
+    summary: Mapped["WorkoutSessionSummary | None"] = relationship(
+        back_populates="session",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
 
 

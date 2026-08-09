@@ -32,6 +32,10 @@ infra/data/
 .coverage
 htmlcov/
 
+# Runtime
+*.log
+uvicorn.pid
+
 # Instrucciones del agente (no se suben al repo)
 AGENTS.md
 /docs/

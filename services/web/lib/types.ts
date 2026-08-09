@@ -36,6 +36,68 @@ export type MuscleImpact = {
   activation: number;
 };
 
+export type SetEntry = {
+  id: string;
+  entryOrder: number;
+  reps: number | null;
+  weight: number | null;
+  weightUnit: string;
+  durationSeconds: number | null;
+  distanceMeters: number | null;
+  rpe: number | null;
+  side: string;
+};
+
+export type WorkoutSet = {
+  id: string;
+  setNumber: number;
+  setType: string;
+  restSeconds: number | null;
+  isWarmup: boolean;
+  volumeKg: number;
+  entries: SetEntry[];
+};
+
+export type WorkoutExercise = {
+  id: string;
+  sessionId: string;
+  exerciseId: string | null;
+  name: string;
+  orderIndex: number;
+  supersetGroupId: string | null;
+  volumeKg: number;
+  sets: WorkoutSet[];
+};
+
+export type WorkoutSessionSummary = {
+  sessionId: string;
+  totalVolume: number;
+  avgRpe: number | null;
+  setsCount: number;
+  durationMin: number;
+};
+
+export type GymSession = {
+  id: string;
+  discipline: string;
+  rawText: string;
+  performedAt: string;
+  startTime: string | null;
+  endTime: string | null;
+  intensity: number | null;
+  fatigue: number | null;
+  durationMinutes: number | null;
+  volumeKg: number;
+  estimatedKcal: number | null;
+  calories: number | null;
+  note: string | null;
+  details: SessionDetails | null;
+  createdAt: string;
+  workoutExercises: WorkoutExercise[];
+  summary: WorkoutSessionSummary | null;
+  muscleImpacts: MuscleImpact[];
+};
+
 export type ExerciseDraft = {
   name: string;
   sets: number | null;
@@ -208,4 +270,36 @@ export type Fatigue = {
   avgFatigue: number;
   readiness: Readiness | null;
   risks: FatigueRisk[];
+};
+
+export type FatigueSeriesMuscle = {
+  muscleGroup: string;
+  fatigue: number;
+};
+
+export type FatigueSeriesDay = {
+  date: string;
+  maxFatigue: number;
+  avgFatigue: number;
+  muscles: FatigueSeriesMuscle[];
+};
+
+export type FatigueSeries = {
+  periodDays: number;
+  series: FatigueSeriesDay[];
+};
+
+export type LoadMuscle = {
+  muscleGroup: string;
+  accumulatedLoad: number;
+  recovery: number;
+  trend: string;
+};
+
+export type Load = {
+  periodDays: number;
+  totalLoad: number;
+  monotony: number;
+  strain: number;
+  byMuscleGroup: LoadMuscle[];
 };

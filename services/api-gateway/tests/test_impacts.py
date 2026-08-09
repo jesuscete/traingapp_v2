@@ -1,4 +1,7 @@
-from app.analytics.impacts import compute_muscle_impacts
+from app.analytics.impacts import (
+    compute_discipline_impacts,
+    compute_muscle_impacts,
+)
 from app.models.training import Exercise
 
 
@@ -69,3 +72,18 @@ def test_no_match_returns_empty() -> None:
     impacts = compute_muscle_impacts([exercise], {})
 
     assert impacts == []
+
+
+def test_discipline_profile_running_normalized() -> None:
+    impacts = compute_discipline_impacts("running")
+
+    by_group = {item.muscle_group: item.activation for item in impacts}
+    assert by_group["quadriceps"] == 1.0
+    assert by_group["calves"] == 0.8
+    assert impacts[0].activation == 1.0
+    activations = [item.activation for item in impacts]
+    assert activations == sorted(activations, reverse=True)
+
+
+def test_discipline_profile_unknown_returns_empty() -> None:
+    assert compute_discipline_impacts("kitesurf") == []

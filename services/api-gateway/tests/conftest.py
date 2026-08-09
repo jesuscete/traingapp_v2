@@ -25,7 +25,16 @@ def seed_catalog(db_session_factory: async_sessionmaker[AsyncSession]) -> None:
     async def run() -> None:
         async with db_session_factory() as session:
             for entry in EXERCISE_CATALOG_SEED:
-                session.add(ExerciseCatalog(**entry))
+                session.add(
+                    ExerciseCatalog(
+                        name=entry["name"],
+                        normalized_name=entry["normalized_name"],
+                        exercise_type=entry["exercise_type"],
+                        muscle_map=entry["muscles"],
+                        uses_bodyweight=entry.get("uses_bodyweight", False),
+                        unilateral=entry.get("unilateral", False),
+                    )
+                )
             await session.commit()
 
     asyncio.run(run())

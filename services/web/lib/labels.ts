@@ -55,6 +55,20 @@ export function translateDiscipline(key: string | null | undefined): string {
   return DISCIPLINE_LABELS[key] ?? key;
 }
 
+const SET_TYPE_LABELS: Record<string, string> = {
+  normal: "Normal",
+  calentamiento: "Calentamiento",
+  dropset: "Dropset",
+  al_fallo: "Al fallo",
+  amrap: "AMRAP",
+  isometrico: "Isométrico",
+};
+
+export function translateSetType(key: string | null | undefined): string {
+  if (!key) return "Normal";
+  return SET_TYPE_LABELS[key] ?? key;
+}
+
 export function translateInsightMessage(message: string): string {
   return message.replace(
     /\b(chest|back|shoulders|legs|arms|core|gym|boxing|running|cycling|swimming)\b/g,

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, String, Uuid, func
+from sqlalchemy import JSON, Boolean, DateTime, String, Uuid, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -17,7 +17,9 @@ class ExerciseCatalog(Base):
     name: Mapped[str] = mapped_column(String(120))
     normalized_name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     exercise_type: Mapped[str] = mapped_column(String(20))
-    muscles: Mapped[dict[str, float]] = mapped_column(_JSONB)
+    muscle_map: Mapped[dict[str, float]] = mapped_column(_JSONB)
+    uses_bodyweight: Mapped[bool] = mapped_column(Boolean, default=False)
+    unilateral: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

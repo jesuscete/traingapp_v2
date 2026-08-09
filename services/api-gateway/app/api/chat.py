@@ -7,7 +7,11 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.analytics.impacts import compute_muscle_impacts
+from app.analytics import gym as gym_analytics
+from app.analytics.impacts import (
+    compute_discipline_impacts,
+    compute_muscle_impacts,
+)
 from app.api.deps import get_current_user
 from app.chat.conversation import (
     append_live,
@@ -21,6 +25,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.parser import fetch_draft
 from app.core.redis import get_redis
+from app.crud import gym as gym_crud
 from app.crud import sessions
 from app.crud.catalog import exercise_muscle_map
 from app.models import User
@@ -33,12 +38,22 @@ from app.schemas.chat import (
     ExerciseDraftOut,
     WorkoutDraftOut,
 )
+from app.schemas.gym import (
+    GymSessionIn,
+    GymSessionOut,
+    MuscleImpactOut,
+    SetEntryIn,
+    WorkoutExerciseIn,
+    WorkoutSetIn,
+)
 from app.schemas.session import (
     Discipline,
     ExerciseIn,
-    MuscleImpactOut,
     SessionIn,
     SessionOut,
+)
+from app.schemas.session import (
+    MuscleImpactOut as LegacyMuscleImpactOut,
 )
 
 WORKOUT_PARSE_QUEUE = "workout:parse"
@@ -146,9 +161,62 @@ def _to_exercise_in(exercise: ExerciseDraftOut) -> ExerciseIn:
     )
 
 
+def _to_gym_session_in(
+    draft: WorkoutDraftOut,
+    body: ChatConfirmIn,
+    exercises: list[ExerciseDraftOut],
+    rpe: float | None,
+    details: dict[str, object],
+) -> GymSessionIn:
+    workout_exercises: list[WorkoutExerciseIn] = []
+    for i, ex in enumerate(exercises):
+        if ex.per_set_reps:
+            sets = [
+                WorkoutSetIn(
+                    set_number=j + 1,
+                    set_type="normal",
+                    entries=[SetEntryIn(entry_order=0, reps=reps, weight=ex.weight_kg)],
+                )
+                for j, reps in enumerate(ex.per_set_reps)
+            ]
+        elif ex.sets:
+            sets = [
+                WorkoutSetIn(
+                    set_number=j + 1,
+                    set_type="normal",
+                    entries=[SetEntryIn(entry_order=0, reps=ex.reps, weight=ex.weight_kg)],
+                )
+                for j in range(ex.sets)
+            ]
+        else:
+            sets = [
+                WorkoutSetIn(
+                    set_number=1,
+                    set_type="normal",
+                    entries=[
+                        SetEntryIn(entry_order=0, reps=None, weight=ex.weight_kg)
+                    ],
+                )
+            ]
+        workout_exercises.append(
+            WorkoutExerciseIn(name=ex.name, order_index=i, sets=sets)
+        )
+    return GymSessionIn(
+        raw_text=draft.raw_text,
+        performed_at=body.performedAt or draft.performed_at,
+        duration_minutes=body.durationMinutes or draft.duration_minutes,
+        intensity=int(rpe) if rpe is not None else None,
+        fatigue=(
+            int(body.perceivedFatigue) if body.perceivedFatigue is not None else None
+        ),
+        details=details or None,
+        exercises=workout_exercises,
+    )
+
+
 @router.post(
     "/confirm",
-    response_model=SessionOut,
+    response_model=GymSessionOut | SessionOut,
     status_code=status.HTTP_201_CREATED,
 )
 async def confirm_draft(
@@ -156,7 +224,7 @@ async def confirm_draft(
     redis: Annotated[aioredis.Redis, Depends(get_redis)],
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
-) -> SessionOut:
+) -> GymSessionOut | SessionOut:
     key = _draft_key(current_user.id, body.requestId)
     stored = await redis.get(key)
     if stored is None:
@@ -179,6 +247,25 @@ async def confirm_draft(
         details["perceivedFatigue"] = body.perceivedFatigue
     if body.workoutType is not None:
         details["workoutType"] = body.workoutType
+    catalog = await exercise_muscle_map(session)
+
+    if draft.discipline == "gym":
+        gym_in = _to_gym_session_in(draft, body, exercises, rpe, details)
+        record = await gym_crud.create_gym(
+            session, current_user.id, gym_in, weight_kg=current_user.weight_kg
+        )
+        flat = gym_analytics.flatten_workout_exercises(record.workout_exercises)
+        impacts = compute_muscle_impacts(flat, catalog)
+        out_gym = GymSessionOut.model_validate(record)
+        record_details = record.details or {}
+        calories = record_details.get("calories")
+        out_gym.calories = calories if isinstance(calories, (int, float)) else None
+        out_gym.muscle_impacts = [
+            MuscleImpactOut(muscle_group=item.muscle_group, activation=item.activation)
+            for item in impacts
+        ]
+        return out_gym
+
     session_in = SessionIn(
         discipline=cast(Discipline, draft.discipline),
         rawText=draft.raw_text,
@@ -191,14 +278,15 @@ async def confirm_draft(
     record = await sessions.create(
         session, current_user.id, session_in, weight_kg=current_user.weight_kg
     )
-    catalog = await exercise_muscle_map(session)
     impacts = compute_muscle_impacts(record.exercises, catalog)
-    out = SessionOut.model_validate(record)
-    out.muscle_impacts = [
-        MuscleImpactOut(muscle_group=item.muscle_group, activation=item.activation)
+    if not impacts:
+        impacts = compute_discipline_impacts(record.discipline)
+    out_legacy = SessionOut.model_validate(record)
+    out_legacy.muscle_impacts = [
+        LegacyMuscleImpactOut(muscle_group=item.muscle_group, activation=item.activation)
         for item in impacts
     ]
-    return out
+    return out_legacy
 
 
 @router.post("/cancel")

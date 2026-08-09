@@ -25,6 +25,9 @@ export function TopNav({ onLogout }: { onLogout: () => void }) {
         <Link className={linkClass("/fatiga")} href="/fatiga">
           Fatiga
         </Link>
+        <Link className={linkClass("/analisis")} href="/analisis">
+          Análisis
+        </Link>
         <Link className={linkClass("/perfil")} href="/perfil">
           Perfil
         </Link>

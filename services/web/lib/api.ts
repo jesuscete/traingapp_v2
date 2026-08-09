@@ -4,6 +4,9 @@ import type {
   Energy,
   ExerciseDraft,
   Fatigue,
+  FatigueSeries,
+  GymSession,
+  Load,
   Readiness,
   Session,
   StatsCardio,
@@ -64,7 +67,7 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
     }),
   getSession: (token: string, id: string) =>
-    request<Session>(`/sessions/${id}`, {
+    request<Session | GymSession>(`/sessions/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
   sendChat: (token: string, text: string) =>
@@ -124,6 +127,14 @@ export const api = {
     }),
   statsFatigue: (token: string, projectDays = 0) =>
     request<Fatigue>(`/stats/fatigue?projectDays=${projectDays}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  statsFatigueSeries: (token: string, days = 30) =>
+    request<FatigueSeries>(`/stats/fatigue/series?days=${days}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  statsLoad: (token: string, days = 30) =>
+    request<Load>(`/stats/load?days=${days}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
   getReadiness: (token: string) =>

@@ -5,7 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import TrainingSession
+from app.models import TrainingSession, WorkoutExercise, WorkoutSet
+
+_LOADS = (
+    selectinload(TrainingSession.exercises),
+    selectinload(TrainingSession.workout_exercises)
+    .selectinload(WorkoutExercise.sets)
+    .selectinload(WorkoutSet.entries),
+)
 
 
 async def sessions_in_range(
@@ -20,7 +27,7 @@ async def sessions_in_range(
             TrainingSession.user_id == user_id,
             TrainingSession.performed_at >= start,
         )
-        .options(selectinload(TrainingSession.exercises))
+        .options(*_LOADS)
         .order_by(TrainingSession.performed_at)
     )
     if end is not None:

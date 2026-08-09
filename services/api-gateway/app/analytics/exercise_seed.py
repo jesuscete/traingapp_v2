@@ -5,6 +5,9 @@ Cada entrada alimenta la tabla `exercise_catalog`:
 - normalized_name: clave unica, normalizada (minusculas, sin acentos).
 - exercise_type: "gym" | "sport".
 - muscles: activacion por grupo muscular (0-1, suma <= 1).
+- uses_bodyweight: el ejercicio usa peso corporal (dominadas/fondos); el
+  peso registrado por serie es solo el lastre anadido.
+- unilateral: ejercicio unilateral (el lado se registra en cada set_entry).
 
 Es la unica fuente: la migracion y los tests poblan la tabla desde aqui.
 El evolutivo de importacion masiva de ejercicios (API externa) alimentara
@@ -41,6 +44,7 @@ EXERCISE_CATALOG_SEED: list[dict[str, object]] = [
         "name": "Fondos en paralelas",
         "normalized_name": "fondos en paralelas",
         "exercise_type": "gym",
+        "uses_bodyweight": True,
         "muscles": {"chest": 0.50, "triceps": 0.40, "shoulders": 0.10},
     },
     {
@@ -84,6 +88,7 @@ EXERCISE_CATALOG_SEED: list[dict[str, object]] = [
         "name": "Remo mancuerna",
         "normalized_name": "remo mancuerna",
         "exercise_type": "gym",
+        "unilateral": True,
         "muscles": {"back": 0.55, "biceps": 0.20, "core": 0.15, "forearms": 0.10},
     },
     {
@@ -96,6 +101,7 @@ EXERCISE_CATALOG_SEED: list[dict[str, object]] = [
         "name": "Dominadas",
         "normalized_name": "dominadas",
         "exercise_type": "gym",
+        "uses_bodyweight": True,
         "muscles": {"back": 0.70, "biceps": 0.20, "forearms": 0.10},
     },
     {
@@ -151,6 +157,7 @@ EXERCISE_CATALOG_SEED: list[dict[str, object]] = [
         "name": "Zancadas",
         "normalized_name": "zancadas",
         "exercise_type": "gym",
+        "unilateral": True,
         "muscles": {"quadriceps": 0.45, "glutes": 0.35, "hamstrings": 0.20},
     },
     {
@@ -219,6 +226,7 @@ EXERCISE_CATALOG_SEED: list[dict[str, object]] = [
         "name": "Plancha",
         "normalized_name": "plancha",
         "exercise_type": "gym",
+        "uses_bodyweight": True,
         "muscles": {"core": 0.85, "shoulders": 0.15},
     },
     {

@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
 import { BodyMap } from "@/components/BodyMap";
-import { TopNav } from "@/components/TopNav";
+import { BottomNav } from "@/components/BottomNav";
+import { ChatComposer } from "@/components/ChatComposer";
 import { translateDiscipline } from "@/lib/labels";
 import type {
   ExerciseDraft,
@@ -31,8 +32,8 @@ const WORKOUT_TYPES: Record<string, string> = {
 };
 
 const PLACEHOLDERS: Record<string, string> = {
-  idle: 'Ej: "empiezo entrenamiento" o "5x5 press banca 80kg"',
-  live: 'Ej: "press banca 5x5 80kg"',
+  idle: 'Describe tu entreno o pregúntame (ej. "empecé entrenando pecho")',
+  live: 'Anota la serie (ej. "press banca 5x5 80kg")',
 };
 
 function numberOrNull(value: string): number | null {
@@ -66,12 +67,6 @@ export default function Chat() {
     }
     setToken(stored);
   }, [router]);
-
-  function logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    router.replace("/");
-  }
 
   function reset() {
     setPhase("idle");
@@ -202,16 +197,16 @@ export default function Chat() {
 
   return (
     <main className="dashboard">
-      <TopNav onLogout={logout} />
+      <BottomNav />
 
       <section className="welcome">
-        <h2>Registrar entreno</h2>
+        <h2>Asistente de entrenamiento</h2>
         <p className="subtitle">
           {phase === "live"
             ? "Anota tus series. Cuando termines, pulsa 'Terminar entreno'."
             : phase === "review"
               ? "Revisa y confirma el borrador de la IA."
-              : "Describe tu entrenamiento en lenguaje natural."}
+              : "Registra tu entreno o pregúntame por tu rutina y progreso."}
         </p>
       </section>
 
@@ -219,44 +214,40 @@ export default function Chat() {
 
       {phase === "idle" && (
         <form
-          className="chat"
+          className="block"
           onSubmit={(event) => {
             event.preventDefault();
             send(text);
           }}
         >
-          <input
-            type="text"
+          <ChatComposer
             placeholder={PLACEHOLDERS.idle}
             value={text}
-            onChange={(event) => setText(event.target.value)}
-            autoFocus
+            onChange={setText}
+            onSubmit={() => send(text)}
+            disabled={busy}
+            hint="Enter para enviar · puedo registrar tu entreno o responder preguntas"
           />
-          <button type="submit" disabled={busy}>
-            {busy ? "Procesando..." : "Registrar"}
-          </button>
         </form>
       )}
 
       {phase === "live" && (
         <>
           <form
-            className="chat"
+            className="block"
             onSubmit={(event) => {
               event.preventDefault();
               send(text);
             }}
           >
-            <input
-              type="text"
+            <ChatComposer
               placeholder={PLACEHOLDERS.live}
               value={text}
-              onChange={(event) => setText(event.target.value)}
-              autoFocus
+              onChange={setText}
+              onSubmit={() => send(text)}
+              disabled={busy}
+              hint="Enter para añadir la serie"
             />
-            <button type="submit" disabled={busy}>
-              Añadir
-            </button>
           </form>
           {entriesList}
           <div className="chat-actions">

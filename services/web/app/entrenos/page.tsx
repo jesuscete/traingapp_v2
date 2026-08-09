@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { TopNav } from "@/components/TopNav";
+import { BottomNav } from "@/components/BottomNav";
 import { DisciplineBreakdown } from "@/components/entrenos/DisciplineBreakdown";
 import { EmptyState } from "@/components/entrenos/EmptyState";
 import { HighlightsStats } from "@/components/entrenos/HighlightsStats";
@@ -127,15 +127,9 @@ function EntrenosInner() {
 
   const totalPages = pageData ? Math.ceil(pageData.total / pageData.pageSize) : 0;
 
-  function logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem("traingapp_user");
-    router.replace("/");
-  }
-
   return (
     <main className="dashboard">
-      <TopNav onLogout={logout} />
+      <BottomNav />
 
       <section className="welcome">
         <h2>{view === "todos" ? "Historial de entrenos" : "Entrenos"}</h2>

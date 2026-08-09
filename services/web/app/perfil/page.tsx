@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
-import { TopNav } from "@/components/TopNav";
+import { BottomNav } from "@/components/BottomNav";
 import { DISCIPLINE_LABELS, translateDiscipline } from "@/lib/labels";
+import { getTheme, setTheme, THEMES } from "@/lib/theme";
 import type { Energy, User } from "@/lib/types";
 
 const TOKEN_KEY = "traingapp_token";
@@ -40,6 +41,11 @@ export default function Perfil() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [theme, setThemeId] = useState("");
+
+  useEffect(() => {
+    setThemeId(getTheme());
+  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem(TOKEN_KEY);
@@ -118,7 +124,7 @@ export default function Perfil() {
 
   return (
     <main className="dashboard">
-      <TopNav onLogout={logout} />
+      <BottomNav />
 
       <section className="welcome">
         <h2>Perfil</h2>
@@ -242,6 +248,31 @@ export default function Perfil() {
           </div>
         </section>
       )}
+
+      <section className="energy-card">
+        <h3>Tema de color (beta)</h3>
+        <p className="subtitle">
+          Prueba distintas combinaciones de paleta. Se guarda en tu navegador.
+        </p>
+        <select
+          value={theme}
+          onChange={(e) => {
+            setThemeId(e.target.value);
+            setTheme(e.target.value);
+          }}
+        >
+          <option value="">{THEMES[0].name}</option>
+          {THEMES.slice(1).map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+      </section>
+
+      <button type="button" className="logout-btn" onClick={logout}>
+        Cerrar sesión
+      </button>
     </main>
   );
 }

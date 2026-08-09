@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
+import { BottomNav } from "@/components/BottomNav";
 import { HelpTip } from "@/components/HelpTip";
 import { RadarChart } from "@/components/RadarChart";
-import { TopNav } from "@/components/TopNav";
 import {
   translateDiscipline,
   translateInsightMessage,
@@ -78,14 +78,7 @@ export default function Dashboard() {
     }
   }, []);
 
-  function logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    router.replace("/");
-  }
-
-  async function handleChat(event: React.FormEvent) {
-    event.preventDefault();
+  async function handleChat(event: React.FormEvent) {    event.preventDefault();
     if (!token) return;
     setMessage(null);
     setError(null);
@@ -110,7 +103,7 @@ export default function Dashboard() {
 
   return (
     <main className="dashboard">
-      <TopNav onLogout={logout} />
+      <BottomNav />
 
       <section className="welcome">
         <h2>

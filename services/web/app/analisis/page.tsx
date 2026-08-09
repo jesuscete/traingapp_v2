@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { BottomNav } from "@/components/BottomNav";
 import { LineChart } from "@/components/LineChart";
-import { TopNav } from "@/components/TopNav";
 import { api } from "@/lib/api";
 import { translateMuscleGroup } from "@/lib/labels";
 import type { FatigueSeries, Load, User } from "@/lib/types";
@@ -86,13 +87,19 @@ export default function Analisis() {
 
   return (
     <main className="dashboard">
-      <TopNav onLogout={logout} />
+      <BottomNav />
       <section className="welcome">
         <h2>Análisis</h2>
         <p className="subtitle">
           Fatiga acumulada y carga de entrenamiento del periodo.
         </p>
       </section>
+
+      <p className="block">
+        <Link className="back-link" href="/fatiga">
+          Ver detalle de fatiga muscular →
+        </Link>
+      </p>
 
       <div className="fatigue-toolbar">
         <span className="muted">Periodo:</span>
@@ -201,10 +208,4 @@ export default function Analisis() {
       )}
     </main>
   );
-
-  function logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    router.replace("/");
-  }
 }

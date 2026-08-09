@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-import { TopNav } from "@/components/TopNav";
+import { BottomNav } from "@/components/BottomNav";
 import { ActivityStats } from "@/components/activity/ActivityStats";
 import { ProgressPlaceholder } from "@/components/activity/ProgressPlaceholder";
 import { CaloriesCard } from "@/components/gym/CaloriesCard";
@@ -53,17 +53,11 @@ export default function EntrenoDetalle() {
     }
   }, []);
 
-  function logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem("traingapp_user");
-    router.replace("/");
-  }
-
   const isGym = session != null && isGymSession(session);
 
   return (
     <main className="dashboard">
-      <TopNav onLogout={logout} />
+      <BottomNav />
 
       <p>
         <Link className="back-link" href="/entrenos">

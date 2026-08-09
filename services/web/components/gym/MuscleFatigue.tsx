@@ -14,7 +14,7 @@ export function MuscleFatigue({ impacts }: { impacts: MuscleImpact[] }) {
       <div className="muscle-grid">
         <div className="muscle-radar">
           <RadarChart
-            size={320}
+            size={360}
             showLabels
             data={sorted.map((item) => ({
               label: translateMuscleGroup(item.muscleGroup),

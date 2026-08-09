@@ -6,9 +6,11 @@ import type {
   Fatigue,
   FatigueSeries,
   GymSession,
+  HistorySummary,
   Load,
   Readiness,
   Session,
+  SessionPage,
   StatsCardio,
   StatsOverview,
   StatsProgress,
@@ -26,10 +28,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    const message =
-      body && typeof body === "object" && "detail" in body
-        ? String(body.detail)
-        : `Error ${response.status}`;
+    let message = `Error ${response.status}`;
+    if (body && typeof body === "object" && "detail" in body) {
+      const detail = body.detail;
+      message = Array.isArray(detail)
+        ? detail.map((item: { msg?: string }) => item.msg ?? String(item)).join("; ")
+        : String(detail);
+    }
     throw new Error(message);
   }
   if (response.status === 204) {
@@ -62,8 +67,27 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
     }),
-  listSessions: (token: string) =>
-    request<Session[]>("/sessions", {
+  listSessions: (
+    token: string,
+    params: {
+      page?: number;
+      pageSize?: number;
+      q?: string;
+      discipline?: string[];
+    } = {},
+  ) => {
+    const query = new URLSearchParams();
+    if (params.page != null) query.set("page", String(params.page));
+    if (params.pageSize != null) query.set("pageSize", String(params.pageSize));
+    if (params.q) query.set("q", params.q);
+    for (const d of params.discipline ?? []) query.append("discipline", d);
+    const qs = query.toString();
+    return request<SessionPage>(`/sessions${qs ? `?${qs}` : ""}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+  getSessionsSummary: (token: string, days: number) =>
+    request<HistorySummary>(`/sessions/summary?days=${days}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
   getSession: (token: string, id: string) =>

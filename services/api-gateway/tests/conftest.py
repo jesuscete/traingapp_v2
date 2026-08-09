@@ -12,6 +12,27 @@ from app.core.redis import get_redis
 from app.main import app
 
 
+@pytest.fixture
+def db_session_factory() -> async_sessionmaker[AsyncSession]:
+    return factory
+
+
+@pytest.fixture
+def seed_catalog(db_session_factory: async_sessionmaker[AsyncSession]) -> None:
+    from app.analytics.exercise_seed import EXERCISE_CATALOG_SEED
+    from app.models import ExerciseCatalog
+
+    async def run() -> None:
+        async with db_session_factory() as session:
+            for entry in EXERCISE_CATALOG_SEED:
+                session.add(ExerciseCatalog(**entry))
+            await session.commit()
+
+    asyncio.run(run())
+
+
+
+
 class FakeRedis:
     def __init__(self) -> None:
         self.lists: dict[str, list[str]] = defaultdict(list)
@@ -45,6 +66,8 @@ engine = create_async_engine(
     poolclass=StaticPool,
 )
 
+factory = async_sessionmaker(engine, expire_on_commit=False)
+
 
 @pytest.fixture(autouse=True)
 def _clean_db() -> Iterator[None]:
@@ -64,8 +87,6 @@ def client() -> TestClient:
             await conn.run_sync(Base.metadata.create_all)
 
     asyncio.run(init_db())
-
-    factory = async_sessionmaker(engine, expire_on_commit=False)
 
     async def override_get_db() -> AsyncIterator[AsyncSession]:
         async with factory() as session:

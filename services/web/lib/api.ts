@@ -1,6 +1,8 @@
 import type {
   ChatEnqueue,
+  ChatMessageOut,
   Energy,
+  ExerciseDraft,
   Fatigue,
   Readiness,
   Session,
@@ -70,6 +72,35 @@ export const api = {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({ text }),
+    }),
+  sendDraft: (token: string, text: string) =>
+    request<ChatMessageOut>("/chat/draft", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ text }),
+    }),
+  confirmDraft: (
+    token: string,
+    body: {
+      requestId: string;
+      suggestedRpe?: number | null;
+      perceivedFatigue?: number | null;
+      durationMinutes?: number | null;
+      distanceMeters?: number | null;
+      workoutType?: string | null;
+      exercises?: ExerciseDraft[] | null;
+    },
+  ) =>
+    request<Session>("/chat/confirm", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  cancelDraft: (token: string, requestId: string) =>
+    request<{ status: string }>("/chat/cancel", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ requestId }),
     }),
   statsOverview: (token: string) =>
     request<StatsOverview>("/stats/overview", {

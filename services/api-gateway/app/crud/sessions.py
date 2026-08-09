@@ -92,6 +92,7 @@ async def create(
         raw_text=data.raw_text,
         performed_at=data.performed_at,
         duration_minutes=data.duration_minutes,
+        distance_meters=data.distance_meters,
         note=data.note,
         details=enriched_details,
         estimated_kcal=estimated_kcal,

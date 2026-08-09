@@ -338,6 +338,101 @@ button:disabled {
   flex: 1;
 }
 
+.chat-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.chat-entries {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.chat-entry {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.95rem;
+}
+
+.review-table td {
+  padding: 0.4rem 0.3rem;
+}
+
+.cell {
+  margin-bottom: 0;
+  padding: 0.45rem 0.6rem;
+  min-width: 64px;
+}
+
+.sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  max-width: 420px;
+}
+
+.sliders label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.sliders input[type="range"] {
+  margin-bottom: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  accent-color: var(--accent);
+}
+
+button.secondary {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.bodymap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-end;
+  margin-top: 0.5rem;
+}
+
+.bodymap-figure {
+  text-align: center;
+}
+
+.bodymap-svg {
+  width: 120px;
+  height: 252px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.bodymap-figure p {
+  margin: 0.4rem 0 0;
+  font-size: 0.82rem;
+}
+
+.bodymap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  max-width: 260px;
+  align-content: flex-start;
+}
+
 .block {
   margin-top: 1.5rem;
 }

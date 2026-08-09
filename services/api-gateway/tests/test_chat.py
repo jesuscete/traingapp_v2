@@ -126,6 +126,51 @@ def test_confirm_creates_session(client: TestClient, _fake_redis, monkeypatch) -
     assert repeat.status_code == 404
 
 
+def test_confirm_persists_fatigue_and_returns_muscle_impacts(
+    client: TestClient, _fake_redis, monkeypatch, seed_catalog
+) -> None:
+    monkeypatch.setattr("app.api.chat.fetch_draft", _fake_fetch)
+    headers = _auth_headers(client, "impacts@example.com")
+
+    draft = client.post("/chat/draft", json={"text": "5x5 press banca 80kg"}, headers=headers)
+    request_id = draft.json()["requestId"]
+
+    response = client.post(
+        "/chat/confirm",
+        json={"requestId": request_id, "suggestedRpe": 8, "perceivedFatigue": 6},
+        headers=headers,
+    )
+    assert response.status_code == 201
+    created = response.json()
+    assert created["details"]["rpe"] == 8
+    assert created["details"]["perceivedFatigue"] == 6
+
+    impacts = created["muscleImpacts"]
+    assert impacts[0]["muscleGroup"] == "chest"
+    assert impacts[0]["activation"] == 1.0
+    by_group = {item["muscleGroup"]: item["activation"] for item in impacts}
+    assert by_group["triceps"] == 0.5
+    assert by_group["shoulders"] == 0.167
+
+
+def test_get_session_includes_muscle_impacts(
+    client: TestClient, _fake_redis, monkeypatch, seed_catalog
+) -> None:
+    monkeypatch.setattr("app.api.chat.fetch_draft", _fake_fetch)
+    headers = _auth_headers(client, "detail-impacts@example.com")
+
+    draft = client.post("/chat/draft", json={"text": "5x5 press banca 80kg"}, headers=headers)
+    request_id = draft.json()["requestId"]
+    created = client.post("/chat/confirm", json={"requestId": request_id}, headers=headers)
+    session_id = created.json()["id"]
+
+    response = client.get(f"/sessions/{session_id}", headers=headers)
+    assert response.status_code == 200
+    impacts = response.json()["muscleImpacts"]
+    assert impacts[0]["muscleGroup"] == "chest"
+    assert impacts[0]["activation"] == 1.0
+
+
 def test_confirm_with_edited_exercises(client: TestClient, _fake_redis, monkeypatch) -> None:
     monkeypatch.setattr("app.api.chat.fetch_draft", _fake_fetch)
     headers = _auth_headers(client, "edit@example.com")
@@ -154,6 +199,52 @@ def test_confirm_with_edited_exercises(client: TestClient, _fake_redis, monkeypa
     created = response.json()
     assert created["volumeKg"] == 4 * 7 * 80
     assert created["details"]["rpe"] == 7
+
+
+def test_confirm_cardio_with_distance_and_workout_type(
+    client: TestClient, _fake_redis, monkeypatch
+) -> None:
+    async def _cardio_fetch(raw_text: str) -> dict:
+        return {
+            "rawText": raw_text,
+            "discipline": "running",
+            "performedAt": "2026-08-08T18:30:00Z",
+            "durationMinutes": 45,
+            "exercises": [],
+            "suggestedRpe": 6.5,
+            "confidence": 0.7,
+            "unresolved": [],
+        }
+
+    monkeypatch.setattr("app.api.chat.fetch_draft", _cardio_fetch)
+    headers = _auth_headers(client, "cardio@example.com")
+    client.put("/profile", json={"weightKg": 75}, headers=headers)
+
+    draft = client.post("/chat/draft", json={"text": "carrera de 45 min"}, headers=headers)
+    request_id = draft.json()["requestId"]
+
+    response = client.post(
+        "/chat/confirm",
+        json={
+            "requestId": request_id,
+            "suggestedRpe": 8,
+            "perceivedFatigue": 4,
+            "durationMinutes": 45,
+            "distanceMeters": 9000,
+            "workoutType": "interval",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 201
+    created = response.json()
+    assert created["discipline"] == "running"
+    assert created["distanceMeters"] == 9000
+    assert created["estimatedKcal"] is not None
+    assert created["estimatedKcal"] > 0
+    assert created["details"]["rpe"] == 8
+    assert created["details"]["workoutType"] == "interval"
+    factors = " ".join(created["details"]["kcal_factors"])
+    assert "9.0 km recorridos" in factors
 
 
 def test_confirm_unknown_draft_404(client: TestClient, _fake_redis) -> None:

@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
@@ -46,11 +47,23 @@ class ChatDraftOut(BaseModel):
     draft: WorkoutDraftOut
 
 
+class ChatMessageOut(BaseModel):
+    mode: Literal["direct", "live", "confirm"]
+    requestId: uuid.UUID | None = None
+    liveSessionId: uuid.UUID | None = None
+    startedAt: datetime | None = None
+    entriesCount: int = 0
+    draft: WorkoutDraftOut | None = None
+
+
 class ChatConfirmIn(BaseModel):
     requestId: uuid.UUID
     suggestedRpe: float | None = Field(default=None, ge=1, le=10)
+    perceivedFatigue: float | None = Field(default=None, ge=1, le=10)
     performedAt: datetime | None = None
     durationMinutes: int | None = Field(default=None, ge=0)
+    distanceMeters: float | None = Field(default=None, ge=0)
+    workoutType: str | None = Field(default=None, max_length=20)
     exercises: list[ExerciseDraftOut] | None = None
 
 

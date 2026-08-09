@@ -4,11 +4,18 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.analytics.impacts import compute_muscle_impacts
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.crud import sessions
+from app.crud.catalog import exercise_muscle_map
 from app.models import TrainingSession, User
-from app.schemas.session import SessionIn, SessionListItem, SessionOut
+from app.schemas.session import (
+    MuscleImpactOut,
+    SessionIn,
+    SessionListItem,
+    SessionOut,
+)
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -41,13 +48,20 @@ async def get_session(
     session_id: uuid.UUID,
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
-) -> TrainingSession:
+) -> SessionOut:
     record = await sessions.get_for_user(session, session_id, current_user.id)
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
-    return record
+    catalog = await exercise_muscle_map(session)
+    impacts = compute_muscle_impacts(record.exercises, catalog)
+    out = SessionOut.model_validate(record)
+    out.muscle_impacts = [
+        MuscleImpactOut(muscle_group=item.muscle_group, activation=item.activation)
+        for item in impacts
+    ]
+    return out
 
 
 @router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -49,18 +49,25 @@ class SessionIn(CamelModel):
     exercises: list[ExerciseIn] = Field(default_factory=list)
 
 
+class MuscleImpactOut(CamelModel):
+    muscle_group: str
+    activation: float
+
+
 class SessionOut(CamelModel):
     id: uuid.UUID
     discipline: str
     raw_text: str
     performed_at: datetime
     duration_minutes: int | None
+    distance_meters: float | None = None
     volume_kg: float
     estimated_kcal: float | None = None
     note: str | None
     details: dict[str, object] | None = None
     created_at: datetime
     exercises: list[ExerciseOut]
+    muscle_impacts: list[MuscleImpactOut] = Field(default_factory=list)
 
 
 class SessionListItem(CamelModel):

@@ -9,17 +9,59 @@ export type Exercise = {
   volumeKg: number;
 };
 
+export type SessionDetails = {
+  rpe?: number | null;
+  perceivedFatigue?: number | null;
+  [key: string]: unknown;
+};
+
 export type Session = {
   id: string;
   discipline: string;
   rawText: string;
   performedAt: string;
   durationMinutes: number | null;
+  distanceMeters?: number | null;
   volumeKg: number;
   estimatedKcal: number | null;
   note: string | null;
   createdAt: string;
   exercises: Exercise[];
+  details?: SessionDetails | null;
+  muscleImpacts?: MuscleImpact[];
+};
+
+export type MuscleImpact = {
+  muscleGroup: string;
+  activation: number;
+};
+
+export type ExerciseDraft = {
+  name: string;
+  sets: number | null;
+  reps: number | null;
+  perSetReps?: number[] | null;
+  weightKg: number | null;
+};
+
+export type WorkoutDraft = {
+  rawText: string;
+  discipline: string;
+  performedAt: string;
+  durationMinutes: number | null;
+  exercises: ExerciseDraft[];
+  suggestedRpe: number | null;
+  confidence: number;
+  unresolved: string[];
+};
+
+export type ChatMessageOut = {
+  mode: "direct" | "live" | "confirm";
+  requestId?: string | null;
+  liveSessionId?: string | null;
+  startedAt?: string | null;
+  entriesCount: number;
+  draft?: WorkoutDraft | null;
 };
 
 export type User = {

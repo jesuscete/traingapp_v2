@@ -1,3 +1,4 @@
+from app.models.catalog import ExerciseCatalog
 from app.models.fatigue import (
     DailyMuscleDoms,
     DailyReadiness,
@@ -12,6 +13,7 @@ __all__ = [
     "DailyReadiness",
     "DisciplineMuscleLoad",
     "Exercise",
+    "ExerciseCatalog",
     "TrainingSession",
     "User",
     "UserMuscleCalibration",

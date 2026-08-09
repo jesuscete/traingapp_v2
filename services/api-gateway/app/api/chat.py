@@ -1,28 +1,45 @@
 import json
 import uuid
+from datetime import UTC, datetime
 from typing import Annotated, cast
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.analytics.impacts import compute_muscle_impacts
 from app.api.deps import get_current_user
+from app.chat.conversation import (
+    append_live,
+    close_live,
+    get_live,
+    is_end,
+    is_start,
+    start_live,
+)
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.parser import fetch_draft
 from app.core.redis import get_redis
 from app.crud import sessions
-from app.models import TrainingSession, User
+from app.crud.catalog import exercise_muscle_map
+from app.models import User
 from app.schemas.chat import (
     ChatCancelIn,
     ChatConfirmIn,
-    ChatDraftOut,
     ChatEnqueueOut,
     ChatMessageIn,
+    ChatMessageOut,
     ExerciseDraftOut,
     WorkoutDraftOut,
 )
-from app.schemas.session import Discipline, ExerciseIn, SessionIn, SessionOut
+from app.schemas.session import (
+    Discipline,
+    ExerciseIn,
+    MuscleImpactOut,
+    SessionIn,
+    SessionOut,
+)
 
 WORKOUT_PARSE_QUEUE = "workout:parse"
 DRAFT_PREFIX = "chat:draft"
@@ -56,12 +73,53 @@ async def enqueue_message(
     return ChatEnqueueOut(requestId=request_id, status="queued")
 
 
-@router.post("/draft", response_model=ChatDraftOut)
+@router.post("/draft", response_model=ChatMessageOut)
 async def create_draft(
     body: ChatMessageIn,
     redis: Annotated[aioredis.Redis, Depends(get_redis)],
     current_user: Annotated[User, Depends(get_current_user)],
-) -> ChatDraftOut:
+) -> ChatMessageOut:
+    live = await get_live(redis, current_user.id)
+    if live is None and is_start(body.text):
+        started = await start_live(redis, current_user.id)
+        return ChatMessageOut(
+            mode="live",
+            liveSessionId=started.live_session_id,
+            startedAt=started.started_at,
+        )
+    if live is not None and is_end(body.text):
+        closed = await close_live(redis, current_user.id)
+        assert closed is not None
+        combined = "; ".join(closed.entries)
+        request_id = uuid.uuid4()
+        payload = await fetch_draft(combined)
+        draft = WorkoutDraftOut.model_validate(payload)
+        duration = int((datetime.now(UTC) - closed.started_at).total_seconds() / 60)
+        draft.performed_at = closed.started_at
+        if duration > 0:
+            draft.duration_minutes = duration
+        await redis.setex(
+            _draft_key(current_user.id, request_id),
+            settings.chat_draft_ttl_seconds,
+            draft.model_dump_json(),
+        )
+        return ChatMessageOut(
+            mode="confirm",
+            requestId=request_id,
+            draft=draft,
+            liveSessionId=closed.live_session_id,
+            startedAt=closed.started_at,
+            entriesCount=len(closed.entries),
+        )
+    if live is not None:
+        updated = await append_live(redis, current_user.id, body.text)
+        assert updated is not None
+        return ChatMessageOut(
+            mode="live",
+            liveSessionId=updated.live_session_id,
+            startedAt=updated.started_at,
+            entriesCount=len(updated.entries),
+        )
     request_id = uuid.uuid4()
     payload = await fetch_draft(body.text)
     draft = WorkoutDraftOut.model_validate(payload)
@@ -70,7 +128,7 @@ async def create_draft(
         settings.chat_draft_ttl_seconds,
         draft.model_dump_json(),
     )
-    return ChatDraftOut(requestId=request_id, draft=draft)
+    return ChatMessageOut(mode="direct", requestId=request_id, draft=draft)
 
 
 def _to_exercise_in(exercise: ExerciseDraftOut) -> ExerciseIn:
@@ -98,7 +156,7 @@ async def confirm_draft(
     redis: Annotated[aioredis.Redis, Depends(get_redis)],
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
-) -> TrainingSession:
+) -> SessionOut:
     key = _draft_key(current_user.id, body.requestId)
     stored = await redis.get(key)
     if stored is None:
@@ -114,18 +172,33 @@ async def confirm_draft(
         if body.suggestedRpe is not None
         else draft.suggested_rpe
     )
-    details = {"rpe": rpe} if rpe is not None else None
+    details: dict[str, object] = {}
+    if rpe is not None:
+        details["rpe"] = rpe
+    if body.perceivedFatigue is not None:
+        details["perceivedFatigue"] = body.perceivedFatigue
+    if body.workoutType is not None:
+        details["workoutType"] = body.workoutType
     session_in = SessionIn(
         discipline=cast(Discipline, draft.discipline),
         rawText=draft.raw_text,
         performedAt=body.performedAt or draft.performed_at,
         durationMinutes=body.durationMinutes or draft.duration_minutes,
-        details=details,
+        distanceMeters=body.distanceMeters,
+        details=details or None,
         exercises=[_to_exercise_in(exercise) for exercise in exercises],
     )
-    return await sessions.create(
+    record = await sessions.create(
         session, current_user.id, session_in, weight_kg=current_user.weight_kg
     )
+    catalog = await exercise_muscle_map(session)
+    impacts = compute_muscle_impacts(record.exercises, catalog)
+    out = SessionOut.model_validate(record)
+    out.muscle_impacts = [
+        MuscleImpactOut(muscle_group=item.muscle_group, activation=item.activation)
+        for item in impacts
+    ]
+    return out
 
 
 @router.post("/cancel")

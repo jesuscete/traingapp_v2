@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
+import { BottomNav } from "@/components/BottomNav";
 import { HelpTip } from "@/components/HelpTip";
 import { RadarChart } from "@/components/RadarChart";
-import { TopNav } from "@/components/TopNav";
 import { translateMuscleGroup } from "@/lib/labels";
 import type { Fatigue, Readiness } from "@/lib/types";
 
@@ -87,12 +88,6 @@ export default function Fatiga() {
     }
   }
 
-  function logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    router.replace("/");
-  }
-
   const radarData = (fatigue?.muscles ?? []).map((m) => ({
     label: translateMuscleGroup(m.muscleGroup),
     value: m.fatigue / 100,
@@ -100,7 +95,13 @@ export default function Fatiga() {
 
   return (
     <main className="dashboard">
-      <TopNav onLogout={logout} />
+      <BottomNav />
+
+      <p>
+        <Link className="back-link" href="/analisis">
+          ← Volver a Análisis
+        </Link>
+      </p>
 
       <section className="welcome">
         <h2>Fatiga muscular</h2>
@@ -142,7 +143,7 @@ export default function Fatiga() {
                   Radar de fatiga
                 </HelpTip>
               </h2>
-              <RadarChart data={radarData} size={360} showLabels />
+              <RadarChart data={radarData} size={420} showLabels />
               <div className="fatigue-scale">
                 <span className="scale-ok">≤ 40</span>
                 <span className="scale-warn">41–70</span>

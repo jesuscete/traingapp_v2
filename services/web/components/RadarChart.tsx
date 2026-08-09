@@ -8,7 +8,7 @@ function point(cx: number, cy: number, radius: number, angle: number): string {
 
 export function RadarChart({
   data,
-  size = 280,
+  size = 300,
   showLabels = false,
 }: {
   data: RadarPoint[];
@@ -22,6 +22,7 @@ export function RadarChart({
   const radius = (size / 2) * 0.72;
   const slice = (Math.PI * 2) / data.length;
   const offset = -Math.PI / 2;
+  const pad = showLabels ? size * 0.18 : size * 0.03;
 
   const points = (scale: number) =>
     data
@@ -37,7 +38,12 @@ export function RadarChart({
   const labelRadius = radius + (size * 0.09);
 
   return (
-    <svg className="radar" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg
+      className="radar"
+      width={size}
+      height={size}
+      viewBox={`${-pad} ${-pad} ${size + 2 * pad} ${size + 2 * pad}`}
+    >
       {[0.25, 0.5, 0.75, 1].map((ring) => (
         <polygon
           key={ring}

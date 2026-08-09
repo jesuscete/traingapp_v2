@@ -1,10 +1,12 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics import gym as gym_analytics
+from app.analytics import periods
 from app.analytics.impacts import compute_discipline_impacts, compute_muscle_impacts
 from app.api.deps import get_current_user
 from app.core.database import get_db
@@ -12,12 +14,12 @@ from app.crud import sessions
 from app.crud.catalog import exercise_muscle_map
 from app.models import TrainingSession, User
 from app.schemas.gym import GymSessionOut, MuscleImpactOut
+from app.schemas.history import HighlightsOut, HistorySummaryOut, SessionPageOut
 from app.schemas.session import (
     MuscleImpactOut as LegacyMuscleImpactOut,
 )
 from app.schemas.session import (
     SessionIn,
-    SessionListItem,
     SessionOut,
 )
 
@@ -35,15 +37,64 @@ async def create_session(
     )
 
 
-@router.get("", response_model=list[SessionListItem])
+@router.get("", response_model=SessionPageOut)
 async def list_sessions(
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
-    limit: int = 20,
-    offset: int = 0,
-) -> list[TrainingSession]:
-    return await sessions.list_by_user(
-        session, current_user.id, limit=limit, offset=offset
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(alias="pageSize", ge=1, le=100)] = 20,
+    q: Annotated[str | None, Query(max_length=120)] = None,
+    discipline: Annotated[list[str] | None, Query()] = None,
+) -> SessionPageOut:
+    items = await sessions.list_by_user(
+        session,
+        current_user.id,
+        limit=page_size,
+        offset=(page - 1) * page_size,
+        q=q,
+        disciplines=discipline,
+    )
+    total = await sessions.count_by_user(
+        session, current_user.id, q=q, disciplines=discipline
+    )
+    return SessionPageOut(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_more=page * page_size < total,
+    )
+
+
+@router.get("/summary", response_model=HistorySummaryOut)
+async def sessions_summary(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    days: Annotated[int, Query(ge=1, le=365)] = 7,
+) -> HistorySummaryOut:
+    """Resumen del periodo (Capa 1): destacados, tiempo/kcal por actividad,
+    progresion vs. periodo anterior y entrenos recientes."""
+    now = datetime.now(UTC)
+    start, end = periods.period_range(days, now)
+    current = await sessions.list_in_range_light(session, current_user.id, start, end)
+    prev_start, prev_end = periods.previous_period(start, end)
+    previous = await sessions.list_in_range_light(
+        session, current_user.id, prev_start, prev_end
+    )
+    recent = await sessions.list_recent_for_user(
+        session, current_user.id, start=start, end=end, limit=5
+    )
+    return HistorySummaryOut(
+        days=days,
+        highlights=HighlightsOut(
+            total_sessions=len(current),
+            total_duration_minutes=sum(ts.duration_minutes or 0 for ts in current),
+            total_volume_kg=round(sum(ts.volume_kg or 0 for ts in current), 1),
+            total_kcal=round(sum(ts.estimated_kcal or 0 for ts in current), 1),
+        ),
+        by_discipline=periods.discipline_totals(current),
+        deltas=periods.compute_discipline_deltas(current, previous),
+        recent=recent,
     )
 
 

@@ -303,3 +303,50 @@ export type Load = {
   strain: number;
   byMuscleGroup: LoadMuscle[];
 };
+
+export type SessionSummary = {
+  id: string;
+  discipline: string;
+  rawText: string;
+  performedAt: string;
+  durationMinutes: number | null;
+  volumeKg: number;
+  estimatedKcal: number | null;
+};
+
+export type SessionPage = {
+  items: SessionSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+};
+
+export type DisciplineStat = {
+  discipline: string;
+  sessions: number;
+  durationMinutes: number;
+  volumeKg: number;
+  estimatedKcal: number;
+};
+
+export type DisciplineDelta = {
+  discipline: string;
+  sessions: number;
+  deltaPct: number | null;
+};
+
+export type SummaryHighlights = {
+  totalSessions: number;
+  totalDurationMinutes: number;
+  totalVolumeKg: number;
+  totalKcal: number;
+};
+
+export type HistorySummary = {
+  days: number;
+  highlights: SummaryHighlights;
+  byDiscipline: DisciplineStat[];
+  deltas: DisciplineDelta[];
+  recent: SessionSummary[];
+};

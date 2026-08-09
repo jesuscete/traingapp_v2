@@ -117,13 +117,126 @@ def test_list_sessions_ordered_by_date(client: TestClient) -> None:
     response = client.get("/sessions", headers=headers)
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 2
-    assert data[0]["rawText"] == "clase de boxeo de 1h30m"
+    assert data["total"] == 2
+    assert len(data["items"]) == 2
+    assert data["hasMore"] is False
+    assert data["items"][0]["rawText"] == "clase de boxeo de 1h30m"
+
+
+def test_list_sessions_paginated(client: TestClient) -> None:
+    headers = _auth_headers(client)
+    for i in range(25):
+        payload = {
+            "discipline": "gym",
+            "rawText": f"entreno {i}",
+            "performedAt": f"2026-08-{(i % 28) + 1:02d}T10:00:00Z",
+            "durationMinutes": 45,
+            "exercises": [],
+        }
+        client.post("/sessions", json=payload, headers=headers)
+
+    page1 = client.get("/sessions?page=1&pageSize=10", headers=headers).json()
+    assert page1["total"] == 25
+    assert len(page1["items"]) == 10
+    assert page1["hasMore"] is True
+    assert page1["pageSize"] == 10
+
+    page3 = client.get("/sessions?page=3&pageSize=10", headers=headers).json()
+    assert len(page3["items"]) == 5
+    assert page3["hasMore"] is False
+
+    empty = client.get("/sessions?page=9&pageSize=10", headers=headers).json()
+    assert empty["items"] == []
+
+
+def test_list_sessions_filter_by_discipline(client: TestClient) -> None:
+    headers = _auth_headers(client)
+    client.post("/sessions", json=GYM_SESSION, headers=headers)
+    client.post("/sessions", json=BOXING_SESSION, headers=headers)
+
+    response = client.get(
+        "/sessions?discipline=boxing", headers=headers
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["discipline"] == "boxing"
+
+
+def test_list_sessions_search_text(client: TestClient) -> None:
+    headers = _auth_headers(client)
+    client.post("/sessions", json=GYM_SESSION, headers=headers)
+    client.post("/sessions", json=BOXING_SESSION, headers=headers)
+
+    found = client.get("/sessions?q=banca", headers=headers).json()
+    assert found["total"] == 1
+    assert found["items"][0]["rawText"] == "5x5 press banca 80kg"
+
+    found_raw = client.get("/sessions?q=boxeo", headers=headers).json()
+    assert found_raw["total"] == 1
+    assert found_raw["items"][0]["discipline"] == "boxing"
+
+    none = client.get("/sessions?q=noexiste", headers=headers).json()
+    assert none["total"] == 0
+
+
+def test_sessions_summary(client: TestClient) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    headers = _auth_headers(client)
+    now = datetime.now(UTC)
+    payload = {
+        "discipline": "gym",
+        "rawText": "5x5 press banca 80kg",
+        "performedAt": (now - timedelta(days=2)).isoformat(),
+        "durationMinutes": 60,
+        "exercises": [{"name": "press banca", "sets": 5, "reps": 5, "weightKg": 80}],
+    }
+    client.post("/sessions", json=payload, headers=headers)
+    payload["discipline"] = "boxing"
+    payload["rawText"] = "clase de boxeo de 1h30m"
+    payload["performedAt"] = (now - timedelta(days=1)).isoformat()
+    payload["durationMinutes"] = 90
+    payload["exercises"] = []
+    client.post("/sessions", json=payload, headers=headers)
+
+    response = client.get("/sessions/summary?days=7", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["days"] == 7
+    assert data["highlights"]["totalSessions"] == 2
+    assert data["highlights"]["totalDurationMinutes"] == 150
+    assert data["highlights"]["totalVolumeKg"] == 2000
+    by_discipline = {item["discipline"]: item for item in data["byDiscipline"]}
+    assert by_discipline["gym"]["volumeKg"] == 2000
+    assert by_discipline["boxing"]["durationMinutes"] == 90
+    assert len(data["recent"]) == 2
+
+
+def test_sessions_summary_recent_capped(client: TestClient) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    headers = _auth_headers(client)
+    now = datetime.now(UTC)
+    for i in range(8):
+        payload = {
+            "discipline": "gym",
+            "rawText": f"entreno {i}",
+            "performedAt": (now - timedelta(days=i)).isoformat(),
+            "durationMinutes": 45,
+            "exercises": [],
+        }
+        client.post("/sessions", json=payload, headers=headers)
+
+    data = client.get("/sessions/summary?days=365", headers=headers).json()
+    assert data["highlights"]["totalSessions"] == 8
+    assert len(data["recent"]) == 5
 
 
 def test_sessions_require_auth(client: TestClient) -> None:
     assert client.post("/sessions", json=GYM_SESSION).status_code == 401
     assert client.get("/sessions").status_code == 401
+    assert client.get("/sessions/summary").status_code == 401
 
 
 def test_delete_session(client: TestClient) -> None:

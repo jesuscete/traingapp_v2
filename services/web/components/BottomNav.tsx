@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AvatarMenu } from "@/components/AvatarMenu";
+
 type Tab = {
   href?: string;
   label: string;
@@ -24,7 +26,6 @@ const TABS: Tab[] = [
   { href: "/entrenos", label: "Historial", match: ["/entrenos"] },
   { href: "/rutinas", label: "Rutinas", match: ["/rutinas"] },
   { href: "/analisis", label: "Progreso", match: ["/analisis", "/fatiga"] },
-  { href: "/perfil", label: "Perfil", match: ["/perfil"] },
 ];
 
 function isMatch(pathname: string, match: string[]): boolean {
@@ -91,6 +92,7 @@ export function BottomNav() {
           </Link>
         );
       })}
+      <AvatarMenu />
     </nav>
   );
 }

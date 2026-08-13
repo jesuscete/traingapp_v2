@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from app.analytics.catalog import muscle_group_of, normalize_exercise_name
+from app.analytics.catalog_seed import zone_of
 
 
 class VolumeExercise(Protocol):
@@ -92,6 +93,7 @@ def _fallback_weights(group: str | None) -> dict[str, float]:
 class MuscleImpact:
     muscle_group: str
     activation: float
+    zone: str = "other"
 
 
 def compute_muscle_impacts(
@@ -121,29 +123,37 @@ def compute_muscle_impacts(
         return []
     max_total = max(totals.values())
     impacts = [
-        MuscleImpact(muscle_group=group, activation=round(total / max_total, 3))
+        MuscleImpact(
+            muscle_group=group,
+            activation=round(total / max_total, 3),
+            zone=zone_of(group),
+        )
         for group, total in totals.items()
     ]
     impacts.sort(key=lambda item: item.activation, reverse=True)
     return impacts
 
 
-def compute_discipline_impacts(discipline: str) -> list[MuscleImpact]:
+def compute_discipline_impacts(
+    discipline: str, profile: dict[str, float] | None = None
+) -> list[MuscleImpact]:
     """Impacto muscular de un deporte (cardio) sin ejercicios catalogados.
 
-    Devuelve el perfil determinista de la disciplina normalizado al grupo
-    mas trabajado (0-1). Vacio si la disciplina no tiene perfil.
+    Usa el perfil normalizado (0-1) del catalogo si se proporciona; si no,
+    cae al perfil determinista interno de la disciplina. Devuelve el perfil
+    normalizado al grupo mas trabajado (0-1). Vacio si no hay perfil.
     """
-    profile = DISCIPLINE_MUSCLE_PROFILES.get(discipline)
-    if not profile:
+    muscle_map = profile if profile is not None else DISCIPLINE_MUSCLE_PROFILES.get(discipline)
+    if not muscle_map:
         return []
-    max_weight = max(profile.values())
+    max_weight = max(muscle_map.values())
     impacts = [
         MuscleImpact(
             muscle_group=group,
             activation=round(weight / max_weight, 3),
+            zone=zone_of(group),
         )
-        for group, weight in profile.items()
+        for group, weight in muscle_map.items()
     ]
     impacts.sort(key=lambda item: item.activation, reverse=True)
     return impacts

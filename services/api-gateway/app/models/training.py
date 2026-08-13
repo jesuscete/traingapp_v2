@@ -36,6 +36,12 @@ class TrainingSession(Base):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     details: Mapped[dict[str, object] | None] = mapped_column(_JSONB, nullable=True)
     workout_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    routine_day_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("routine_day.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     distance_meters: Mapped[float | None] = mapped_column(Float, nullable=True)
     avg_heart_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
     max_heart_rate: Mapped[float | None] = mapped_column(Float, nullable=True)

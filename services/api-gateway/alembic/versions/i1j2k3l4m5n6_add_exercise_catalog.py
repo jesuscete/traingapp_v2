@@ -12,7 +12,6 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 
 from alembic import op
-
 from app.analytics.exercise_seed import EXERCISE_CATALOG_SEED
 
 revision: str = "i1j2k3l4m5n6"

@@ -56,6 +56,8 @@ class SessionKcalInput:
     workout_type: str | None = None
     distance_meters: float | None = None
     exercises: tuple[ExerciseInput, ...] = ()
+    kind: str | None = None
+    met_value: float | None = None
 
 
 @dataclass(frozen=True)
@@ -74,6 +76,13 @@ def _rpe_factor(rpe: int | None) -> float:
     if rpe is None:
         return 1.0
     return _clamp(0.5 + 0.1 * rpe, 0.6, 1.6)
+
+
+def _is_cardio(input: SessionKcalInput) -> bool:
+    """El catalogo (`kind`) manda; si no, cae al set historico."""
+    if input.kind is not None:
+        return input.kind == "cardio"
+    return input.discipline in CARDIO_DISCIPLINES
 
 
 def _hr_factor(avg_hr: float | None) -> float:
@@ -124,7 +133,7 @@ def _confidence(input: SessionKcalInput) -> float:
         score += 0.15
     if input.duration_minutes:
         score += 0.15
-    if input.discipline in CARDIO_DISCIPLINES:
+    if _is_cardio(input):
         if input.avg_heart_rate:
             score += 0.15
         if input.distance_meters:
@@ -175,7 +184,7 @@ def _factors(input: SessionKcalInput) -> list[str]:
         factors.append(
             f"{input.distance_meters / 1000:.1f} km recorridos"
         )
-    if input.discipline not in CARDIO_DISCIPLINES:
+    if not _is_cardio(input):
         volume = sum(
             ex.weight_kg * _effective_reps(ex)
             for ex in input.exercises
@@ -190,7 +199,7 @@ def _factors(input: SessionKcalInput) -> list[str]:
         ]
         if short_rests:
             factors.append("descansos cortos entre series")
-    if input.discipline in CARDIO_DISCIPLINES and input.workout_type:
+    if _is_cardio(input) and input.workout_type:
         factors.append(f"tipo de sesión {input.workout_type}")
     return factors
 
@@ -206,7 +215,7 @@ def estimate(input: SessionKcalInput) -> KcalEstimate:
         )
 
     rpe_factor = _rpe_factor(input.rpe)
-    if input.discipline in CARDIO_DISCIPLINES:
+    if _is_cardio(input):
         if minutes <= 0 or input.weight_kg is None:
             return KcalEstimate(
                 kcal=None,
@@ -214,7 +223,11 @@ def estimate(input: SessionKcalInput) -> KcalEstimate:
                 confidence_level=_confidence_level(_confidence(input)),
                 factors=["sin duración o peso corporal registrados (cardio)"],
             )
-        met_base = met.met_for_discipline(input.discipline)
+        met_base = (
+            input.met_value
+            if input.met_value is not None
+            else met.met_for_discipline(input.discipline)
+        )
         type_factor = WORKOUT_TYPE_FACTOR.get(input.workout_type or "", 1.0)
         effective_met = (
             met_base

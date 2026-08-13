@@ -40,10 +40,36 @@ export const DISCIPLINE_LABELS: Record<string, string> = {
   calisthenics: "Calistenia",
 };
 
+export const CATEGORY_LABELS: Record<string, string> = {
+  gimnasio: "Gimnasio",
+  combate: "Combate",
+  cardio: "Cardio / resistencia",
+  equipo: "Deportes de equipo",
+  raqueta: "De raqueta",
+  invierno: "Invierno",
+  otros: "Otros",
+};
+
 const INSIGHT_TOKEN_MAP: Record<string, string> = {
   ...MUSCLE_GROUP_LABELS,
   ...DISCIPLINE_LABELS,
 };
+
+export const ZONE_LABELS: Record<string, string> = {
+  legs: "Piernas",
+  core: "Core",
+  back: "Espalda",
+  chest: "Pecho",
+  shoulders: "Hombros",
+  arms: "Brazos",
+  neck: "Cuello",
+  other: "Otros",
+};
+
+export function translateZone(key: string | null | undefined): string {
+  if (!key) return "—";
+  return ZONE_LABELS[key] ?? key;
+}
 
 export function translateMuscleGroup(key: string | null | undefined): string {
   if (!key) return "—";

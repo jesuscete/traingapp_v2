@@ -18,16 +18,25 @@ from app.chat.conversation import (
     close_live,
     get_live,
     is_end,
+    is_routine_start,
     is_start,
     start_live,
+    start_live_routine,
+)
+from app.chat.routine_session import (
+    build_routine_exercises,
+    merge_draft_into_live,
+    resolve_routine_day,
 )
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.parser import fetch_draft
 from app.core.redis import get_redis
 from app.crud import gym as gym_crud
+from app.crud import routine as routine_crud
 from app.crud import sessions
 from app.crud.catalog import exercise_muscle_map
+from app.crud.disciplines import load_catalog
 from app.models import User
 from app.schemas.chat import (
     ChatCancelIn,
@@ -92,9 +101,45 @@ async def enqueue_message(
 async def create_draft(
     body: ChatMessageIn,
     redis: Annotated[aioredis.Redis, Depends(get_redis)],
+    session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ChatMessageOut:
     live = await get_live(redis, current_user.id)
+
+    if live is None and is_routine_start(body.text):
+        routine = await routine_crud.get_active_routine(session, current_user.id)
+        day = resolve_routine_day(routine, body.text) if routine is not None else None
+        if day is not None:
+            if day.day_type == "deporte":
+                discipline_name = "other"
+                if day.discipline_id is not None:
+                    discipline = await routine_crud.get_discipline(
+                        session, day.discipline_id
+                    )
+                    if discipline is not None:
+                        discipline_name = discipline.normalized_name
+                started = await start_live_routine(
+                    redis,
+                    current_user.id,
+                    discipline=discipline_name,
+                    routine_day_id=day.id,
+                    exercises=[],
+                )
+            else:
+                exercises = await build_routine_exercises(session, day)
+                started = await start_live_routine(
+                    redis,
+                    current_user.id,
+                    discipline="gym",
+                    routine_day_id=day.id,
+                    exercises=exercises,
+                )
+            return ChatMessageOut(
+                mode="routine",
+                liveSessionId=started.live_session_id,
+                startedAt=started.started_at,
+            )
+
     if live is None and is_start(body.text):
         started = await start_live(redis, current_user.id)
         return ChatMessageOut(
@@ -103,6 +148,13 @@ async def create_draft(
             startedAt=started.started_at,
         )
     if live is not None and is_end(body.text):
+        if live.origin == "routine":
+            return ChatMessageOut(
+                mode="routine",
+                liveSessionId=live.live_session_id,
+                startedAt=live.started_at,
+                entriesCount=len(live.entries),
+            )
         closed = await close_live(redis, current_user.id)
         assert closed is not None
         combined = "; ".join(closed.entries)
@@ -127,6 +179,23 @@ async def create_draft(
             entriesCount=len(closed.entries),
         )
     if live is not None:
+        if live.origin == "routine":
+            payload = await fetch_draft(body.text)
+            draft = WorkoutDraftOut.model_validate(payload)
+            if draft.exercises:
+                await merge_draft_into_live(
+                    redis, current_user.id, draft.exercises, session
+                )
+            else:
+                await append_live(redis, current_user.id, body.text)
+            updated = await get_live(redis, current_user.id)
+            assert updated is not None
+            return ChatMessageOut(
+                mode="routine",
+                liveSessionId=updated.live_session_id,
+                startedAt=updated.started_at,
+                entriesCount=len(updated.entries),
+            )
         updated = await append_live(redis, current_user.id, body.text)
         assert updated is not None
         return ChatMessageOut(
@@ -261,7 +330,11 @@ async def confirm_draft(
         calories = record_details.get("calories")
         out_gym.calories = calories if isinstance(calories, (int, float)) else None
         out_gym.muscle_impacts = [
-            MuscleImpactOut(muscle_group=item.muscle_group, activation=item.activation)
+            MuscleImpactOut(
+                muscle_group=item.muscle_group,
+                activation=item.activation,
+                zone=item.zone,
+            )
             for item in impacts
         ]
         return out_gym
@@ -272,6 +345,12 @@ async def confirm_draft(
         performedAt=body.performedAt or draft.performed_at,
         durationMinutes=body.durationMinutes or draft.duration_minutes,
         distanceMeters=body.distanceMeters,
+        intensity=int(rpe) if rpe is not None else None,
+        fatigue=(
+            int(body.perceivedFatigue)
+            if body.perceivedFatigue is not None
+            else None
+        ),
         details=details or None,
         exercises=[_to_exercise_in(exercise) for exercise in exercises],
     )
@@ -280,7 +359,11 @@ async def confirm_draft(
     )
     impacts = compute_muscle_impacts(record.exercises, catalog)
     if not impacts:
-        impacts = compute_discipline_impacts(record.discipline)
+        discipline_info = (await load_catalog(session)).info(record.discipline)
+        impacts = compute_discipline_impacts(
+            record.discipline,
+            profile=discipline_info.profile if discipline_info else None,
+        )
     out_legacy = SessionOut.model_validate(record)
     out_legacy.muscle_impacts = [
         LegacyMuscleImpactOut(muscle_group=item.muscle_group, activation=item.activation)

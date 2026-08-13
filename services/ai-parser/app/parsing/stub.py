@@ -1,5 +1,6 @@
 import re
 from datetime import UTC, datetime
+from typing import cast
 
 from app.schemas.parse import Discipline, ExerciseDraft, ParseResponse
 
@@ -15,8 +16,25 @@ _HOURS = re.compile(r"(\d+(?:[.,]\d+)?)\s*(?:h|hora|horas)")
 _MINUTES = re.compile(r"(\d+)\s*(?:min(?:uto)?s?|m\b)")
 
 _BOXING = ("boxeo", "boxing")
+_MARTIAL_ARTS = ("artes marciales", "karate", "judo", "taekwondo", "mma")
 _RUNNING = ("running", "correr", "carrera", "trote")
 _CYCLING = ("ciclismo", "cycling", "bici")
+_SWIMMING = ("natación", "natacion", "swimming", "nadar", "piscina")
+_CLIMBING = ("escalada", "climbing", "boulder")
+_CALISTHENICS = ("calistenia", "calisthenics", "bodyweight")
+_FOOTBALL = ("fútbol", "futbol", "football")
+_BASKETBALL = ("baloncesto", "basketball")
+_VOLLEYBALL = ("voleibol", "volleyball", "vóley")
+_CRICKET = ("cricket", "críquet")
+_BASEBALL = ("béisbol", "beisbol", "baseball")
+_HOCKEY = ("hockey",)
+_RUGBY = ("rugby",)
+_HANDBALL = ("balonmano", "handball")
+_BADMINTON = ("bádminton", "badminton")
+_TABLE_TENNIS = ("tenis de mesa", "pimpón", "pimon", "ping pong", "table tennis")
+_TENNIS = ("tenis", "tennis")
+_SKI = ("esquí", "esqui", "snowboard", "ski")
+_GOLF = ("golf",)
 
 
 def _extract_duration(text: str) -> int | None:
@@ -62,12 +80,30 @@ def _extract_exercises(text: str) -> list[ExerciseDraft]:
 
 def _extract_discipline(text: str, has_exercises: bool) -> Discipline:
     lowered = text.lower()
-    if any(kw in lowered for kw in _BOXING):
-        return "boxing"
-    if any(kw in lowered for kw in _RUNNING):
-        return "running"
-    if any(kw in lowered for kw in _CYCLING):
-        return "cycling"
+    for keywords, code in (
+        (_TABLE_TENNIS, "table_tennis"),
+        (_TENNIS, "tennis"),
+        (_BOXING, "boxing"),
+        (_MARTIAL_ARTS, "martial_arts"),
+        (_SWIMMING, "swimming"),
+        (_SKI, "ski_snowboard"),
+        (_BADMINTON, "badminton"),
+        (_BASKETBALL, "basketball"),
+        (_FOOTBALL, "football"),
+        (_CYCLING, "cycling"),
+        (_RUNNING, "running"),
+        (_CLIMBING, "climbing"),
+        (_CALISTHENICS, "calisthenics"),
+        (_VOLLEYBALL, "volleyball"),
+        (_CRICKET, "cricket"),
+        (_BASEBALL, "baseball"),
+        (_HOCKEY, "hockey"),
+        (_RUGBY, "rugby"),
+        (_HANDBALL, "handball"),
+        (_GOLF, "golf"),
+    ):
+        if any(kw in lowered for kw in keywords):
+            return cast(Discipline, code)
     if has_exercises:
         return "gym"
     return "other"

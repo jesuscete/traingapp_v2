@@ -4,8 +4,10 @@ from datetime import datetime
 from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.analytics import kcal as kcal_analytics
+from app.crud.disciplines import load_catalog
 from app.models import Exercise, TrainingSession, WorkoutExercise, WorkoutSet
 from app.schemas.session import SessionIn
 
@@ -44,7 +46,11 @@ def _as_str(value: object) -> str | None:
 
 
 def _estimate_kcal(
-    data: SessionIn, weight_kg: float | None
+    data: SessionIn,
+    weight_kg: float | None,
+    *,
+    kind: str | None = None,
+    met_value: float | None = None,
 ) -> tuple[float | None, dict[str, object]]:
     minutes: float | None = data.duration_minutes
     if minutes is None:
@@ -70,6 +76,8 @@ def _estimate_kcal(
             )
             for ex in data.exercises
         ),
+        kind=kind,
+        met_value=met_value,
     )
     estimate = kcal_analytics.estimate(input_)
     details["kcal_confidence"] = estimate.confidence
@@ -92,7 +100,13 @@ async def create(
     for exercise in exercises:
         exercise.volume_kg = _exercise_volume(exercise)
 
-    estimated_kcal, enriched_details = _estimate_kcal(data, weight_kg)
+    discipline_info = (await load_catalog(session)).info(data.discipline)
+    estimated_kcal, enriched_details = _estimate_kcal(
+        data,
+        weight_kg,
+        kind=discipline_info.kind if discipline_info else None,
+        met_value=discipline_info.met if discipline_info else None,
+    )
 
     record = TrainingSession(
         user_id=user_id,
@@ -101,7 +115,10 @@ async def create(
         performed_at=data.performed_at,
         duration_minutes=data.duration_minutes,
         distance_meters=data.distance_meters,
+        intensity=data.intensity,
+        fatigue=data.fatigue,
         note=data.note,
+        routine_day_id=data.routine_day_id,
         details=enriched_details,
         estimated_kcal=estimated_kcal,
         volume_kg=sum(exercise.volume_kg for exercise in exercises),
@@ -122,8 +139,8 @@ def _filters(
     *,
     q: str | None = None,
     disciplines: list[str] | None = None,
-) -> list[object]:
-    conditions: list[object] = [TrainingSession.user_id == user_id]
+) -> list[ColumnElement[bool]]:
+    conditions: list[ColumnElement[bool]] = [TrainingSession.user_id == user_id]
     if disciplines:
         conditions.append(TrainingSession.discipline.in_(disciplines))
     if q:

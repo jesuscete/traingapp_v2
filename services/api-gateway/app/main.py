@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, chat, gym, internal, profile, sessions, stats
+from app.api import auth, catalog, chat, gym, internal, live, profile, routine, sessions, stats
 from app.core.config import settings
 
 app = FastAPI(
@@ -22,6 +22,9 @@ app.include_router(profile.router)
 app.include_router(gym.router)
 app.include_router(sessions.router)
 app.include_router(chat.router)
+app.include_router(live.router)
+app.include_router(routine.router)
+app.include_router(catalog.router)
 app.include_router(internal.router)
 app.include_router(stats.router)
 

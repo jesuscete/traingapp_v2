@@ -6,7 +6,31 @@
   "$defs": {
     "discipline": {
       "type": "string",
-      "enum": ["gym", "boxing", "running", "cycling", "swimming", "other"]
+      "enum": [
+        "gym",
+        "calisthenics",
+        "boxing",
+        "martial_arts",
+        "running",
+        "cycling",
+        "swimming",
+        "climbing",
+        "football",
+        "basketball",
+        "volleyball",
+        "cricket",
+        "baseball",
+        "hockey",
+        "rugby",
+        "handball",
+        "badminton",
+        "table_tennis",
+        "tennis",
+        "ski_snowboard",
+        "golf",
+        "other"
+      ],
+      "description": "Codigos del catalogo canonical de disciplinas (discipline_seed)."
     },
     "muscleGroup": {
       "type": "string",

@@ -67,6 +67,7 @@ class GymSessionIn(CamelModel):
     fatigue: int | None = Field(default=None, ge=1, le=10)
     calories: float | None = Field(default=None, ge=0)
     note: str | None = None
+    routine_day_id: uuid.UUID | None = None
     details: dict[str, object] | None = None
     exercises: list[WorkoutExerciseIn] = Field(min_length=1)
 
@@ -115,6 +116,7 @@ class WorkoutSessionSummaryOut(CamelModel):
 class MuscleImpactOut(CamelModel):
     muscle_group: str
     activation: float
+    zone: str = "other"
 
 
 class GymSessionOut(CamelModel):

@@ -1,24 +1,28 @@
-SYSTEM_PROMPT = """Eres un extractor de datos de entrenamiento. Devuelve SOLO JSON valido,
+from app.schemas.parse import DISCIPLINES
+
+_DISCIPLINE_ENUM = "|".join(DISCIPLINES)
+
+SYSTEM_PROMPT = f"""Eres un extractor de datos de entrenamiento. Devuelve SOLO JSON valido,
 sin texto adicional, sin markdown, sin comillas.
 
 Esquema JSON estricto:
-{
-  "discipline": "gym|boxing|running|cycling|swimming|other",
+{{
+  "discipline": "{_DISCIPLINE_ENUM}",
   "performedAt": "ISO-8601 UTC (YYYY-MM-DDTHH:MM:SSZ); si el texto no indica fecha, usa la actual",
   "durationMinutes": int | null,
   "suggestedRpe": float 1-10 (percepcion de esfuerzo de la sesion) | null,
   "exercises": [
-    {
+    {{
       "name": string,
       "sets": int,
       "reps": int (promedio de la serie),
       "perSetReps": [int, ...] (reps de cada serie, p.ej. [8,7,7,5]),
       "weightKg": float | null
-    }
+    }}
   ],
   "confidence": float 0-1,
   "unresolved": [string, ...] (datos ambiguos o desconocidos)
-}
+}}
 
 Reglas:
 - Extrae SIEMPRE perSetReps cuando puedas desglosar las series

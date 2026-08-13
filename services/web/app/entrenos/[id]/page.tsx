@@ -95,6 +95,40 @@ export default function EntrenoDetalle() {
               <MuscleFatigue impacts={session.muscleImpacts ?? []} />
               <CaloriesCard session={session} />
 
+              {(session.intensity != null || session.fatigue != null) && (
+                <section className="block">
+                  <h2>Esfuerzo percibido</h2>
+                  <div className="bars">
+                    {session.intensity != null && (
+                      <div className="bar-row">
+                        <span className="bar-label">
+                          Intensidad · {session.intensity}/10
+                        </span>
+                        <div className="bar-track">
+                          <div
+                            className="bar-fill"
+                            style={{ width: `${session.intensity * 10}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {session.fatigue != null && (
+                      <div className="bar-row">
+                        <span className="bar-label">
+                          Fatiga · {session.fatigue}/10
+                        </span>
+                        <div className="bar-track">
+                          <div
+                            className="bar-fill"
+                            style={{ width: `${session.fatigue * 10}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
+
               {session.note && (
                 <section className="block">
                   <h2>Nota</h2>

@@ -7,10 +7,12 @@ import { api } from "@/lib/api";
 import { BottomNav } from "@/components/BottomNav";
 import { HelpTip } from "@/components/HelpTip";
 import { RadarChart } from "@/components/RadarChart";
+import { aggregateByZone } from "@/lib/format";
 import {
   translateDiscipline,
   translateInsightMessage,
   translateMuscleGroup,
+  translateZone,
 } from "@/lib/labels";
 import type {
   StatsCardio,
@@ -94,12 +96,10 @@ export default function Dashboard() {
 
   const disciplines = overview?.byDiscipline ?? [];
   const maxGroupVolume = volumeWeek?.byMuscleGroup[0]?.volumeKg ?? 0;
-  const radarData = (volumeWeek?.byMuscleGroup ?? [])
-    .filter((g) => g.volumeKg > 0)
-    .map((g) => ({
-      label: translateMuscleGroup(g.muscleGroup),
-      value: maxGroupVolume ? g.volumeKg / maxGroupVolume : 0,
-    }));
+  const radarData = aggregateByZone(
+    volumeWeek?.byMuscleGroup ?? [],
+    (g) => g.volumeKg,
+  ).map((point) => ({ ...point, label: translateZone(point.label) }));
 
   return (
     <main className="dashboard">

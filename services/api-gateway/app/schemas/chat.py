@@ -48,7 +48,7 @@ class ChatDraftOut(BaseModel):
 
 
 class ChatMessageOut(BaseModel):
-    mode: Literal["direct", "live", "confirm"]
+    mode: Literal["direct", "live", "confirm", "routine"]
     requestId: uuid.UUID | None = None
     liveSessionId: uuid.UUID | None = None
     startedAt: datetime | None = None

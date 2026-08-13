@@ -5,7 +5,32 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-Discipline = Literal["gym", "boxing", "running", "cycling", "swimming", "other"]
+# Enum de disciplinas del catalogo canonical (`discipline_seed.DISCIPLINE_SEED`).
+# Mantener sincronizado con la semilla: no hay validacion dinamica en schemas.
+Discipline = Literal[
+    "gym",
+    "calisthenics",
+    "boxing",
+    "martial_arts",
+    "running",
+    "cycling",
+    "swimming",
+    "climbing",
+    "football",
+    "basketball",
+    "volleyball",
+    "cricket",
+    "baseball",
+    "hockey",
+    "rugby",
+    "handball",
+    "badminton",
+    "table_tennis",
+    "tennis",
+    "ski_snowboard",
+    "golf",
+    "other",
+]
 
 
 class CamelModel(BaseModel):
@@ -44,7 +69,10 @@ class SessionIn(CamelModel):
     performed_at: datetime
     duration_minutes: int | None = Field(default=None, ge=0)
     distance_meters: float | None = Field(default=None, ge=0)
+    intensity: int | None = Field(default=None, ge=1, le=10)
+    fatigue: int | None = Field(default=None, ge=1, le=10)
     note: str | None = None
+    routine_day_id: uuid.UUID | None = None
     details: dict[str, object] | None = None
     exercises: list[ExerciseIn] = Field(default_factory=list)
 
@@ -52,6 +80,7 @@ class SessionIn(CamelModel):
 class MuscleImpactOut(CamelModel):
     muscle_group: str
     activation: float
+    zone: str = "other"
 
 
 class SessionOut(CamelModel):
@@ -63,6 +92,8 @@ class SessionOut(CamelModel):
     distance_meters: float | None = None
     volume_kg: float
     estimated_kcal: float | None = None
+    intensity: int | None = None
+    fatigue: int | None = None
     note: str | None
     details: dict[str, object] | None = None
     created_at: datetime
@@ -78,3 +109,5 @@ class SessionListItem(CamelModel):
     duration_minutes: int | None
     volume_kg: float
     estimated_kcal: float | None = None
+    intensity: int | None = None
+    fatigue: int | None = None

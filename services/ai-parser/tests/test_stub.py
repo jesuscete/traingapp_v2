@@ -55,3 +55,13 @@ def test_parse_series_per_set_parens_weight() -> None:
 def test_suggested_rpe_cardio() -> None:
     result = parse_text("carrera de 45 min")
     assert result.suggestedRpe == 6.5
+
+
+def test_parse_new_disciplines() -> None:
+    assert parse_text("partido de futbol de 90 min").discipline == "football"
+    assert parse_text("natacion en piscina 40 min").discipline == "swimming"
+    assert parse_text("sesion de escalada 2h").discipline == "climbing"
+    assert parse_text("tenis de mesa 1h").discipline == "table_tennis"
+    assert parse_text("partido de tenis 1h").discipline == "tennis"
+    assert parse_text("clase de karate 1h").discipline == "martial_arts"
+    assert parse_text("esqui alpino 3h").discipline == "ski_snowboard"

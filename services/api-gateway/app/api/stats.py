@@ -11,10 +11,12 @@ from app.analytics import calibration as calibration_analytics
 from app.analytics import computations, met
 from app.analytics import fatigue as fatigue_analytics
 from app.analytics import load as load_analytics
+from app.analytics.catalog_seed import zone_of
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.crud import fatigue as fatigue_crud
 from app.crud import stats as stats_crud
+from app.crud.disciplines import load_catalog
 from app.models import User
 from app.schemas import stats as stats_schemas
 
@@ -194,6 +196,7 @@ async def stats_fatigue(
                 impulse_today=round(impulses.get(today, {}).get(group, 0.0), 1),
                 level=level,
                 acwr=acwr,
+                zone=zone_of(group),
             )
         )
         if level != "ok" or reasons:
@@ -270,6 +273,7 @@ async def stats_fatigue_series(
             stats_schemas.FatigueSeriesMuscleOut(
                 muscle_group=group,
                 fatigue=round(values.get(group, 0.0), 1),
+                zone=zone_of(group),
             )
             for group in fatigue_analytics.MUSCLE_GROUPS
         ]
@@ -306,7 +310,10 @@ async def stats_load(
         monotony=analysis["monotony"],
         strain=analysis["strain"],
         by_muscle_group=[
-            stats_schemas.LoadMuscleOut(**item)
+            stats_schemas.LoadMuscleOut(
+                **item,
+                zone=zone_of(str(item["muscle_group"])),
+            )
             for item in by_muscle_group
         ],
     )
@@ -591,8 +598,9 @@ async def stats_cardio(
     records = await stats_crud.sessions_in_range(
         session, current_user.id, _period_start(days)
     )
+    catalog = await load_catalog(session)
     return stats_schemas.CardioOut(
-        **asdict(computations.compute_cardio(records)),
+        **asdict(computations.compute_cardio(records, catalog.cardio_codes)),
         period_days=days,
     )
 

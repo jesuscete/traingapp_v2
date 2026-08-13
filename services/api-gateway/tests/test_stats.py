@@ -160,7 +160,9 @@ def test_volume_unknown_exercise_is_unclassified(client: TestClient) -> None:
     assert data["byMuscleGroup"] == []
 
 
-def test_cardio_aggregates_duration(client: TestClient) -> None:
+def test_cardio_aggregates_duration(
+    client: TestClient, seed_disciplines: None
+) -> None:
     headers = _headers(client)
     _create_cardio(client, headers, discipline="running", days_ago=1, duration_minutes=45)
     _create_cardio(client, headers, discipline="boxing", days_ago=5, duration_minutes=90)

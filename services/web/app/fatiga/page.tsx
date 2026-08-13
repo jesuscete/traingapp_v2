@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { BottomNav } from "@/components/BottomNav";
 import { HelpTip } from "@/components/HelpTip";
 import { RadarChart } from "@/components/RadarChart";
-import { translateMuscleGroup } from "@/lib/labels";
+import { translateMuscleGroup, translateZone } from "@/lib/labels";
 import type { Fatigue, Readiness } from "@/lib/types";
 
 const TOKEN_KEY = "traingapp_token";
@@ -88,10 +88,20 @@ export default function Fatiga() {
     }
   }
 
-  const radarData = (fatigue?.muscles ?? []).map((m) => ({
-    label: translateMuscleGroup(m.muscleGroup),
-    value: m.fatigue / 100,
-  }));
+  const zoneAverages = new Map<string, { total: number; count: number }>();
+  for (const m of fatigue?.muscles ?? []) {
+    const zone = m.zone || "other";
+    const acc = zoneAverages.get(zone) ?? { total: 0, count: 0 };
+    acc.total += m.fatigue;
+    acc.count += 1;
+    zoneAverages.set(zone, acc);
+  }
+  const radarData = [...zoneAverages.entries()]
+    .map(([zone, acc]) => ({
+      label: translateZone(zone),
+      value: acc.count ? acc.total / acc.count / 100 : 0,
+    }))
+    .filter((point) => point.value > 0);
 
   return (
     <main className="dashboard">

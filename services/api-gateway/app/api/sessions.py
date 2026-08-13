@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -12,6 +12,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.crud import sessions
 from app.crud.catalog import exercise_muscle_map
+from app.crud.disciplines import load_catalog
 from app.models import TrainingSession, User
 from app.schemas.gym import GymSessionOut, MuscleImpactOut
 from app.schemas.history import HighlightsOut, HistorySummaryOut, SessionPageOut
@@ -118,13 +119,21 @@ async def get_session(
         calories = details.get("calories")
         out_gym.calories = calories if isinstance(calories, (int, float)) else None
         out_gym.muscle_impacts = [
-            MuscleImpactOut(muscle_group=item.muscle_group, activation=item.activation)
+            MuscleImpactOut(
+                muscle_group=item.muscle_group,
+                activation=item.activation,
+                zone=item.zone,
+            )
             for item in impacts
         ]
         return out_gym
     impacts = compute_muscle_impacts(record.exercises, catalog)
     if not impacts:
-        impacts = compute_discipline_impacts(record.discipline)
+        discipline_info = (await load_catalog(session)).info(record.discipline)
+        impacts = compute_discipline_impacts(
+            record.discipline,
+            profile=discipline_info.profile if discipline_info else None,
+        )
     out_legacy = SessionOut.model_validate(record)
     out_legacy.muscle_impacts = [
         LegacyMuscleImpactOut(muscle_group=item.muscle_group, activation=item.activation)

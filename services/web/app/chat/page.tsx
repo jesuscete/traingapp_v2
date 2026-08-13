@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -58,6 +59,7 @@ export default function Chat() {
   const [session, setSession] = useState<Session | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [routineLive, setRoutineLive] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem(TOKEN_KEY);
@@ -80,6 +82,7 @@ export default function Chat() {
     setDistanceKm("");
     setWorkoutType("");
     setError(null);
+    setRoutineLive(false);
   }
 
   function applyDraft(draftResponse: WorkoutDraft, nextRequestId: string | null) {
@@ -103,9 +106,16 @@ export default function Chat() {
     try {
       const response = await api.sendDraft(token, raw);
       if (response.mode === "live") {
+        setRoutineLive(false);
         if (response.entriesCount > 0) {
           setEntries((prev) => [...prev, raw]);
         }
+        setPhase("live");
+      } else if (response.mode === "routine") {
+        if (response.entriesCount > 0) {
+          setEntries((prev) => [...prev, raw]);
+        }
+        setRoutineLive(true);
         setPhase("live");
       } else if (response.mode === "confirm") {
         if (!response.draft) {
@@ -203,7 +213,9 @@ export default function Chat() {
         <h2>Asistente de entrenamiento</h2>
         <p className="subtitle">
           {phase === "live"
-            ? "Anota tus series. Cuando termines, pulsa 'Terminar entreno'."
+            ? routineLive
+              ? "Sesión de tu rutina. Añade series aquí o continúa en el registro manual."
+              : "Anota tus series. Cuando termines, pulsa 'Terminar entreno'."
             : phase === "review"
               ? "Revisa y confirma el borrador de la IA."
               : "Registra tu entreno o pregúntame por tu rutina y progreso."}
@@ -251,9 +263,15 @@ export default function Chat() {
           </form>
           {entriesList}
           <div className="chat-actions">
-            <button type="button" onClick={() => send("he terminado")} disabled={busy}>
-              Terminar entreno
-            </button>
+            {routineLive ? (
+              <Link className="btn" href="/registro/manual">
+                Ajustar pesos y terminar
+              </Link>
+            ) : (
+              <button type="button" onClick={() => send("he terminado")} disabled={busy}>
+                Terminar entreno
+              </button>
+            )}
           </div>
         </>
       )}

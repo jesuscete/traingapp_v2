@@ -40,6 +40,64 @@ def seed_catalog(db_session_factory: async_sessionmaker[AsyncSession]) -> None:
     asyncio.run(run())
 
 
+@pytest.fixture
+def seed_muscles(db_session_factory: async_sessionmaker[AsyncSession]) -> None:
+    from app.analytics.catalog_seed import MUSCLE_SEED, MUSCLE_ZONE_OF
+    from app.models import Muscle
+
+    async def run() -> None:
+        async with db_session_factory() as session:
+            for code, label, rollup in MUSCLE_SEED:
+                session.add(
+                    Muscle(
+                        code=code,
+                        label=label,
+                        rollup_code=rollup,
+                        zone_code=MUSCLE_ZONE_OF[code],
+                    )
+                )
+            await session.commit()
+
+    asyncio.run(run())
+
+
+@pytest.fixture
+def seed_disciplines(db_session_factory: async_sessionmaker[AsyncSession]) -> None:
+    from app.analytics.discipline_seed import DISCIPLINE_SEED
+    from app.analytics.fatigue import MUSCLE_LOAD_DEFAULT
+    from app.models import Discipline, DisciplineMuscleLoad
+
+    async def run() -> None:
+        async with db_session_factory() as session:
+            by_code: dict[str, Discipline] = {}
+            for name, code, met_value, category, kind in DISCIPLINE_SEED:
+                discipline = Discipline(
+                    name=name,
+                    normalized_name=code,
+                    met=met_value,
+                    category=category,
+                    kind=kind,
+                )
+                session.add(discipline)
+                by_code[code] = discipline
+            await session.flush()
+            for code, groups in MUSCLE_LOAD_DEFAULT.items():
+                discipline = by_code.get(code)
+                if discipline is None:
+                    continue
+                for group, weight in groups.items():
+                    session.add(
+                        DisciplineMuscleLoad(
+                            discipline_id=discipline.id,
+                            muscle_group=group,
+                            load=weight,
+                        )
+                    )
+            await session.commit()
+
+    asyncio.run(run())
+
+
 
 
 class FakeRedis:

@@ -39,6 +39,7 @@ class MuscleGroupVolumeOut(CamelModel):
     volume_kg: float
     sessions: int
     top_exercises: list[TopExerciseOut]
+    zone: str = "other"
 
 
 class ExerciseProgressOut(CamelModel):
@@ -109,6 +110,7 @@ class FatigueMuscleOut(CamelModel):
     impulse_today: float
     level: str
     acwr: float
+    zone: str = "other"
 
 
 class FatigueRiskOut(CamelModel):
@@ -176,6 +178,7 @@ class FatigueProjectionOut(CamelModel):
 class FatigueSeriesMuscleOut(CamelModel):
     muscle_group: str
     fatigue: float
+    zone: str = "other"
 
 
 class FatigueSeriesDayOut(CamelModel):
@@ -195,6 +198,7 @@ class LoadMuscleOut(CamelModel):
     accumulated_load: float
     recovery: float
     trend: str
+    zone: str = "other"
 
 
 class LoadOut(CamelModel):

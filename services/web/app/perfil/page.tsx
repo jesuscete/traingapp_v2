@@ -5,9 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
 import { BottomNav } from "@/components/BottomNav";
-import { DISCIPLINE_LABELS, translateDiscipline } from "@/lib/labels";
 import { getTheme, setTheme, THEMES } from "@/lib/theme";
-import type { Energy, User } from "@/lib/types";
+import type { Discipline, Energy, User } from "@/lib/types";
 
 const TOKEN_KEY = "traingapp_token";
 const USER_KEY = "traingapp_user";
@@ -24,8 +23,6 @@ const GOAL_LABELS: Record<string, string> = {
   performance: "Rendimiento",
 };
 
-const SPORT_KEYS = ["gym", "boxing", "running", "cycling", "swimming", "other"];
-
 export default function Perfil() {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
@@ -37,6 +34,7 @@ export default function Perfil() {
   const [sex, setSex] = useState("");
   const [goal, setGoal] = useState("");
   const [sports, setSports] = useState<string[]>([]);
+  const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +66,12 @@ export default function Perfil() {
       setSex(p.sex ?? "");
       setGoal(p.goal ?? "");
       setSports(p.sports ?? []);
+      try {
+        const d = await api.listDisciplines(accessToken);
+        setDisciplines(d);
+      } catch {
+        setDisciplines([]);
+      }
       try {
         const e = await api.statsEnergy(accessToken);
         setEnergy(e);
@@ -199,14 +203,16 @@ export default function Perfil() {
           <fieldset className="sports-field">
             <legend>Disciplinas que practicas</legend>
             <div className="chips">
-              {SPORT_KEYS.map((key) => (
+              {disciplines.map((discipline) => (
                 <button
-                  key={key}
+                  key={discipline.normalizedName}
                   type="button"
-                  className={`chip chip-toggle${sports.includes(key) ? " on" : ""}`}
-                  onClick={() => toggleSport(key)}
+                  className={`chip chip-toggle${
+                    sports.includes(discipline.normalizedName) ? " on" : ""
+                  }`}
+                  onClick={() => toggleSport(discipline.normalizedName)}
                 >
-                  {DISCIPLINE_LABELS[key] ?? translateDiscipline(key)}
+                  {discipline.name}
                 </button>
               ))}
             </div>

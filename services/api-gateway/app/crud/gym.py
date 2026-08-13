@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from app.analytics import gym as gym_analytics
 from app.analytics import kcal as kcal_analytics
 from app.analytics.catalog import normalize_exercise_name
+from app.analytics.weight_suggestion import WeightRecord
 from app.crud.catalog import catalog_lookup, uses_bodyweight_map
 from app.models import (
     SetEntry,
@@ -23,6 +24,44 @@ _LOADS = (
     .selectinload(WorkoutSet.entries),
     selectinload(TrainingSession.summary),
 )
+
+
+async def weight_history(
+    session: AsyncSession, exercise_id: uuid.UUID
+) -> list[WeightRecord]:
+    """Ultimos pesos registrados para un `exercise_id` (set_entry reales).
+
+    Prefiere los `set_entry` con `side == 'both'` (peso unico); si el
+    ejercicio es unilateral y solo hay pesos por lado, devuelve los de un
+    lado tal y como se registraron. Se usa para la sugerencia de peso de la
+    rutina (ver `app.analytics.weight_suggestion`).
+    """
+    rows = await session.execute(
+        select(
+            WorkoutSet.set_number,
+            SetEntry.weight,
+            TrainingSession.performed_at,
+            SetEntry.side,
+        )
+        .select_from(SetEntry)
+        .join(WorkoutSet, WorkoutSet.id == SetEntry.set_id)
+        .join(WorkoutExercise, WorkoutExercise.id == WorkoutSet.workout_exercise_id)
+        .join(TrainingSession, TrainingSession.id == WorkoutExercise.session_id)
+        .where(
+            WorkoutExercise.exercise_id == exercise_id,
+            SetEntry.weight.is_not(None),
+            SetEntry.entry_order == 0,
+        )
+    )
+    data = rows.all()
+    records = [
+        WeightRecord(set_number=set_number, weight=weight, performed_at=performed_at)
+        for set_number, weight, performed_at, _side in data
+    ]
+    if not records:
+        return []
+    both = [record for record, row in zip(records, data) if row.side == "both"]
+    return both if both else records
 
 
 def _duration_min(data: GymSessionIn) -> int:
@@ -105,6 +144,7 @@ async def create_gym(
         fatigue=data.fatigue,
         duration_minutes=data.duration_minutes,
         note=data.note,
+        routine_day_id=data.routine_day_id,
         details=details or None,
         estimated_kcal=estimate.kcal,
         volume_kg=summary_result.total_volume,

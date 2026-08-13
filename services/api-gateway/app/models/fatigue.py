@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -13,9 +14,12 @@ from sqlalchemy import (
     Uuid,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.routine import Discipline
 
 
 class DisciplineMuscleLoad(Base):
@@ -23,18 +27,25 @@ class DisciplineMuscleLoad(Base):
 
     Fuente de verdad de las ponderaciones en runtime. Sembrada por migracion
     desde `app.analytics.fatigue.MUSCLE_LOAD_DEFAULT` y editable por admin.
+    `discipline_id` referencia el catalogo canonical `discipline`.
     """
 
     __tablename__ = "discipline_muscle_load"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    discipline: Mapped[str] = mapped_column(String(40), index=True)
+    discipline_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("discipline.id", ondelete="CASCADE"),
+        index=True,
+    )
     muscle_group: Mapped[str] = mapped_column(String(40))
     load: Mapped[float] = mapped_column(Float)
 
+    discipline: Mapped["Discipline"] = relationship(back_populates="muscle_loads")
+
     __table_args__ = (
         UniqueConstraint(
-            "discipline", "muscle_group", name="uq_discipline_muscle_group"
+            "discipline_id", "muscle_group", name="uq_discipline_muscle_group"
         ),
     )
 

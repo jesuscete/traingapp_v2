@@ -3,6 +3,7 @@ from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.analytics import fatigue as fatigue_analytics
 from app.models.fatigue import (
@@ -17,13 +18,21 @@ async def load_map(
     session: AsyncSession,
 ) -> dict[str, dict[str, float]]:
     """Ponderaciones por disciplina desde el catalogo (fallback: defaults)."""
-    result = await session.execute(select(DisciplineMuscleLoad))
+    result = await session.execute(
+        select(DisciplineMuscleLoad).options(
+            selectinload(DisciplineMuscleLoad.discipline)
+        )
+    )
     rows = list(result.scalars().all())
     if not rows:
         return dict(fatigue_analytics.MUSCLE_LOAD_DEFAULT)
     grouped: dict[str, dict[str, float]] = {}
     for row in rows:
-        grouped.setdefault(row.discipline, {})[row.muscle_group] = row.load
+        if row.discipline is None:
+            continue
+        grouped.setdefault(row.discipline.normalized_name, {})[
+            row.muscle_group
+        ] = row.load
     return grouped
 
 

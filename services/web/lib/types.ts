@@ -24,6 +24,8 @@ export type Session = {
   distanceMeters?: number | null;
   volumeKg: number;
   estimatedKcal: number | null;
+  intensity?: number | null;
+  fatigue?: number | null;
   note: string | null;
   createdAt: string;
   exercises: Exercise[];
@@ -34,6 +36,7 @@ export type Session = {
 export type MuscleImpact = {
   muscleGroup: string;
   activation: number;
+  zone?: string;
 };
 
 export type SetEntry = {
@@ -118,7 +121,7 @@ export type WorkoutDraft = {
 };
 
 export type ChatMessageOut = {
-  mode: "direct" | "live" | "confirm";
+  mode: "direct" | "live" | "confirm" | "routine";
   requestId?: string | null;
   liveSessionId?: string | null;
   startedAt?: string | null;
@@ -187,6 +190,7 @@ export type MuscleGroupVolume = {
   volumeKg: number;
   sessions: number;
   topExercises: { name: string; volumeKg: number; sets: number }[];
+  zone?: string;
 };
 
 export type ExerciseProgress = {
@@ -247,6 +251,7 @@ export type FatigueMuscle = {
   impulseToday: number;
   level: "ok" | "warning" | "danger";
   acwr: number;
+  zone?: string;
 };
 
 export type FatigueRisk = {
@@ -275,6 +280,7 @@ export type Fatigue = {
 export type FatigueSeriesMuscle = {
   muscleGroup: string;
   fatigue: number;
+  zone?: string;
 };
 
 export type FatigueSeriesDay = {
@@ -294,6 +300,7 @@ export type LoadMuscle = {
   accumulatedLoad: number;
   recovery: number;
   trend: string;
+  zone?: string;
 };
 
 export type Load = {
@@ -349,4 +356,162 @@ export type HistorySummary = {
   byDiscipline: DisciplineStat[];
   deltas: DisciplineDelta[];
   recent: SessionSummary[];
+};
+
+export type DayType = "gimnasio" | "deporte" | "descanso";
+
+export type RoutineSet = {
+  id: string;
+  setNumber: number;
+  setType: string;
+  targetRepsMin: number | null;
+  targetRepsMax: number | null;
+  targetRestSeconds: number | null;
+};
+
+export type RoutineExercise = {
+  id: string;
+  exerciseId: string | null;
+  name: string | null;
+  orderIndex: number;
+  supersetGroupId: string | null;
+  sets: RoutineSet[];
+};
+
+export type RoutineDay = {
+  id: string;
+  dayOfWeek: number;
+  dayType: DayType;
+  label: string | null;
+  disciplineId: string | null;
+  disciplineName: string | null;
+  targetDurationMin: number | null;
+  notes: string | null;
+  exercises: RoutineExercise[];
+};
+
+export type Routine = {
+  id: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+  days: RoutineDay[];
+};
+
+export type RoutineDayInput = {
+  dayOfWeek: number;
+  dayType: DayType;
+  label?: string | null;
+  disciplineId?: string | null;
+  targetDurationMin?: number | null;
+  notes?: string | null;
+  exercises?: RoutineExerciseInput[];
+};
+
+export type RoutineExerciseInput = {
+  exerciseId: string;
+  orderIndex?: number;
+  supersetGroupId?: string | null;
+  sets: RoutineSetInput[];
+};
+
+export type RoutineSetInput = {
+  setNumber: number;
+  setType: string;
+  targetRepsMin: number | null;
+  targetRepsMax?: number | null;
+  targetRestSeconds?: number | null;
+};
+
+export type RoutineInput = {
+  name: string;
+  days: RoutineDayInput[];
+};
+
+export type RoutineReviewItem = {
+  diaSemana: string;
+  tipo: DayType;
+  nombre: string;
+  gruposMusculares: string[];
+  series: number;
+  repeticiones: number | null;
+  duracionMin: number | null;
+};
+
+export type RoutineReviewInput = {
+  routineName: string;
+  days: RoutineReviewItem[];
+};
+
+export type Solapamiento = {
+  descripcion: string;
+  grupos: string[];
+  dias: string[];
+};
+
+export type RoutineReview = {
+  puntosFuertes: string[];
+  solapamientos: Solapamiento[];
+  sugerencias: string[];
+};
+
+export type Discipline = {
+  id: string;
+  name: string;
+  normalizedName: string;
+  met: number;
+  category: string;
+  kind: 'gym' | 'cardio';
+  muscleLoads: { muscleGroup: string; load: number }[];
+};
+
+export type CatalogExercise = {
+  id: string;
+  name: string;
+  normalizedName: string;
+  exerciseType: string;
+  muscleMap: Record<string, number>;
+  usesBodyweight: boolean;
+  unilateral: boolean;
+  images: string[];
+  details: {
+    source?: string;
+    sourceId?: string;
+    category?: string;
+    force?: string | null;
+    level?: string;
+    mechanic?: string | null;
+    equipment?: string;
+    instructions?: string[];
+  } | null;
+};
+
+export type LiveSet = {
+  setNumber: number;
+  setType: string;
+  targetRepsMin: number | null;
+  targetRepsMax: number | null;
+  reps: number | null;
+  weight: number | null;
+  suggestedWeight: number | null;
+  isWarmup: boolean;
+};
+
+export type LiveExercise = {
+  name: string;
+  exerciseId: string | null;
+  orderIndex: number;
+  routineExerciseId: string | null;
+  sets: LiveSet[];
+};
+
+export type LiveSession = {
+  liveSessionId: string;
+  startedAt: string;
+  origin: "free" | "routine";
+  discipline: string | null;
+  routineDayId: string | null;
+  exercises: LiveExercise[];
+  entries: string[];
+  entriesCount: number;
 };

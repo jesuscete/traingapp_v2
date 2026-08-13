@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 from app.analytics import catalog
+from app.analytics.catalog_seed import zone_of
 from app.analytics.gym import flatten_workout_exercises
 from app.models import TrainingSession
 
@@ -60,6 +61,7 @@ class MuscleGroupVolume:
     volume_kg: float
     sessions: int
     top_exercises: list[TopExercise]
+    zone: str = "other"
 
 
 @dataclass
@@ -216,6 +218,7 @@ def compute_volume(sessions: list[TrainingSession]) -> VolumeResult:
                 volume_kg=group_volume[group],
                 sessions=len(group_sessions[group]),
                 top_exercises=top,
+                zone=zone_of(group),
             )
         )
 
@@ -245,8 +248,14 @@ def compute_volume(sessions: list[TrainingSession]) -> VolumeResult:
     )
 
 
-def compute_cardio(sessions: list[TrainingSession]) -> CardioResult:
-    cardio = [ts for ts in sessions if ts.discipline in CARDIO_DISCIPLINES]
+def compute_cardio(
+    sessions: list[TrainingSession],
+    cardio_disciplines: frozenset[str] | None = None,
+) -> CardioResult:
+    cardio_codes = (
+        cardio_disciplines if cardio_disciplines is not None else CARDIO_DISCIPLINES
+    )
+    cardio = [ts for ts in sessions if ts.discipline in cardio_codes]
     sessions_count: dict[str, int] = defaultdict(int)
     duration: dict[str, int] = defaultdict(int)
     distance: dict[str, float] = defaultdict(float)

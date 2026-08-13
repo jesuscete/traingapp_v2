@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api import parse
+from app.api import parse, review
 from app.core.config import settings
 
 app = FastAPI(
@@ -9,6 +9,7 @@ app = FastAPI(
 )
 
 app.include_router(parse.router)
+app.include_router(review.router)
 
 
 @app.get("/health", tags=["system"])

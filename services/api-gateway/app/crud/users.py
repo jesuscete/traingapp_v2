@@ -32,6 +32,7 @@ async def create(
 
 
 _PROFILE_FIELDS = (
+    "name",
     "weight_kg",
     "height_cm",
     "birth_year",
@@ -51,6 +52,20 @@ async def update_profile(session: AsyncSession, user: User, body: ProfileIn) -> 
         value = getattr(body, field)
         if value is not None:
             setattr(user, field, value)
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+async def update_email(session: AsyncSession, user: User, email: str) -> User:
+    user.email = email.lower()
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+async def update_password(session: AsyncSession, user: User, new_password: str) -> User:
+    user.hashed_password = hash_password(new_password)
     await session.commit()
     await session.refresh(user)
     return user

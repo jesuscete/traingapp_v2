@@ -56,6 +56,7 @@ class UserOut(CamelModel):
 
 
 class ProfileIn(CamelModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
     weight_kg: float | None = Field(default=None, ge=20, le=400)
     height_cm: float | None = Field(default=None, ge=80, le=250)
     birth_year: int | None = Field(default=None, ge=1900, le=2100)
@@ -67,6 +68,15 @@ class ProfileIn(CamelModel):
     weekly_availability: int | None = Field(default=None, ge=0, le=7)
     injuries: list[object] | None = None
     goals: list[Goals] | None = None
+
+
+class EmailChangeIn(BaseModel):
+    email: EmailStr
+
+
+class PasswordChangeIn(CamelModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class TokenOut(BaseModel):

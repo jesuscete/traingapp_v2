@@ -75,6 +75,21 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
     }),
+  updateEmail: (token: string, email: string) =>
+    request<User>("/profile/email", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ email }),
+    }),
+  updatePassword: (
+    token: string,
+    body: { currentPassword: string; newPassword: string },
+  ) =>
+    request<User>("/profile/password", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
   listSessions: (
     token: string,
     params: {

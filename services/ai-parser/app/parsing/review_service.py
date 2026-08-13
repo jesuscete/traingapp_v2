@@ -8,6 +8,12 @@ from app.schemas.review import RoutineReviewResponse, Solapamiento
 logger = logging.getLogger(__name__)
 
 
+def _string_groups(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(group) for group in value if isinstance(group, str)]
+
+
 def review_routine_deterministic(
     payload: list[dict[str, object]],
 ) -> RoutineReviewResponse:
@@ -21,14 +27,14 @@ def review_routine_deterministic(
             gym_items += 1
         elif item.get("tipo") == "deporte":
             sport_items += 1
-        groups = item.get("gruposMusculares") or []
+        groups = _string_groups(item.get("gruposMusculares"))
         day = item.get("diaSemana") or item.get("dia")
         for group in groups:
-            counts[str(group)] += 1
+            counts[group] += 1
         if day:
             day_mentions.append({
                 "dia": str(day),
-                "grupos": [str(group) for group in groups],
+                "grupos": groups,
             })
 
     top_groups = [group for group, _ in counts.most_common(3)]
@@ -53,7 +59,7 @@ def review_routine_deterministic(
         dias: list[str] = [
             str(mention["dia"])
             for mention in day_mentions
-            if top_groups[0] in [str(group) for group in mention["grupos"]]
+            if top_groups[0] in _string_groups(mention["grupos"])
         ]
         solapamientos.append(
             Solapamiento(

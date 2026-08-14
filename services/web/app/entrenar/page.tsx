@@ -34,7 +34,7 @@ function dayTitle(routine: Routine | null, dayId: string | null): string {
   return day ? WEEKDAYS[day.dayOfWeek - 1] : "";
 }
 
-export default function RegistroManual() {
+export default function Entrenar() {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
@@ -260,7 +260,7 @@ export default function RegistroManual() {
     return (
       <main className="dashboard">
         <div className="welcome">
-          <h2>Registro manual</h2>
+          <h2>Entrenar</h2>
           <p className="subtitle">
             Elige el día de tu rutina o empieza una sesión libre.
           </p>

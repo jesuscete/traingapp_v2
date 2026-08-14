@@ -152,6 +152,18 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify({ requestId }),
     }),
+  confirmPlan: (token: string, planRequestId: string) =>
+    request<ChatMessageOut>("/chat/plan/confirm", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ planRequestId }),
+    }),
+  cancelPlan: (token: string, planRequestId: string) =>
+    request<ChatMessageOut>("/chat/plan/cancel", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ planRequestId }),
+    }),
   statsOverview: (token: string) =>
     request<StatsOverview>("/stats/overview", {
       headers: { Authorization: `Bearer ${token}` },

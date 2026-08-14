@@ -23,6 +23,18 @@ from app.chat.conversation import (
     start_live,
     start_live_routine,
 )
+from app.chat.plan_session import (
+    PlanResult,
+    get_plan,
+    plan_intent,
+    process_plan_message,
+)
+from app.chat.plan_session import (
+    cancel_plan as cancel_plan_session,
+)
+from app.chat.plan_session import (
+    confirm_plan as confirm_plan_session,
+)
 from app.chat.routine_session import (
     build_routine_exercises,
     merge_draft_into_live,
@@ -55,6 +67,7 @@ from app.schemas.gym import (
     WorkoutExerciseIn,
     WorkoutSetIn,
 )
+from app.schemas.plan import PlanDecisionIn
 from app.schemas.session import (
     Discipline,
     ExerciseIn,
@@ -105,6 +118,12 @@ async def create_draft(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ChatMessageOut:
     live = await get_live(redis, current_user.id)
+
+    plan = await get_plan(redis, current_user.id)
+    if plan is not None or (live is None and plan_intent(body.text) != "none"):
+        result = await process_plan_message(redis, current_user.id, session, body.text)
+        if result is not None:
+            return _plan_message_out(result)
 
     if live is None and is_routine_start(body.text):
         routine = await routine_crud.get_active_routine(session, current_user.id)
@@ -213,6 +232,17 @@ async def create_draft(
         draft.model_dump_json(),
     )
     return ChatMessageOut(mode="direct", requestId=request_id, draft=draft)
+
+
+def _plan_message_out(result: PlanResult) -> ChatMessageOut:
+    return ChatMessageOut(
+        mode="plan",
+        requestId=result.request_id,
+        message=result.message,
+        splits=result.splits,
+        plan=result.plan,
+        planStatus=result.status,
+    )
 
 
 def _to_exercise_in(exercise: ExerciseDraftOut) -> ExerciseIn:
@@ -380,3 +410,30 @@ async def cancel_draft(
 ) -> dict[str, str]:
     await redis.delete(_draft_key(current_user.id, body.requestId))
     return {"status": "cancelled"}
+
+
+@router.post(
+    "/plan/confirm",
+    response_model=ChatMessageOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def confirm_plan(
+    body: PlanDecisionIn,
+    redis: Annotated[aioredis.Redis, Depends(get_redis)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> ChatMessageOut:
+    result = await confirm_plan_session(
+        redis, current_user.id, session, body.planRequestId
+    )
+    return _plan_message_out(result)
+
+
+@router.post("/plan/cancel", response_model=ChatMessageOut)
+async def cancel_plan(
+    body: PlanDecisionIn,
+    redis: Annotated[aioredis.Redis, Depends(get_redis)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> ChatMessageOut:
+    result = await cancel_plan_session(redis, current_user.id, body.planRequestId)
+    return _plan_message_out(result)

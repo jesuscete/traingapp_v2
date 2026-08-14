@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 export function ChatComposer({
   placeholder,
@@ -18,6 +18,18 @@ export function ChatComposer({
   hint?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const wasBusy = useRef(false);
+
+  useEffect(() => {
+    if (!disabled) {
+      if (wasBusy.current) {
+        ref.current?.focus();
+      }
+      wasBusy.current = false;
+    } else {
+      wasBusy.current = true;
+    }
+  }, [disabled]);
 
   function autoResize() {
     const el = ref.current;
@@ -38,6 +50,7 @@ export function ChatComposer({
       <textarea
         ref={ref}
         rows={1}
+        autoFocus
         placeholder={placeholder}
         value={value}
         onChange={(event) => {
@@ -45,7 +58,6 @@ export function ChatComposer({
           autoResize();
         }}
         onKeyDown={handleKeyDown}
-        disabled={disabled}
       />
       <div className="chat-composer-footer">
         <span className="muted chat-composer-hint">

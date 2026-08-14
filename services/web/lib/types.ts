@@ -120,13 +120,50 @@ export type WorkoutDraft = {
   unresolved: string[];
 };
 
+export type PlanSplit = {
+  id: string;
+  name: string;
+  description: string;
+};
+
+export type PlanSetTarget = {
+  targetRepsMin: number;
+  targetRepsMax: number | null;
+  targetRestSeconds: number | null;
+};
+
+export type PlanExercise = {
+  name: string;
+  exerciseId: string | null;
+  sets: PlanSetTarget[];
+};
+
+export type PlanDay = {
+  dayOfWeek: number;
+  dayType: "gimnasio" | "deporte" | "descanso";
+  label: string | null;
+  disciplineId: string | null;
+  disciplineName: string | null;
+  durationMin: number | null;
+  exercises: PlanExercise[];
+};
+
+export type PlanSummary = {
+  name: string;
+  days: PlanDay[];
+};
+
 export type ChatMessageOut = {
-  mode: "direct" | "live" | "confirm" | "routine";
+  mode: "direct" | "live" | "confirm" | "routine" | "plan";
   requestId?: string | null;
   liveSessionId?: string | null;
   startedAt?: string | null;
   entriesCount: number;
   draft?: WorkoutDraft | null;
+  message?: string | null;
+  splits?: PlanSplit[] | null;
+  plan?: PlanSummary | null;
+  planStatus?: string | null;
 };
 
 export type User = {

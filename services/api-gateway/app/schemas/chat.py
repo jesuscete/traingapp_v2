@@ -5,6 +5,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
+from app.schemas.plan import PlanSplitOut, PlanSummaryOut
+
 
 class ChatMessageIn(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
@@ -48,12 +50,16 @@ class ChatDraftOut(BaseModel):
 
 
 class ChatMessageOut(BaseModel):
-    mode: Literal["direct", "live", "confirm", "routine"]
+    mode: Literal["direct", "live", "confirm", "routine", "plan"]
     requestId: uuid.UUID | None = None
     liveSessionId: uuid.UUID | None = None
     startedAt: datetime | None = None
     entriesCount: int = 0
     draft: WorkoutDraftOut | None = None
+    message: str | None = None
+    splits: list[PlanSplitOut] | None = None
+    plan: PlanSummaryOut | None = None
+    planStatus: str | None = None
 
 
 class ChatConfirmIn(BaseModel):

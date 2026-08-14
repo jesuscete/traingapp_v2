@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     ai_parser_url: str = "http://localhost:8100"
     chat_draft_ttl_seconds: int = 1800
     live_session_ttl_seconds: int = 14400
+    plan_session_ttl_seconds: int = 3600
 
 
 settings = Settings()

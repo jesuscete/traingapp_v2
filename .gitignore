@@ -35,6 +35,7 @@ htmlcov/
 # Runtime
 *.log
 uvicorn.pid
+.dev-pids
 
 # Instrucciones del agente (no se suben al repo)
 AGENTS.md

@@ -1,12 +1,13 @@
 import { translateMuscleGroup } from "@/lib/labels";
-import type { MuscleImpact } from "@/lib/types";
+
+export type BodyMapPoint = { muscleGroup: string; value: number };
 
 const BASE_RGB = [42, 46, 56];
 const HOT_RGB = [255, 77, 77];
 
-function fillFor(activation: number | undefined): string {
-  if (activation === undefined) return `rgb(${BASE_RGB.join(", ")})`;
-  const t = Math.max(0, Math.min(1, activation));
+function fillFor(value: number | undefined): string {
+  if (value === undefined) return `rgb(${BASE_RGB.join(", ")})`;
+  const t = Math.max(0, Math.min(1, value));
   const r = Math.round(BASE_RGB[0] + (HOT_RGB[0] - BASE_RGB[0]) * t);
   const g = Math.round(BASE_RGB[1] + (HOT_RGB[1] - BASE_RGB[1]) * t);
   const b = Math.round(BASE_RGB[2] + (HOT_RGB[2] - BASE_RGB[2]) * t);
@@ -46,12 +47,12 @@ const BACK: Rect[] = [
 
 const HEAD = { cx: 100, cy: 18, rx: 20, ry: 22 };
 
-function Silhouette({ regions, impacts }: { regions: Rect[]; impacts: Map<string, number> }) {
+function Silhouette({ regions, values }: { regions: Rect[]; values: Map<string, number> }) {
   return (
     <svg viewBox="0 0 200 420" className="bodymap-svg" role="img" aria-label="Heatmap muscular">
       <ellipse cx={HEAD.cx} cy={HEAD.cy} rx={HEAD.rx} ry={HEAD.ry} fill={BASE_RGB.join(", ")} />
       {regions.map((region, index) => {
-        const activation = impacts.get(region.id);
+        const value = values.get(region.id);
         return (
           <rect
             key={`${region.id}-${index}`}
@@ -60,11 +61,11 @@ function Silhouette({ regions, impacts }: { regions: Rect[]; impacts: Map<string
             width={region.w}
             height={region.h}
             rx="7"
-            fill={fillFor(activation)}
+            fill={fillFor(value)}
           >
             <title>
               {translateMuscleGroup(region.id)}
-              {activation !== undefined ? ` · ${Math.round(activation * 100)}%` : " · sin datos"}
+              {value !== undefined ? ` · ${Math.round(value * 100)}%` : " · sin datos"}
             </title>
           </rect>
         );
@@ -73,26 +74,34 @@ function Silhouette({ regions, impacts }: { regions: Rect[]; impacts: Map<string
   );
 }
 
-export function BodyMap({ impacts }: { impacts: MuscleImpact[] }) {
-  const byGroup = new Map(impacts.map((item) => [item.muscleGroup, item.activation]));
+export function BodyMap({
+  points,
+  showLegend = true,
+}: {
+  points: BodyMapPoint[];
+  showLegend?: boolean;
+}) {
+  const byGroup = new Map(points.map((item) => [item.muscleGroup, item.value]));
 
   return (
     <div className="bodymap">
       <div className="bodymap-figure">
-        <Silhouette regions={FRONT} impacts={byGroup} />
+        <Silhouette regions={FRONT} values={byGroup} />
         <p className="muted">Frente</p>
       </div>
       <div className="bodymap-figure">
-        <Silhouette regions={BACK} impacts={byGroup} />
+        <Silhouette regions={BACK} values={byGroup} />
         <p className="muted">Espalda</p>
       </div>
-      <div className="bodymap-legend">
-        {impacts.map((item) => (
-          <span key={item.muscleGroup} className="chip">
-            {translateMuscleGroup(item.muscleGroup)} · {Math.round(item.activation * 100)}%
-          </span>
-        ))}
-      </div>
+      {showLegend && (
+        <div className="bodymap-legend">
+          {points.map((item) => (
+            <span key={item.muscleGroup} className="chip">
+              {translateMuscleGroup(item.muscleGroup)} · {Math.round(item.value * 100)}%
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

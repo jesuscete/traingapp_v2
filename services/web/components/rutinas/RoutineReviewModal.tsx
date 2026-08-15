@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { RadarChart } from "@/components/RadarChart";
+import { MuscleChart } from "@/components/MuscleChart";
 import { MuscleFatigueMini } from "@/components/gym/MuscleFatigueMini";
 import { api } from "@/lib/api";
 import {
@@ -109,9 +109,20 @@ export function RoutineReviewModal({
             <div className="review-radar">
               <h3>Equilibrio muscular semanal</h3>
               <div className="muscle-grid">
-                {stats.radar.length >= 3 && (
+                {(stats.radar.length >= 3 || stats.impacts.length > 0) && (
                   <div className="muscle-radar">
-                    <RadarChart size={360} showLabels data={stats.radar} />
+                    <MuscleChart
+                      size={360}
+                      showRadarLabels
+                      radarData={stats.radar.map(({ label, value }) => ({
+                        label,
+                        value,
+                      }))}
+                      bodyPoints={stats.impacts.map(({ muscleGroup, activation }) => ({
+                        muscleGroup,
+                        value: activation,
+                      }))}
+                    />
                   </div>
                 )}
                 <MuscleFatigueMini impacts={stats.impacts} />

@@ -63,6 +63,30 @@ _MUSCLE_KEYWORDS: dict[str, tuple[str, ...]] = {
     "core": ("plancha", "crunches", "russian twist", "elevacion de piernas"),
 }
 
+# Ejercicios de potencia/explosividad (rendimiento deportivo). Se priorizan en
+# los dias de gimnasio cuando el objetivo es performance y hay deporte.
+_EXPLOSIVE_KEYWORDS: tuple[str, ...] = (
+    "press empujadora",
+    "landmine press",
+    "cargada de potencia",
+    "balanceo con kettlebell",
+    "saltos al cajon",
+    "saltos verticales",
+    "lanzamiento de balon medicinal",
+)
+
+# Clasificacion muscular extra para los ejercicios explosivos del catalogo
+# (subcadenas sobre el nombre normalizado).
+_EXPLOSIVE_MUSCLES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("press empujadora", ("shoulders", "triceps", "chest")),
+    ("landmine press", ("shoulders", "core", "triceps", "chest")),
+    ("cargada de potencia", ("back", "legs", "shoulders", "core")),
+    ("balanceo con kettlebell", ("legs", "back", "core")),
+    ("saltos al cajon", ("legs", "core")),
+    ("saltos verticales", ("legs", "core")),
+    ("lanzamiento de balon medicinal", ("core", "shoulders", "chest")),
+)
+
 # (id, name, [muscle groups por dia de gym])
 _SPLIT_TEMPLATES: dict[str, tuple[str, tuple[tuple[str, ...], ...]]] = {
     "fullbody_1": ("Fullbody 1 día", (("legs", "chest", "back", "shoulders", "core"),)),
@@ -145,10 +169,21 @@ _SPLIT_TEMPLATES: dict[str, tuple[str, tuple[tuple[str, ...], ...]]] = {
     ),
 }
 
-# Objetivo -> (repeticiones min, max) objetivo por serie.
-_REPS_RANGES: dict[str, tuple[int, int]] = {
-    "aesthetic": (10, 15),
-    "performance": (6, 10),
+# Objetivo -> protocolo (series, reps min, max, descanso s) para ejercicios
+# principales (grupos del split) y de apoyo (refuerzo al deporte).
+_MAIN_PROTOCOL: dict[str, tuple[int, int, int, int]] = {
+    "aesthetic": (3, 10, 15, 90),
+    "performance": (3, 6, 10, 120),
+}
+_SUPPORT_PROTOCOL: dict[str, tuple[int, int, int, int]] = {
+    "aesthetic": (3, 12, 15, 60),
+    "performance": (3, 10, 15, 60),
+}
+
+# Protocolo para ejercicios de potencia/explosividad (series, reps min, max, descanso s).
+_POWER_PROTOCOL: dict[str, tuple[int, int, int, int]] = {
+    "aesthetic": (3, 6, 10, 90),
+    "performance": (3, 3, 6, 120),
 }
 
 # Palabras clave del deporte -> grupos de apoyo.
@@ -207,7 +242,15 @@ def _muscle_groups(name: str) -> set[str]:
         for keyword in keywords:
             if keyword in normalized:
                 groups.add(group)
+    for keyword, extra in _EXPLOSIVE_MUSCLES:
+        if keyword in normalized:
+            groups.update(extra)
     return groups
+
+
+def _is_explosive(name: str) -> bool:
+    normalized = normalize_name(name)
+    return any(keyword in normalized for keyword in _EXPLOSIVE_KEYWORDS)
 
 
 def _occupied_days(sports: list[SportIn]) -> set[int]:
@@ -251,15 +294,44 @@ def _pick_exercises(
     index: dict[str, tuple[str, set[str]]],
     groups: tuple[str, ...],
     needed: int,
+    offset: int = 0,
+    exclude: set[str] | None = None,
 ) -> list[str]:
-    """Toma hasta `needed` ejercicios del catalogo que cubran los grupos dados."""
-    chosen: list[str] = []
-    for norm, (display, muscle_groups) in index.items():
-        if len(chosen) >= needed:
-            break
-        if any(group in muscle_groups for group in groups):
-            chosen.append(display)
-    return chosen
+    """Toma hasta `needed` ejercicios del catalogo que cubran los grupos dados.
+
+    - `offset`: rotacion sobre el orden del catalogo para variar entre dias.
+    - `exclude`: nombres normalizados a evitar; si no hay suficientes sin excluir,
+      se reciclan los excluidos para no dejar el dia incompleto.
+    Los ejercicios de potencia/explosividad se omiten aqui: solo se incluyen de
+    forma explicita en dias de gimnasio con perfil de rendimiento deportivo.
+    """
+    items = list(index.items())
+    if not items:
+        return []
+    n = len(items)
+    ordered = [items[(i + offset) % n] for i in range(n)]
+
+    def matches(norm: str, display: str, muscle_groups: set[str]) -> bool:
+        if _is_explosive(display):
+            return False
+        if exclude and norm in exclude:
+            return False
+        return any(group in muscle_groups for group in groups)
+
+    fresh = [
+        display
+        for norm, (display, muscle_groups) in ordered
+        if matches(norm, display, muscle_groups)
+    ]
+    if len(fresh) < needed and exclude:
+        recycled = [
+            display
+            for norm, (display, muscle_groups) in ordered
+            if norm in exclude and not _is_explosive(display)
+            and any(group in muscle_groups for group in groups)
+        ]
+        fresh = fresh + recycled
+    return fresh[:needed]
 
 
 def suggest_splits_stub(
@@ -350,6 +422,20 @@ def _support_for(sports: list[SportIn], goal: str) -> list[str]:
     return groups
 
 
+def _sets_for(
+    protocol: tuple[int, int, int, int],
+) -> list[PlanSetTarget]:
+    series, reps_min, reps_max, rest = protocol
+    return [
+        PlanSetTarget(
+            target_reps_min=reps_min,
+            target_reps_max=reps_max,
+            target_rest_seconds=rest,
+        )
+        for _ in range(series)
+    ]
+
+
 def generate_plan_stub(
     sports: list[SportIn],
     gym_days: int,
@@ -358,6 +444,11 @@ def generate_plan_stub(
     catalog: list[str],
 ) -> PlanResponse:
     index, _ = _build_catalog_index(catalog)
+    explosive = [
+        display
+        for _norm, (display, _muscle_groups) in index.items()
+        if _is_explosive(display)
+    ]
     occupied = _occupied_days(sports)
     free_days = [day for day in range(1, 8) if day not in occupied]
     gym_days = min(gym_days, len(free_days))
@@ -371,9 +462,15 @@ def generate_plan_stub(
 
     assignments = _assign_gym_days(occupied, template_slots)
     support = _support_for(sports, goal)
-    reps_min, reps_max = _REPS_RANGES.get(goal, _REPS_RANGES["aesthetic"])
+    add_power = goal == "performance" and bool(sports) and bool(explosive)
+    main_protocol = _MAIN_PROTOCOL.get(goal, _MAIN_PROTOCOL["aesthetic"])
+    support_protocol = _SUPPORT_PROTOCOL.get(goal, _SUPPORT_PROTOCOL["aesthetic"])
+    power_protocol = _POWER_PROTOCOL.get(goal, _POWER_PROTOCOL["aesthetic"])
 
     days: list[PlanDay] = []
+    gym_slot_index = 0
+    used_main: set[str] = set()
+    used_support: set[str] = set()
     for day_of_week in range(1, 8):
         if day_of_week in occupied:
             sport = next(
@@ -397,33 +494,62 @@ def generate_plan_stub(
         )
         if gym_day is not None:
             groups = gym_day[1]
+
+            power_picks: list[str] = []
+            if add_power:
+                for i in range(min(2, len(explosive))):
+                    pick = explosive[(gym_slot_index * 2 + i) % len(explosive)]
+                    if normalize_name(pick) not in {
+                        normalize_name(p) for p in power_picks
+                    }:
+                        power_picks.append(pick)
+
+            main_needed = 3 if add_power else 4
+            support_needed = 1 if add_power else 2
+            main_picks = _pick_exercises(
+                index,
+                groups,
+                main_needed,
+                offset=gym_slot_index * 3,
+                exclude=used_main,
+            )
+            used_main.update(normalize_name(name) for name in main_picks)
+
             exercises = [
-                PlanExercise(
-                    name=name,
-                    sets=[
-                        PlanSetTarget(
-                            target_reps_min=reps_min,
-                            target_reps_max=reps_max,
-                            target_rest_seconds=90,
-                        )
-                    ],
-                )
-                for name in _pick_exercises(index, groups, 4)
+                PlanExercise(name=name, sets=_sets_for(main_protocol))
+                for name in main_picks
             ]
             if support:
-                for name in _pick_exercises(index, tuple(support), 2):
-                    exercises.append(
-                        PlanExercise(
-                            name=name,
-                            sets=[
-                                PlanSetTarget(
-                                    target_reps_min=reps_min,
-                                    target_reps_max=reps_max,
-                                    target_rest_seconds=60,
-                                )
-                            ],
-                        )
-                    )
+                support_picks = _pick_exercises(
+                    index,
+                    tuple(support),
+                    support_needed,
+                    offset=gym_slot_index,
+                    exclude=used_support | used_main,
+                )
+                used_support.update(
+                    normalize_name(name) for name in support_picks
+                )
+                exercises.extend(
+                    PlanExercise(name=name, sets=_sets_for(support_protocol))
+                    for name in support_picks
+                )
+            if power_picks:
+                exercises = [
+                    PlanExercise(name=name, sets=_sets_for(power_protocol))
+                    for name in power_picks
+                ] + exercises
+            # Red de seguridad: sin duplicados dentro del mismo dia.
+            seen: set[str] = set()
+            unique_exercises: list[PlanExercise] = []
+            for exercise in exercises:
+                key = normalize_name(exercise.name)
+                if key in seen:
+                    continue
+                seen.add(key)
+                unique_exercises.append(exercise)
+            exercises = unique_exercises
+            gym_slot_index += 1
             days.append(
                 PlanDay(
                     day_of_week=day_of_week,
@@ -441,10 +567,15 @@ def generate_plan_stub(
             )
         )
 
-    name_parts = [split_id or "fullbody", goal]
-    if sports:
-        name_parts.append("+ deporte")
+    template_name = _SPLIT_TEMPLATES.get(split_id or "", ("Fullbody", ()))[0]
+    sports_name = " + ".join(sport.name for sport in sports)
+    if split_id is None:
+        name = sports_name or "Fullbody"
+    elif sports_name:
+        name = f"{template_name} - {sports_name}"
+    else:
+        name = template_name
     return PlanResponse(
-        name="Plan " + " · ".join(part.replace("_", " ") for part in name_parts),
+        name=name,
         days=days,
     )

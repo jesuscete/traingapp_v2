@@ -33,6 +33,7 @@ from app.chat.conversation import (
 )
 from app.core.config import settings
 from app.core.plan import fetch_plan_generate, fetch_plan_splits
+from app.crud import prompt as prompt_crud
 from app.crud import routine as routine_crud
 from app.crud.catalog import CatalogExercise, catalog_lookup
 from app.models import Discipline, Routine
@@ -123,6 +124,13 @@ _SPORT_DISPLAY: dict[str, str] = {
 def _display_sport_name(raw: str) -> str:
     normalized = normalize_exercise_name(raw)
     return _SPORT_DISPLAY.get(normalized, raw.strip())
+
+
+def _title_case(name: str) -> str:
+    """'boxeo' -> 'Boxeo'; 'artes marciales' -> 'Artes marciales'."""
+    if not name:
+        return name
+    return name[0].upper() + name[1:]
 
 
 _SPLIT_QUESTION = (
@@ -417,6 +425,28 @@ def _pick_split(options: list[dict[str, object]], choice: str | None) -> str | N
             option_id = option.get("id")
             return option_id if isinstance(option_id, str) else None
     return first_id if isinstance(first_id, str) else None
+
+
+def _split_display_name(
+    options: list[dict[str, object]], split_id: str | None
+) -> str | None:
+    if split_id is None:
+        return None
+    for option in options:
+        if option.get("id") == split_id:
+            name = option.get("name")
+            return name.strip() if isinstance(name, str) and name.strip() else None
+    return None
+
+
+def _plan_display_name(sports: list["SportAnswer"], split_name: str | None) -> str:
+    """Nombre de la rutina: 'Split - Deporte' (p. ej. 'Push / Pull / Pierna - Boxeo')."""
+    if sports:
+        sports_name = " + ".join(_title_case(sport.name) for sport in sports)
+        if split_name:
+            return f"{split_name} - {sports_name}"
+        return sports_name
+    return split_name or "Plan de gimnasio"
 
 
 def _goal_for(plan: "PlanSession") -> str:
@@ -765,25 +795,46 @@ async def _generate_and_summarize(
     plan: PlanSession,
 ) -> PlanResult:
     split_id: str | None = None
+    split_name: str | None = None
     if plan.gym_days and plan.gym_days > 0:
         options = await fetch_plan_splits(
             [sport.to_dict() for sport in plan.sports], plan.gym_days
         )
         split_id = _pick_split(options, plan.split_choice)
+        split_name = _split_display_name(options, split_id)
     goal = _goal_for(plan)
     catalog = await catalog_lookup(session)
-    names = [entry.name for entry in catalog.values()]
+    names = [
+        entry.name
+        for entry in catalog.values()
+        if entry.curated
+    ]
+    disciplines = await routine_crud.list_disciplines(session)
+    disciplines_map = {
+        discipline.normalized_name: discipline for discipline in disciplines
+    }
+    discipline_names = []
+    for sport in plan.sports:
+        discipline = _resolve_discipline(sport.name, disciplines_map)
+        if discipline is not None:
+            discipline_names.append(discipline.normalized_name)
+    training_prompt = await prompt_crud.resolve_training_prompt(
+        session, discipline_names
+    )
+    system_prompt = (
+        training_prompt.system_prompt.replace("{perfil}", training_prompt.name)
+        if training_prompt is not None
+        else None
+    )
     data = await fetch_plan_generate(
         [sport.to_dict() for sport in plan.sports],
         plan.gym_days or 0,
         split_id,
         goal,
         names,
+        system_prompt=system_prompt,
     )
-    disciplines = await routine_crud.list_disciplines(session)
-    disciplines_map = {
-        discipline.normalized_name: discipline for discipline in disciplines
-    }
+    data["name"] = _plan_display_name(plan.sports, split_name)
     plan.plan = _build_summary(data, catalog, disciplines_map)
     plan.step = "summary"
     await _persist(redis, user_id, plan)

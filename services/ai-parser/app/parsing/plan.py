@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from collections.abc import Mapping
 
 from app.llm.base import LLMProvider
 from app.parsing.plan_stub import normalize_name
@@ -75,6 +76,18 @@ def _sport_discipline(name: str) -> str:
     return normalize_name(name)
 
 
+def _apply_placeholders(template: str, values: Mapping[str, str]) -> str:
+    """Rellena placeholders conocidos dejando intacto el resto de llaves.
+
+    Usa sustitucion directa en vez de `str.format_map` porque las plantillas
+    de perfil contienen llaves literales (ejemplos JSON tipo `{...}`) que
+    harian saltar a `format` ("Format string contains positional fields").
+    """
+    for key, value in values.items():
+        template = template.replace("{" + key + "}", value)
+    return template
+
+
 async def suggest_splits_with_llm(
     provider: LLMProvider, sports: list[SportIn], gym_days: int
 ) -> SplitResponse:
@@ -130,6 +143,7 @@ async def generate_plan_with_llm(
     split_id: str | None,
     goal: str,
     catalog: list[str],
+    system_prompt: str | None = None,
 ) -> PlanResponse:
     occupied = set()
     for sport in sports:
@@ -154,7 +168,33 @@ async def generate_plan_with_llm(
         ensure_ascii=False,
         indent=2,
     )
-    content = await provider.complete(PLAN_SYSTEM_PROMPT, user_prompt)
+    system = system_prompt or PLAN_SYSTEM_PROMPT
+    if system_prompt:
+        system = _apply_placeholders(
+            system_prompt,
+            {
+                "deportes": json.dumps(
+                    [
+                        {
+                            "nombre": sport.name,
+                            "dias": sport.days,
+                            "duracionMin": sport.duration_min,
+                        }
+                        for sport in sports
+                    ],
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                "dias_gimnasio": str(gym_days),
+                "dias_libres": json.dumps(free_days),
+                "objetivo": goal,
+                "split": split_id or "no definido",
+                "catalogo_ejercicios": json.dumps(
+                    catalog, ensure_ascii=False, indent=2
+                ),
+            },
+        )
+    content = await provider.complete(system, user_prompt)
     data = _parse_json(content)
     return _plan_from(data, catalog, sports)
 

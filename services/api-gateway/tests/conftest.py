@@ -98,6 +98,47 @@ def seed_disciplines(db_session_factory: async_sessionmaker[AsyncSession]) -> No
     asyncio.run(run())
 
 
+@pytest.fixture
+def seed_prompts(db_session_factory: async_sessionmaker[AsyncSession]) -> None:
+    from sqlalchemy import select
+
+    from app.analytics.prompt_seed import DISCIPLINE_PROMPT_SEED, TRAINING_PROMPT_SEED
+    from app.models import Discipline, DisciplineTrainingPrompt, TrainingPrompt
+
+    async def run() -> None:
+        async with db_session_factory() as session:
+            prompts: dict[str, TrainingPrompt] = {}
+            for code, name, description, is_default, system_prompt in TRAINING_PROMPT_SEED:
+                prompt = TrainingPrompt(
+                    code=code,
+                    name=name,
+                    description=description,
+                    system_prompt=system_prompt,
+                    is_default=is_default,
+                    active=True,
+                )
+                session.add(prompt)
+                prompts[code] = prompt
+            await session.flush()
+            disciplines = (await session.execute(select(Discipline))).scalars().all()
+            by_name = {
+                discipline.normalized_name: discipline for discipline in disciplines
+            }
+            for discipline_name, prompt_code in DISCIPLINE_PROMPT_SEED:
+                discipline = by_name.get(discipline_name)
+                if discipline is None:
+                    continue
+                session.add(
+                    DisciplineTrainingPrompt(
+                        discipline_id=discipline.id,
+                        training_prompt_id=prompts[prompt_code].id,
+                    )
+                )
+            await session.commit()
+
+    asyncio.run(run())
+
+
 
 
 class FakeRedis:

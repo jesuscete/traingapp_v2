@@ -7,7 +7,7 @@ from app.core.config import settings
 
 async def fetch_draft(raw_text: str) -> dict[str, object]:
     request_id = str(uuid.uuid4())
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=60) as client:
         response = await client.post(
             f"{settings.ai_parser_url.rstrip('/')}/parse",
             json={"requestId": request_id, "rawText": raw_text},

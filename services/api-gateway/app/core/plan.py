@@ -12,7 +12,7 @@ from app.core.config import settings
 async def fetch_plan_splits(
     sports: list[dict[str, object]], gym_days: int
 ) -> list[dict[str, object]]:
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=120) as client:
         response = await client.post(
             f"{settings.ai_parser_url.rstrip('/')}/plan/splits",
             json={
@@ -39,8 +39,9 @@ async def fetch_plan_generate(
     split_id: str | None,
     goal: str,
     catalog: list[str],
+    system_prompt: str | None = None,
 ) -> dict[str, object]:
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=360) as client:
         response = await client.post(
             f"{settings.ai_parser_url.rstrip('/')}/plan/generate",
             json={
@@ -56,6 +57,7 @@ async def fetch_plan_generate(
                 "splitId": split_id,
                 "goal": goal,
                 "catalog": catalog,
+                "systemPrompt": system_prompt,
             },
         )
         response.raise_for_status()

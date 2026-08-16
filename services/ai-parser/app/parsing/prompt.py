@@ -1,14 +1,20 @@
+from datetime import UTC, datetime
+
 from app.schemas.parse import DISCIPLINES
 
 _DISCIPLINE_ENUM = "|".join(DISCIPLINES)
 
-SYSTEM_PROMPT = f"""Eres un extractor de datos de entrenamiento. Devuelve SOLO JSON valido,
+
+def build_system_prompt() -> str:
+    hoy = datetime.now(UTC).strftime("%Y-%m-%d")
+    return f"""Eres un extractor de datos de entrenamiento. Devuelve SOLO JSON valido,
 sin texto adicional, sin markdown, sin comillas.
 
 Esquema JSON estricto:
 {{
   "discipline": "{_DISCIPLINE_ENUM}",
-  "performedAt": "ISO-8601 UTC (YYYY-MM-DDTHH:MM:SSZ); si el texto no indica fecha, usa la actual",
+  "performedAt": "ISO-8601 UTC (YYYY-MM-DDTHH:MM:SSZ); HOY es {hoy}; "
+  "si el texto no indica fecha, usa HOY",
   "durationMinutes": int | null,
   "suggestedRpe": float 1-10 (percepcion de esfuerzo de la sesion) | null,
   "exercises": [

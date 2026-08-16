@@ -22,6 +22,7 @@ import type {
 type DraftSet = {
   setNumber: number;
   targetRepsMin: number | null;
+  targetRepsMax: number | null;
   targetWeightKg: number | null;
 };
 
@@ -40,6 +41,17 @@ type DraftDay = {
   exercises: DraftExercise[];
 };
 
+function formatReps(workoutSet: DraftSet): string {
+  if (workoutSet.targetRepsMin == null) return "—";
+  if (
+    workoutSet.targetRepsMax != null &&
+    workoutSet.targetRepsMax !== workoutSet.targetRepsMin
+  ) {
+    return `${workoutSet.targetRepsMin}–${workoutSet.targetRepsMax}`;
+  }
+  return String(workoutSet.targetRepsMin);
+}
+
 function toDraftDay(day: RoutineDay): DraftDay {
   return {
     dayOfWeek: day.dayOfWeek,
@@ -54,6 +66,7 @@ function toDraftDay(day: RoutineDay): DraftDay {
       sets: exercise.sets.map((workoutSet) => ({
         setNumber: workoutSet.setNumber,
         targetRepsMin: workoutSet.targetRepsMin,
+        targetRepsMax: workoutSet.targetRepsMax,
         targetWeightKg: null,
       })),
     })),
@@ -93,7 +106,7 @@ function dayToInput(day: DraftDay): RoutineDayInput {
             setNumber: workoutSet.setNumber,
             setType: "normal",
             targetRepsMin: workoutSet.targetRepsMin,
-            targetRepsMax: null,
+            targetRepsMax: workoutSet.targetRepsMax,
             targetRestSeconds: null,
           })),
         }))
@@ -145,6 +158,7 @@ export function RoutineEditor({ token, routine, onSaved, onCancel }: Props) {
         sets: item.sets.map((workoutSet) => ({
           setNumber: workoutSet.setNumber,
           targetRepsMin: workoutSet.reps,
+          targetRepsMax: null,
           targetWeightKg: workoutSet.weightKg,
         })),
       })),
@@ -379,7 +393,7 @@ export function RoutineEditor({ token, routine, onSaved, onCancel }: Props) {
                       {exercise.sets.map((workoutSet) => (
                         <tr key={workoutSet.setNumber}>
                           <td>{workoutSet.setNumber}</td>
-                          <td>{workoutSet.targetRepsMin ?? "—"}</td>
+                          <td>{formatReps(workoutSet)}</td>
                           <td>{workoutSet.targetWeightKg ?? "—"}</td>
                         </tr>
                       ))}

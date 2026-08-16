@@ -4,7 +4,7 @@ import re
 from datetime import UTC, datetime
 
 from app.llm.base import LLMProvider
-from app.parsing.prompt import SYSTEM_PROMPT
+from app.parsing.prompt import build_system_prompt
 from app.schemas.parse import DISCIPLINES, ExerciseDraft, ParseResponse
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 
 
 async def parse_with_llm(provider: LLMProvider, raw_text: str) -> ParseResponse:
-    content = await provider.complete(SYSTEM_PROMPT, raw_text)
+    content = await provider.complete(build_system_prompt(), raw_text)
     match = _JSON_OBJECT.search(content)
     if match is None:
         raise ValueError("LLM response contained no JSON object")

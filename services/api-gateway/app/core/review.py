@@ -12,7 +12,7 @@ from app.core.config import settings
 async def fetch_routine_review(
     routine_name: str, payload: list[dict[str, object]]
 ) -> dict[str, object]:
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=300) as client:
         response = await client.post(
             f"{settings.ai_parser_url.rstrip('/')}/analyze/routine",
             json={"routineName": routine_name, "payload": payload},

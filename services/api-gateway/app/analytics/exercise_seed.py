@@ -247,4 +247,61 @@ EXERCISE_CATALOG_SEED: list[dict[str, object]] = [
         "exercise_type": "gym",
         "muscles": {"core": 0.80, "quadriceps": 0.20},
     },
+    # --- Potencia / explosividad (rendimiento deportivo) ---
+    {
+        "name": "Press empujadora",
+        "normalized_name": "press empujadora",
+        "exercise_type": "gym",
+        "muscles": {"shoulders": 0.50, "triceps": 0.25, "chest": 0.15, "core": 0.10},
+    },
+    {
+        "name": "Landmine press",
+        "normalized_name": "landmine press",
+        "exercise_type": "gym",
+        "muscles": {"shoulders": 0.45, "core": 0.25, "triceps": 0.20, "chest": 0.10},
+    },
+    {
+        "name": "Cargada de potencia",
+        "normalized_name": "cargada de potencia",
+        "exercise_type": "gym",
+        "muscles": {
+            "back": 0.35,
+            "quadriceps": 0.25,
+            "glutes": 0.20,
+            "shoulders": 0.10,
+            "core": 0.10,
+        },
+    },
+    {
+        "name": "Balanceo con kettlebell",
+        "normalized_name": "balanceo con kettlebell",
+        "exercise_type": "gym",
+        "muscles": {"glutes": 0.35, "hamstrings": 0.30, "back": 0.20, "core": 0.15},
+    },
+    {
+        "name": "Saltos al cajón",
+        "normalized_name": "saltos al cajon",
+        "exercise_type": "gym",
+        "uses_bodyweight": True,
+        "muscles": {"quadriceps": 0.45, "glutes": 0.25, "calves": 0.20, "core": 0.10},
+    },
+    {
+        "name": "Saltos verticales",
+        "normalized_name": "saltos verticales",
+        "exercise_type": "gym",
+        "uses_bodyweight": True,
+        "muscles": {"quadriceps": 0.50, "glutes": 0.25, "calves": 0.15, "core": 0.10},
+    },
+    {
+        "name": "Lanzamiento de balón medicinal",
+        "normalized_name": "lanzamiento de balon medicinal",
+        "exercise_type": "gym",
+        "muscles": {"core": 0.40, "shoulders": 0.20, "chest": 0.20, "triceps": 0.20},
+    },
+    {
+        "name": "Sprints",
+        "normalized_name": "sprints",
+        "exercise_type": "sport",
+        "muscles": {"quadriceps": 0.35, "hamstrings": 0.30, "glutes": 0.20, "calves": 0.15},
+    },
 ]

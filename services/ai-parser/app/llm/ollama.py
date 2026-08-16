@@ -25,6 +25,8 @@ class OllamaProvider:
                     "model": self._model,
                     "stream": False,
                     "format": "json",
+                    "think": False,
+                    "options": {"num_ctx": settings.llm_context_length},
                     "messages": [
                         {"role": "system", "content": system},
                         {"role": "user", "content": user},

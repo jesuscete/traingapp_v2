@@ -3,6 +3,7 @@ import logging
 import re
 from typing import cast
 
+from app.core.config import settings
 from app.llm.base import LLMProvider
 from app.schemas.review import RoutineReviewResponse, Solapamiento
 
@@ -78,7 +79,11 @@ def _list_of_solapamientos(value: object) -> list[Solapamiento]:
 async def review_routine_with_llm(
     provider: LLMProvider, payload: list[dict[str, object]]
 ) -> RoutineReviewResponse:
-    content = await provider.complete(SYSTEM_PROMPT, build_user_prompt(payload))
+    content = await provider.complete(
+        SYSTEM_PROMPT,
+        build_user_prompt(payload),
+        max_tokens=settings.llm_review_max_tokens,
+    )
     match = _JSON_OBJECT.search(content)
     if match is None:
         raise ValueError("LLM response contained no JSON object")

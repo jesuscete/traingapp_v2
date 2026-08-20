@@ -3,8 +3,17 @@ import asyncio
 from app.llm.base import LLMProvider
 from app.parsing.plan import generate_plan_with_llm, suggest_splits_with_llm
 from app.parsing.plan_service import generate_plan, suggest_splits
-from app.parsing.plan_stub import generate_plan_stub, suggest_splits_stub
-from app.schemas.plan import PlanGenerateIn, SportIn
+from app.parsing.plan_stub import (
+    _is_explosive,
+    generate_plan_stub,
+    suggest_splits_stub,
+)
+from app.schemas.plan import (
+    PlanGenerateIn,
+    PlanResponse,
+    PlanSetTarget,
+    SportIn,
+)
 
 _CATALOG = [
     "Press banca",
@@ -17,6 +26,13 @@ _CATALOG = [
     "Push down",
     "Plancha",
     "Russian twist",
+    "Press empujadora",
+    "Landmine press",
+    "Cargada de potencia",
+    "Balanceo con kettlebell",
+    "Saltos al cajón",
+    "Saltos verticales",
+    "Lanzamiento de balón medicinal",
 ]
 
 _SPORTS = [SportIn(name="Boxeo", days=[1, 3], duration_min=60)]
@@ -89,6 +105,97 @@ def test_generate_plan_stub_caps_gym_to_free_days() -> None:
     assert len(gym_days) <= 5
 
 
+def test_generate_plan_stub_name_split_and_sport() -> None:
+    result = generate_plan_stub(_SPORTS, 3, "push_pull_legs", "performance", _CATALOG)
+    assert result.name == "Push / Pull / Pierna - Boxeo"
+
+
+def test_generate_plan_stub_name_split_only() -> None:
+    result = generate_plan_stub([], 3, "push_pull_legs", "aesthetic", _CATALOG)
+    assert result.name == "Push / Pull / Pierna"
+
+
+def test_generate_plan_stub_name_sport_only() -> None:
+    result = generate_plan_stub(_SPORTS, 0, None, "performance", _CATALOG)
+    assert result.name == "Boxeo"
+
+
+def test_generate_plan_stub_three_sets() -> None:
+    result = generate_plan_stub(_SPORTS, 3, "push_pull_legs", "performance", _CATALOG)
+    gym_days = [day for day in result.days if day.day_type == "gimnasio"]
+    assert gym_days
+    for day in gym_days:
+        assert day.exercises
+        for exercise in day.exercises:
+            assert len(exercise.sets) == 3
+
+
+def test_generate_plan_stub_protocol_by_goal() -> None:
+    performance = generate_plan_stub(
+        _SPORTS, 3, "push_pull_legs", "performance", _CATALOG
+    )
+    aesthetic = generate_plan_stub(_SPORTS, 3, "push_pull_legs", "aesthetic", _CATALOG)
+
+    def first_main(plan: PlanResponse) -> PlanSetTarget:
+        for day in plan.days:
+            if day.day_type != "gimnasio":
+                continue
+            for exercise in day.exercises:
+                if _is_explosive(exercise.name):
+                    continue
+                return exercise.sets[0]
+        raise AssertionError("no main exercise")
+
+    perf_main = first_main(performance)
+    aest_main = first_main(aesthetic)
+    assert (perf_main.target_reps_min, perf_main.target_reps_max) == (6, 10)
+    assert (aest_main.target_reps_min, aest_main.target_reps_max) == (10, 15)
+
+
+def test_generate_plan_stub_adds_explosive_for_power() -> None:
+    result = generate_plan_stub(_SPORTS, 3, "push_pull_legs", "performance", _CATALOG)
+    gym_days = [day for day in result.days if day.day_type == "gimnasio"]
+    assert gym_days
+    for day in gym_days:
+        assert day.exercises
+        assert any(_is_explosive(exercise.name) for exercise in day.exercises)
+
+
+def test_generate_plan_stub_no_explosive_aesthetic() -> None:
+    result = generate_plan_stub(_SPORTS, 3, "push_pull_legs", "aesthetic", _CATALOG)
+    for day in result.days:
+        for exercise in day.exercises:
+            assert not _is_explosive(exercise.name)
+
+
+def test_generate_plan_stub_no_explosive_without_sports() -> None:
+    result = generate_plan_stub([], 3, "push_pull_legs", "performance", _CATALOG)
+    for day in result.days:
+        for exercise in day.exercises:
+            assert not _is_explosive(exercise.name)
+
+
+def test_generate_plan_stub_caps_six_exercises_per_day() -> None:
+    result = generate_plan_stub(_SPORTS, 3, "push_pull_legs", "performance", _CATALOG)
+    for day in result.days:
+        assert len(day.exercises) <= 6
+
+
+def test_generate_plan_stub_varies_exercises_across_days() -> None:
+    result = generate_plan_stub(
+        _SPORTS, 4, "torso_pierna_2x", "performance", _CATALOG
+    )
+    gym_days = [day for day in result.days if day.day_type == "gimnasio"]
+    assert len(gym_days) >= 2
+    exercise_sets = [
+        tuple(exercise.name for exercise in day.exercises) for day in gym_days
+    ]
+    assert len(set(exercise_sets)) == len(exercise_sets)
+    for day in gym_days:
+        names = [exercise.name for exercise in day.exercises]
+        assert len(set(names)) == len(names)
+
+
 def test_generate_plan_with_llm_json() -> None:
     result = asyncio.run(
         generate_plan_with_llm(
@@ -107,6 +214,37 @@ def test_generate_plan_with_llm_json() -> None:
         "Remo con barra",
     ]
     assert gym.exercises[0].sets[0].target_reps_max == 12
+
+
+def test_generate_plan_with_llm_profile_prompt_with_literal_braces() -> None:
+    class CapturingProvider(FakeProvider):
+        def __init__(self) -> None:
+            super().__init__()
+            self.seen: str | None = None
+
+        async def complete(self, system: str, user: str) -> str:
+            self.seen = system
+            return self._content
+
+    profile = (
+        "Eres un entrenador de explosividad. Objetivo: {objetivo}. "
+        'Devuelve JSON: {"dayOfWeek": 1, "dayType": "gimnasio", '
+        '"exercises": [{"name": "Saltos", "sets": [{...}]}]}. '
+        "Catalogo: {catalogo_ejercicios}"
+    )
+    provider = CapturingProvider()
+    result = asyncio.run(
+        generate_plan_with_llm(
+            provider, _SPORTS, 3, None, "performance", _CATALOG,
+            system_prompt=profile,
+        )
+    )
+    assert result.name == "Plan boxeo + gym"
+    assert provider.seen is not None
+    assert "{objetivo}" not in provider.seen
+    assert "{catalogo_ejercicios}" not in provider.seen
+    assert "performance" in provider.seen
+    assert "Press banca" in provider.seen
 
 
 def test_generate_plan_with_llm_fenced_json() -> None:
@@ -152,6 +290,30 @@ def test_generate_plan_falls_back_to_stub(monkeypatch) -> None:
     result = asyncio.run(generate_plan(body))
     assert result.days
     assert any(day.day_type == "deporte" for day in result.days)
+
+
+def test_generate_plan_empty_llm_plan_falls_back_to_stub(monkeypatch) -> None:
+    from app.llm import factory
+
+    monkeypatch.setattr(
+        factory, "get_provider", lambda: FakeProvider('{"name":"x","days":[]}')
+    )
+    body = PlanGenerateIn(
+        sports=_SPORTS,
+        gym_days=3,
+        split_id="push_pull_legs",
+        goal="performance",
+        catalog=_CATALOG,
+    )
+    result = asyncio.run(generate_plan(body))
+    assert result.days
+    gym_days = [day for day in result.days if day.day_type == "gimnasio"]
+    assert gym_days
+    assert all(day.exercises for day in gym_days)
+    assert all(
+        any(_is_explosive(exercise.name) for exercise in day.exercises)
+        for day in gym_days
+    )
 
 
 def test_generate_plan_no_provider_uses_stub(monkeypatch) -> None:

@@ -17,7 +17,16 @@ class OllamaProvider:
         self._model = model
         self._timeout = timeout
 
-    async def complete(self, system: str, user: str) -> str:
+    async def complete(
+        self,
+        system: str,
+        user: str,
+        *,
+        max_tokens: int | None = None,
+    ) -> str:
+        options: dict[str, object] = {"num_ctx": settings.llm_context_length}
+        if max_tokens is not None:
+            options["num_predict"] = max_tokens
         async with httpx.AsyncClient(timeout=self._timeout) as client:
             response = await client.post(
                 f"{self._url}/api/chat",
@@ -25,6 +34,8 @@ class OllamaProvider:
                     "model": self._model,
                     "stream": False,
                     "format": "json",
+                    "think": False,
+                    "options": options,
                     "messages": [
                         {"role": "system", "content": system},
                         {"role": "user", "content": user},

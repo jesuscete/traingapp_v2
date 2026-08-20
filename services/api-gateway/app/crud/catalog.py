@@ -13,6 +13,7 @@ class CatalogExercise:
     name: str
     uses_bodyweight: bool
     unilateral: bool
+    curated: bool = False
 
 
 async def catalog_lookup(session: AsyncSession) -> dict[str, CatalogExercise]:
@@ -24,6 +25,7 @@ async def catalog_lookup(session: AsyncSession) -> dict[str, CatalogExercise]:
             name=row.name,
             uses_bodyweight=row.uses_bodyweight,
             unilateral=row.unilateral,
+            curated=row.details is None,
         )
         for row in result.scalars().all()
     }

@@ -41,11 +41,23 @@ class FakeProvider(LLMProvider):
     def __init__(self, content: str = _GOOD_JSON, *, error: bool = False) -> None:
         self._content = content
         self._error = error
+        self.last_max_tokens: int | None = None
 
-    async def complete(self, system: str, user: str) -> str:
+    async def complete(
+        self, system: str, user: str, *, max_tokens: int | None = None
+    ) -> str:
+        self.last_max_tokens = max_tokens
         if self._error:
             raise RuntimeError("provider boom")
         return self._content
+
+
+def test_review_routine_with_llm_caps_tokens() -> None:
+    from app.core.config import settings
+
+    provider = FakeProvider()
+    asyncio.run(review_routine_with_llm(provider, _PAYLOAD))
+    assert provider.last_max_tokens == settings.llm_review_max_tokens
 
 
 def test_review_routine_with_llm_json() -> None:

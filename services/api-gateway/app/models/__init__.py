@@ -6,6 +6,7 @@ from app.models.fatigue import (
     UserMuscleCalibration,
 )
 from app.models.gym import SetEntry, WorkoutExercise, WorkoutSessionSummary, WorkoutSet
+from app.models.prompt import DisciplineTrainingPrompt, TrainingPrompt
 from app.models.routine import (
     Discipline,
     Routine,
@@ -21,6 +22,7 @@ __all__ = [
     "DailyReadiness",
     "Discipline",
     "DisciplineMuscleLoad",
+    "DisciplineTrainingPrompt",
     "Exercise",
     "ExerciseCatalog",
     "ExerciseMuscle",
@@ -31,6 +33,7 @@ __all__ = [
     "RoutineSet",
     "SetEntry",
     "TrainingSession",
+    "TrainingPrompt",
     "User",
     "UserMuscleCalibration",
     "WorkoutExercise",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { MuscleChart } from "@/components/MuscleChart";
 import { MuscleFatigueMini } from "@/components/gym/MuscleFatigueMini";
@@ -37,6 +37,8 @@ export function RoutineReviewModal({
   const [server, setServer] = useState<RoutineReview | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiRequested, setAiRequested] = useState(false);
+  const aiVersion = useRef(0);
 
   useEffect(() => {
     if (providedCatalog) return;
@@ -59,8 +61,20 @@ export function RoutineReviewModal({
   }, [days, catalog, disciplines]);
 
   useEffect(() => {
-    if (stats.empty) return;
-    let cancelled = false;
+    // La evaluación por IA es manual (botón): al cambiar la rutina/catálogo se
+    // limpia el estado para permitir reevaluar sin resultados obsoletos. Nunca
+    // se dispara sola para no encolar peticiones al LLM.
+    aiVersion.current += 1;
+    setAiRequested(false);
+    setAiLoading(false);
+    setAiError(null);
+    setServer(null);
+  }, [days, catalog, disciplines]);
+
+  const requestAi = useCallback(() => {
+    if (aiLoading || aiRequested) return;
+    const version = aiVersion.current;
+    setAiRequested(true);
     setAiLoading(true);
     setAiError(null);
     setServer(null);
@@ -70,22 +84,19 @@ export function RoutineReviewModal({
         days: buildReviewItems(days, catalog, disciplines),
       })
       .then((result) => {
-        if (!cancelled) setServer(result);
+        if (aiVersion.current === version) setServer(result);
       })
       .catch((err) => {
-        if (!cancelled) {
+        if (aiVersion.current === version) {
           setAiError(
             err instanceof Error ? err.message : "Error al generar la evaluación",
           );
         }
       })
       .finally(() => {
-        if (!cancelled) setAiLoading(false);
+        if (aiVersion.current === version) setAiLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [token, routineName, days, catalog, disciplines, stats.empty]);
+  }, [token, routineName, days, catalog, disciplines, aiLoading, aiRequested]);
 
   return (
     <div className="picker-overlay" onClick={onClose}>
@@ -151,18 +162,11 @@ export function RoutineReviewModal({
           <h3>Evaluación por IA</h3>
           {stats.empty ? (
             <p className="muted">
-              El radar y los avisos ya se calculan en local. Guarda la rutina para
-              obtener la evaluación por IA.
+              El radar y los avisos ya se calculan en local. Añade ejercicios o
+              disciplinas a algunos días para generar la evaluación por IA.
             </p>
           ) : aiLoading ? (
             <p className="muted">Generando evaluación por IA...</p>
-          ) : aiError ? (
-            <>
-              <p className="error">No se pudo generar la evaluación: {aiError}</p>
-              <p className="muted">
-                El radar y los avisos de carga siguen siendo válidos.
-              </p>
-            </>
           ) : server ? (
             <>
               {server.puntosFuertes.length > 0 && (
@@ -202,7 +206,25 @@ export function RoutineReviewModal({
                 </>
               )}
             </>
-          ) : null}
+          ) : (
+            <>
+              {aiError && (
+                <p className="error">No se pudo generar la evaluación: {aiError}</p>
+              )}
+              <p className="muted">
+                La evaluación por IA puede tardar unos minutos con el modelo
+                local. El radar y los avisos de carga ya son válidos.
+              </p>
+              <button
+                type="button"
+                className="secondary"
+                onClick={requestAi}
+                disabled={aiLoading}
+              >
+                {aiError ? "Reintentar con IA" : "Evaluar con IA"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

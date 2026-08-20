@@ -156,13 +156,32 @@ def test_parse_split_choice() -> None:
     assert parse_split_choice("no se") is None
 
 
+def test_plan_display_name() -> None:
+    from app.chat.plan_session import SportAnswer, _plan_display_name
+
+    assert _plan_display_name([], None) == "Plan de gimnasio"
+    assert _plan_display_name([], "Fullbody 2 días") == "Fullbody 2 días"
+    assert _plan_display_name([SportAnswer(name="boxeo")], None) == "Boxeo"
+    assert (
+        _plan_display_name([SportAnswer(name="boxeo")], "Push / Pull / Pierna")
+        == "Push / Pull / Pierna - Boxeo"
+    )
+    assert (
+        _plan_display_name(
+            [SportAnswer(name="correr"), SportAnswer(name="boxeo")],
+            "Fullbody 2 días",
+        )
+        == "Fullbody 2 días - Correr + Boxeo"
+    )
+
+
 def test_full_flow_without_sports(
     _fake_redis, db_session_factory, seed_catalog, monkeypatch
 ) -> None:
     async def _fake_splits(sports, gym_days):
         return SPLITS
 
-    async def _fake_generate(sports, gym_days, split_id, goal, catalog):
+    async def _fake_generate(sports, gym_days, split_id, goal, catalog, system_prompt=None):
         return GYM_GENERATE
 
     monkeypatch.setattr("app.chat.plan_session.fetch_plan_splits", _fake_splits)
@@ -186,7 +205,7 @@ def test_full_flow_without_sports(
             )
             assert ready.status == "ready"
             assert ready.plan is not None
-            assert ready.plan.name == "Plan semanal"
+            assert ready.plan.name == "Fullbody 2 días"
             assert ready.request_id == start.request_id
 
             confirmed = await confirm_plan(
@@ -197,7 +216,7 @@ def test_full_flow_without_sports(
 
             routine = await routine_crud.get_active_routine(session, user_id)
             assert routine is not None
-            assert routine.name == "Plan semanal"
+            assert routine.name == "Fullbody 2 días"
             assert routine.days[0].day_type == "gimnasio"
             assert routine.days[0].exercises[0].exercise_id is not None
 
@@ -207,7 +226,7 @@ def test_full_flow_without_sports(
 def test_flow_with_sport_resolves_discipline(
     _fake_redis, db_session_factory, seed_catalog, seed_disciplines, monkeypatch
 ) -> None:
-    async def _fake_generate(sports, gym_days, split_id, goal, catalog):
+    async def _fake_generate(sports, gym_days, split_id, goal, catalog, system_prompt=None):
         return SPORT_GENERATE
 
     monkeypatch.setattr("app.chat.plan_session.fetch_plan_generate", _fake_generate)
@@ -249,7 +268,7 @@ def test_cancel_plan_at_summary(
     async def _fake_splits(sports, gym_days):
         return SPLITS
 
-    async def _fake_generate(sports, gym_days, split_id, goal, catalog):
+    async def _fake_generate(sports, gym_days, split_id, goal, catalog, system_prompt=None):
         return GYM_GENERATE
 
     monkeypatch.setattr("app.chat.plan_session.fetch_plan_splits", _fake_splits)
@@ -286,7 +305,7 @@ def test_ambiguous_intent_asks_confirmation_then_flow(
     async def _fake_splits(sports, gym_days):
         return SPLITS
 
-    async def _fake_generate(sports, gym_days, split_id, goal, catalog):
+    async def _fake_generate(sports, gym_days, split_id, goal, catalog, system_prompt=None):
         return GYM_GENERATE
 
     monkeypatch.setattr("app.chat.plan_session.fetch_plan_splits", _fake_splits)
@@ -351,7 +370,7 @@ def test_confirm_rejects_wrong_request_id(
     async def _fake_splits(sports, gym_days):
         return SPLITS
 
-    async def _fake_generate(sports, gym_days, split_id, goal, catalog):
+    async def _fake_generate(sports, gym_days, split_id, goal, catalog, system_prompt=None):
         return GYM_GENERATE
 
     monkeypatch.setattr("app.chat.plan_session.fetch_plan_splits", _fake_splits)

@@ -62,6 +62,7 @@ class PlanGenerateIn(CamelModel):
     split_id: str | None = None
     goal: Goal = "aesthetic"
     catalog: list[str] = Field(default_factory=list)
+    system_prompt: str | None = None  # plantilla con placeholders {deportes}, {objetivo}, ...
 
 
 class PlanResponse(CamelModel):

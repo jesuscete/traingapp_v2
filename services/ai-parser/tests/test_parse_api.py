@@ -7,7 +7,10 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_parse_endpoint() -> None:
+def test_parse_endpoint(monkeypatch) -> None:
+    from app.llm import factory
+
+    monkeypatch.setattr(factory, "get_provider", lambda: None)
     response = client.post(
         "/parse",
         json={

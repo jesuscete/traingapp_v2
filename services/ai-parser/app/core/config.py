@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
     llm_timeout_seconds: int = 30
+    # Contexto maximo para el LLM local (limita la caché KV de memoria).
+    llm_context_length: int = 8192
+    # Tope de tokens de salida para la evaluación de rutinas (reduce la latencia
+    # de generación en CPU; la respuesta tiene pocos items).
+    llm_review_max_tokens: int = 800
 
 
 settings = Settings()

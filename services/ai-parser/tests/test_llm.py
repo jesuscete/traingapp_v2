@@ -99,3 +99,27 @@ def test_parse_workout_no_provider_uses_stub(monkeypatch) -> None:
     result = asyncio.run(parse_workout("carrera de 45 min"))
     assert result.discipline == "running"
     assert result.durationMinutes == 45
+
+
+def test_parse_with_llm_builds_combat_metrics() -> None:
+    content = (
+        '{"discipline":"boxing","exercises":[],"unresolved":[],'
+        '"combatBlocks":[{"type":"saco","rounds":5,"roundSeconds":180},'
+        '{"type":"comba","minutes":20},{"type":"sombra"}]}'
+    )
+    result = asyncio.run(parse_with_llm(FakeProvider(content), "boxeo"))
+    assert result.metrics == {
+        "kind": "combat",
+        "blocks": [
+            {"type": "saco", "rounds": 5, "roundSeconds": 180},
+            {"type": "comba", "minutes": 20.0},
+        ],
+    }
+
+
+def test_parse_with_llm_builds_endurance_metrics_only_for_endurance() -> None:
+    running = '{"discipline":"running","distanceMeters":10000,"avgHeartRate":150}'
+    result = asyncio.run(parse_with_llm(FakeProvider(running), "10k"))
+    assert result.metrics == {"kind": "endurance", "distanceMeters": 10000.0, "avgHeartRate": 150}
+    gym = '{"discipline":"gym","distanceMeters":10000}'
+    assert asyncio.run(parse_with_llm(FakeProvider(gym), "x")).metrics is None

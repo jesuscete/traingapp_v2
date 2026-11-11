@@ -1,5 +1,6 @@
 import logging
 from datetime import UTC, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -21,6 +22,18 @@ class LlmExercise(BaseModel):
     weightKg: float | None = Field(default=None, ge=0)
 
 
+CombatType = Literal["saco", "sparring", "manoplas", "comba", "sombra", "tecnica", "fisico"]
+COMBAT_DISCIPLINES = frozenset({"boxing", "martial_arts"})
+ENDURANCE_DISCIPLINES = frozenset({"running", "cycling", "swimming", "ski_snowboard"})
+
+
+class LlmCombatBlock(BaseModel):
+    type: CombatType
+    rounds: int | None = Field(default=None, ge=1, le=50)
+    roundSeconds: int | None = Field(default=None, ge=10, le=600)
+    minutes: float | None = Field(default=None, gt=0, le=300)
+
+
 class LlmWorkoutDraft(BaseModel):
     """Forma exacta que debe devolver el modelo (se pasa como JSON Schema)."""
 
@@ -31,6 +44,10 @@ class LlmWorkoutDraft(BaseModel):
     exercises: list[LlmExercise] = Field(default_factory=list)
     confidence: float | None = Field(default=None, ge=0, le=1)
     unresolved: list[str] = Field(default_factory=list)
+    combatBlocks: list[LlmCombatBlock] = Field(default_factory=list)
+    distanceMeters: float | None = Field(default=None, gt=0)
+    avgHeartRate: int | None = Field(default=None, ge=30, le=230)
+    elevationGainM: float | None = Field(default=None, ge=0)
 
 
 async def parse_with_llm(provider: LLMProvider, raw_text: str) -> ParseResponse:
@@ -63,8 +80,29 @@ def _response_from(draft: LlmWorkoutDraft, raw_text: str) -> ParseResponse:
         suggestedRpe=draft.suggestedRpe,
         confidence=draft.confidence if draft.confidence is not None else DEFAULT_CONFIDENCE,
         unresolved=[u.strip() for u in draft.unresolved if u.strip()],
+        metrics=_metrics(draft, discipline),
         source="llm",
     )
+
+
+def _metrics(draft: LlmWorkoutDraft, discipline: str) -> dict[str, object] | None:
+    """Métricas por deporte con la forma que valida el api-gateway (`kind` + campos)."""
+    if discipline in COMBAT_DISCIPLINES:
+        blocks = [
+            b.model_dump(exclude_none=True)
+            for b in draft.combatBlocks
+            if b.rounds is not None or b.minutes is not None
+        ]
+        return {"kind": "combat", "blocks": blocks} if blocks else None
+    if discipline in ENDURANCE_DISCIPLINES:
+        endurance = {
+            "distanceMeters": draft.distanceMeters,
+            "avgHeartRate": draft.avgHeartRate,
+            "elevationGainM": draft.elevationGainM,
+        }
+        present = {k: v for k, v in endurance.items() if v is not None}
+        return {"kind": "endurance", **present} if present else None
+    return None
 
 
 def _positive(values: list[int] | None) -> list[int] | None:

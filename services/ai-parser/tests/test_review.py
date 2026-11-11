@@ -105,3 +105,18 @@ def test_review_routine_no_provider_uses_stub(monkeypatch) -> None:
     monkeypatch.setattr(factory, "get_provider", lambda: None)
     result = asyncio.run(review_routine(_PAYLOAD))
     assert result.sugerencias
+
+def test_sport_narrative_llm_and_fallback(monkeypatch) -> None:
+    from app.llm import factory
+    from app.parsing.sport import narrate, narrate_with_llm
+
+    analysis = {"score": 42, "gaps": [{"message": "Potencia rotacional: 0 series"}]}
+    content = '{"resumen":"Te falta rotación para el golpeo.","prioridades":["Añade giros rusos"]}'
+    result = asyncio.run(narrate_with_llm(FakeProvider(content), "Boxeo", analysis))
+    assert (result.source, result.prioridades) == ("llm", ["Añade giros rusos"])
+
+    monkeypatch.setattr(factory, "get_provider", lambda: FakeProvider(error=True))
+    fallback = asyncio.run(narrate("Boxeo", analysis))
+    assert fallback.source == "fallback"
+    assert fallback.prioridades == ["Potencia rotacional: 0 series"]
+    assert "42/100" in fallback.resumen

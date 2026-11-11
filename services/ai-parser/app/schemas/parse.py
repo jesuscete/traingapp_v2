@@ -84,3 +84,5 @@ class ParseResponse(CamelModel):
     suggestedRpe: float | None = None
     confidence: float = 0.0
     unresolved: list[str] = []
+    # Métricas por deporte (combate/resistencia) con la forma del api-gateway.
+    metrics: dict[str, object] | None = None

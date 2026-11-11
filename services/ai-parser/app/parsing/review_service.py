@@ -2,6 +2,7 @@ import logging
 from collections import Counter
 
 from app.llm import factory
+from app.llm.errors import LLMError
 from app.parsing.review import review_routine_with_llm
 from app.schemas.review import RoutineReviewResponse, Solapamiento
 
@@ -100,9 +101,13 @@ async def review_routine(payload: list[dict[str, object]]) -> RoutineReviewRespo
     """Evalúa la rutina con el LLM actual; sin proveedor o ante error, usa el stub."""
     provider = factory.get_provider()
     if provider is None:
-        return review_routine_deterministic(payload)
+        return _fallback(payload)
     try:
         return await review_routine_with_llm(provider, payload)
-    except Exception:
-        logger.exception("LLM routine review failed; falling back to deterministic stub")
-        return review_routine_deterministic(payload)
+    except LLMError:
+        logger.exception("LLM routine review failed (%s); using deterministic stub", provider.name)
+        return _fallback(payload)
+
+
+def _fallback(payload: list[dict[str, object]]) -> RoutineReviewResponse:
+    return review_routine_deterministic(payload).model_copy(update={"source": "fallback"})

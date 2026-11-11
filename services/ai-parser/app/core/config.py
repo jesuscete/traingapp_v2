@@ -1,4 +1,4 @@
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,13 +16,16 @@ class Settings(BaseSettings):
     internal_api_url: str = "http://localhost:8000"
     internal_token: str = DEV_INTERNAL_TOKEN
 
-    # Adaptador LLM plug-and-play (ADR-012): ollama | openai | stub
-    llm_provider: str = "stub"
+    # Proveedor LLM (ADR-002): claude_cli | ollama | openai | stub
+    llm_provider: Literal["claude_cli", "ollama", "openai", "stub"] = "stub"
     llm_model: str = "qwen2.5:3b"
+    # Claude vía CLI local (suscripción de Claude Code): alias o id de modelo.
+    claude_cli_path: str = "claude"
+    claude_model: str = "sonnet"
     ollama_url: str = "http://localhost:11434"
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
-    llm_timeout_seconds: int = 30
+    llm_timeout_seconds: int = 90
     # Contexto maximo para el LLM local (limita la caché KV de memoria).
     llm_context_length: int = 8192
     # Tope de tokens de salida para la evaluación de rutinas (reduce la latencia

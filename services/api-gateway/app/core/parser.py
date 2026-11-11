@@ -1,15 +1,13 @@
 import uuid
 
-import httpx
-
-from app.core.config import settings
+from app.core.ai_parser_http import ai_parser_client
 
 
 async def fetch_draft(raw_text: str) -> dict[str, object]:
     request_id = str(uuid.uuid4())
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with ai_parser_client() as client:
         response = await client.post(
-            f"{settings.ai_parser_url.rstrip('/')}/parse",
+            "/parse",
             json={"requestId": request_id, "rawText": raw_text},
         )
         response.raise_for_status()

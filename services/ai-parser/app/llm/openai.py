@@ -1,9 +1,14 @@
 import httpx
 
 from app.core.config import settings
+from app.llm.base import JsonSchema
+from app.llm.errors import LLMError, LLMTimeoutError
+from app.llm.json_output import json_object
 
 
 class OpenAIProvider:
+    """Cualquier API compatible con /v1/chat/completions y `response_format` json_schema."""
+
     name = "openai"
 
     def __init__(
@@ -19,16 +24,21 @@ class OpenAIProvider:
         self._model = model
         self._timeout = timeout
 
-    async def complete(
+    async def complete_json(
         self,
         system: str,
         user: str,
         *,
+        schema: JsonSchema,
         max_tokens: int | None = None,
-    ) -> str:
+    ) -> dict[str, object]:
         payload: dict[str, object] = {
             "model": self._model,
             "temperature": 0,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {"name": "respuesta", "schema": schema},
+            },
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
@@ -36,12 +46,17 @@ class OpenAIProvider:
         }
         if max_tokens is not None:
             payload["max_tokens"] = max_tokens
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(
-                f"{self._base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {self._api_key}"},
-                json=payload,
-            )
-            response.raise_for_status()
-            data = response.json()
-            return str(data["choices"][0]["message"]["content"])
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.post(
+                    f"{self._base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {self._api_key}"},
+                    json=payload,
+                )
+                response.raise_for_status()
+                content = response.json()["choices"][0]["message"]["content"]
+        except httpx.TimeoutException as exc:
+            raise LLMTimeoutError(f"La API no respondió en {self._timeout}s") from exc
+        except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
+            raise LLMError(f"Fallo llamando a la API OpenAI-compatible: {exc}") from exc
+        return json_object(content)

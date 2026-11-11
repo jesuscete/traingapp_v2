@@ -75,6 +75,7 @@ class ParseRequest(BaseModel):
 
 
 class ParseResponse(CamelModel):
+    source: Literal["llm", "fallback"] = "llm"
     rawText: str
     discipline: Discipline
     performedAt: str

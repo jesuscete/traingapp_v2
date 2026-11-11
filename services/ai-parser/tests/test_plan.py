@@ -1,6 +1,6 @@
 import asyncio
 
-from app.llm.base import LLMProvider
+from app.llm.errors import LLMError
 from app.parsing.plan import generate_plan_with_llm, suggest_splits_with_llm
 from app.parsing.plan_service import generate_plan, suggest_splits
 from app.parsing.plan_stub import (
@@ -14,6 +14,7 @@ from app.schemas.plan import (
     PlanSetTarget,
     SportIn,
 )
+from tests.fakes import TextFakeProvider
 
 _CATALOG = [
     "Press banca",
@@ -55,7 +56,7 @@ _GOOD_SPLITS_JSON = (
 )
 
 
-class FakeProvider(LLMProvider):
+class FakeProvider(TextFakeProvider):
     name = "fake"
 
     def __init__(self, content: str = _GOOD_PLAN_JSON, *, error: bool = False) -> None:
@@ -64,7 +65,7 @@ class FakeProvider(LLMProvider):
 
     async def complete(self, system: str, user: str) -> str:
         if self._error:
-            raise RuntimeError("provider boom")
+            raise LLMError("provider boom")
         return self._content
 
 
@@ -245,14 +246,6 @@ def test_generate_plan_with_llm_profile_prompt_with_literal_braces() -> None:
     assert "{catalogo_ejercicios}" not in provider.seen
     assert "performance" in provider.seen
     assert "Press banca" in provider.seen
-
-
-def test_generate_plan_with_llm_fenced_json() -> None:
-    fenced = "```json\n" + _GOOD_PLAN_JSON + "\n```"
-    result = asyncio.run(
-        generate_plan_with_llm(FakeProvider(fenced), _SPORTS, 3, None, "aesthetic", _CATALOG)
-    )
-    assert result.days[1].day_type == "gimnasio"
 
 
 def test_generate_plan_with_llm_drops_non_catalog_exercises() -> None:

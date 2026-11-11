@@ -1,9 +1,12 @@
 import json
 import logging
-import re
 from collections.abc import Mapping
+from typing import Literal
+
+from pydantic import BaseModel, Field
 
 from app.llm.base import LLMProvider
+from app.llm.structured import generate, user_data, with_user_data_rule
 from app.parsing.plan_stub import normalize_name
 from app.schemas.plan import (
     PlanDay,
@@ -17,7 +20,42 @@ from app.schemas.plan import (
 
 logger = logging.getLogger(__name__)
 
-_JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
+
+class LlmSplitOption(BaseModel):
+    id: str
+    name: str
+    description: str
+
+
+class LlmSplits(BaseModel):
+    options: list[LlmSplitOption] = Field(default_factory=list)
+
+
+class LlmPlanSet(BaseModel):
+    targetRepsMin: int | None = None
+    targetRepsMax: int | None = None
+    targetRestSeconds: int | None = None
+
+
+class LlmPlanExercise(BaseModel):
+    name: str
+    sets: list[LlmPlanSet] = Field(default_factory=list)
+
+
+class LlmPlanDay(BaseModel):
+    dayOfWeek: int = Field(ge=1, le=7)
+    dayType: Literal["gimnasio", "deporte", "descanso"]
+    label: str | None = None
+    discipline: str | None = None
+    durationMin: int | None = None
+    exercises: list[LlmPlanExercise] = Field(default_factory=list)
+
+
+class LlmPlan(BaseModel):
+    """Forma exacta que debe devolver el modelo (se pasa como JSON Schema)."""
+
+    name: str
+    days: list[LlmPlanDay] = Field(default_factory=list)
 
 SPLIT_SYSTEM_PROMPT = """
 Eres un coach experto en programación de entrenamiento.
@@ -106,8 +144,10 @@ async def suggest_splits_with_llm(
         ensure_ascii=False,
         indent=2,
     )
-    content = await provider.complete(SPLIT_SYSTEM_PROMPT, user_prompt)
-    data = _parse_json(content)
+    splits = await generate(
+        provider, with_user_data_rule(SPLIT_SYSTEM_PROMPT), user_data(user_prompt), LlmSplits
+    )
+    data = splits.model_dump()
     options: list[SplitOption] = []
     for raw in _as_list(data.get("options")):
         if not isinstance(raw, dict):
@@ -133,7 +173,7 @@ async def suggest_splits_with_llm(
         )
     if not options:
         raise ValueError("LLM returned no valid split options")
-    return SplitResponse(options=options[:3])
+    return SplitResponse(options=options[:3], source="llm")
 
 
 async def generate_plan_with_llm(
@@ -194,9 +234,8 @@ async def generate_plan_with_llm(
                 ),
             },
         )
-    content = await provider.complete(system, user_prompt)
-    data = _parse_json(content)
-    return _plan_from(data, catalog, sports)
+    plan = await generate(provider, with_user_data_rule(system), user_data(user_prompt), LlmPlan)
+    return _plan_from(plan.model_dump(), catalog, sports)
 
 
 def _plan_from(
@@ -214,6 +253,7 @@ def _plan_from(
     return PlanResponse(
         name=str(name).strip() if isinstance(name, str) and name.strip() else "Mi rutina",
         days=days,
+        source="llm",
     )
 
 
@@ -273,16 +313,6 @@ def _day_from(
         duration_min=duration,
         exercises=exercises,
     )
-
-
-def _parse_json(content: str) -> dict[str, object]:
-    match = _JSON_OBJECT.search(content)
-    if match is None:
-        raise ValueError("LLM response contained no JSON object")
-    data = json.loads(match.group(0))
-    if not isinstance(data, dict):
-        raise ValueError("LLM response JSON was not an object")
-    return data
 
 
 def _as_list(value: object) -> list[object]:

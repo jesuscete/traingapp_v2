@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
@@ -22,6 +24,7 @@ class Solapamiento(CamelModel):
 
 
 class RoutineReviewResponse(CamelModel):
+    source: Literal["llm", "fallback"] = "llm"
     puntos_fuertes: list[str] = []
     solapamientos: list[Solapamiento] = []
     sugerencias: list[str] = []

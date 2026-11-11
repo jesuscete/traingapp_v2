@@ -33,6 +33,7 @@ class SplitOption(CamelModel):
 
 
 class SplitResponse(CamelModel):
+    source: Literal["llm", "fallback"] = "llm"
     options: list[SplitOption] = Field(default_factory=list)
 
 
@@ -66,5 +67,6 @@ class PlanGenerateIn(CamelModel):
 
 
 class PlanResponse(CamelModel):
+    source: Literal["llm", "fallback"] = "llm"
     name: str
     days: list[PlanDay] = Field(default_factory=list)

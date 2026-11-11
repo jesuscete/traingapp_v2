@@ -1,102 +1,82 @@
-import json
 import logging
-import re
 from datetime import UTC, datetime
 
+from pydantic import BaseModel, Field
+
 from app.llm.base import LLMProvider
+from app.llm.structured import generate, user_data, with_user_data_rule
 from app.parsing.prompt import build_system_prompt
 from app.schemas.parse import DISCIPLINES, ExerciseDraft, ParseResponse
 
 logger = logging.getLogger(__name__)
 
-_JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
+DEFAULT_CONFIDENCE = 0.7
+
+
+class LlmExercise(BaseModel):
+    name: str = Field(min_length=1)
+    sets: int | None = Field(default=None, ge=1)
+    reps: int | None = Field(default=None, ge=1)
+    perSetReps: list[int] | None = None
+    weightKg: float | None = Field(default=None, ge=0)
+
+
+class LlmWorkoutDraft(BaseModel):
+    """Forma exacta que debe devolver el modelo (se pasa como JSON Schema)."""
+
+    discipline: str
+    performedAt: str | None = None
+    durationMinutes: int | None = Field(default=None, ge=0)
+    suggestedRpe: float | None = Field(default=None, ge=1, le=10)
+    exercises: list[LlmExercise] = Field(default_factory=list)
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    unresolved: list[str] = Field(default_factory=list)
 
 
 async def parse_with_llm(provider: LLMProvider, raw_text: str) -> ParseResponse:
-    content = await provider.complete(build_system_prompt(), raw_text)
-    match = _JSON_OBJECT.search(content)
-    if match is None:
-        raise ValueError("LLM response contained no JSON object")
-    data = json.loads(match.group(0))
-    return _response_from(data, raw_text)
-
-
-def _response_from(data: dict[str, object], raw_text: str) -> ParseResponse:
-    discipline = data.get("discipline")
-    if discipline not in DISCIPLINES:
-        discipline = "other"
-    exercises: list[ExerciseDraft] = []
-    exercises_raw = data.get("exercises")
-    if isinstance(exercises_raw, list):
-        for raw in exercises_raw:
-            if not isinstance(raw, dict):
-                continue
-            item: dict[str, object] = raw
-            name = item.get("name")
-            exercises.append(
-                ExerciseDraft(
-                    name=str(name).strip() if name is not None else "",
-                    sets=_optional_int(item.get("sets")),
-                    reps=_optional_int(item.get("reps")),
-                    per_set_reps=_optional_int_list(
-                        item.get("perSetReps") or item.get("per_set_reps")
-                    ),
-                    weight_kg=_optional_float(
-                        item.get("weightKg") or item.get("weight_kg")
-                    ),
-                )
-            )
-    unresolved_raw = data.get("unresolved")
-    unresolved = (
-        [str(u) for u in unresolved_raw] if isinstance(unresolved_raw, list) else []
+    draft = await generate(
+        provider,
+        with_user_data_rule(build_system_prompt()),
+        user_data(raw_text),
+        LlmWorkoutDraft,
     )
+    return _response_from(draft, raw_text)
+
+
+def _response_from(draft: LlmWorkoutDraft, raw_text: str) -> ParseResponse:
+    discipline = draft.discipline if draft.discipline in DISCIPLINES else "other"
     return ParseResponse(
         rawText=raw_text,
         discipline=discipline,
-        performedAt=_parse_datetime(data.get("performedAt")).isoformat(),
-        durationMinutes=_optional_int(data.get("durationMinutes")),
-        exercises=exercises,
-        suggestedRpe=_optional_float(data.get("suggestedRpe")),
-        confidence=_optional_float(data.get("confidence"), default=0.7),
-        unresolved=unresolved,
+        performedAt=_parse_datetime(draft.performedAt).isoformat(),
+        durationMinutes=draft.durationMinutes,
+        exercises=[
+            ExerciseDraft(
+                name=ex.name.strip(),
+                sets=ex.sets,
+                reps=ex.reps,
+                per_set_reps=_positive(ex.perSetReps),
+                weight_kg=ex.weightKg,
+            )
+            for ex in draft.exercises
+        ],
+        suggestedRpe=draft.suggestedRpe,
+        confidence=draft.confidence if draft.confidence is not None else DEFAULT_CONFIDENCE,
+        unresolved=[u.strip() for u in draft.unresolved if u.strip()],
+        source="llm",
     )
 
 
-def _parse_datetime(value: object) -> datetime:
-    if isinstance(value, str):
+def _positive(values: list[int] | None) -> list[int] | None:
+    kept = [v for v in values or [] if v > 0]
+    return kept or None
+
+
+def _parse_datetime(value: str | None) -> datetime:
+    if value:
         try:
             parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
             return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed
         except ValueError:
             logger.warning("Invalid performedAt from LLM: %s", value)
     return datetime.now(UTC)
-
-
-def _optional_int(value: object) -> int | None:
-    if value is None:
-        return None
-    try:
-        return int(str(value))
-    except (TypeError, ValueError):
-        return None
-
-
-def _optional_int_list(value: object) -> list[int] | None:
-    if not isinstance(value, list):
-        return None
-    result: list[int] = []
-    for part in value:
-        try:
-            result.append(int(str(part)))
-        except (TypeError, ValueError):
-            continue
-    return result or None
-
-
-def _optional_float(value: object, default: float | None = None) -> float | None:
-    if value is None:
-        return default
-    try:
-        return float(str(value))
-    except (TypeError, ValueError):
-        return default

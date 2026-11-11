@@ -7,10 +7,8 @@ _DISCIPLINE_ENUM = "|".join(DISCIPLINES)
 
 def build_system_prompt() -> str:
     hoy = datetime.now(UTC).strftime("%Y-%m-%d")
-    return f"""Eres un extractor de datos de entrenamiento. Devuelve SOLO JSON valido,
-sin texto adicional, sin markdown, sin comillas.
-
-Esquema JSON estricto:
+    return f"""Eres un extractor de datos de entrenamiento. Tu respuesta se valida contra un
+JSON Schema; estos son los campos y su significado:
 {{
   "discipline": "{_DISCIPLINE_ENUM}",
   "performedAt": "ISO-8601 UTC (YYYY-MM-DDTHH:MM:SSZ); HOY es {hoy}; "

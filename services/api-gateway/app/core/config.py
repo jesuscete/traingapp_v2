@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     internal_token: str = DEV_INTERNAL_TOKEN
     ai_parser_url: str = "http://localhost:8100"
+    # Debe cubrir el timeout del LLM en ai-parser (90 s) más un reintento de reparación.
+    ai_parser_timeout_seconds: float = 200
     chat_draft_ttl_seconds: int = 1800
     live_session_ttl_seconds: int = 14400
     plan_session_ttl_seconds: int = 3600

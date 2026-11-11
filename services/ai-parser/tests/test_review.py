@@ -1,11 +1,12 @@
 import asyncio
 
-from app.llm.base import LLMProvider
+from app.llm.errors import LLMError
 from app.parsing.review import review_routine_with_llm
 from app.parsing.review_service import (
     review_routine,
     review_routine_deterministic,
 )
+from tests.fakes import TextFakeProvider
 
 _PAYLOAD = [
     {
@@ -35,20 +36,16 @@ _GOOD_JSON = (
 )
 
 
-class FakeProvider(LLMProvider):
+class FakeProvider(TextFakeProvider):
     name = "fake"
 
     def __init__(self, content: str = _GOOD_JSON, *, error: bool = False) -> None:
         self._content = content
         self._error = error
-        self.last_max_tokens: int | None = None
 
-    async def complete(
-        self, system: str, user: str, *, max_tokens: int | None = None
-    ) -> str:
-        self.last_max_tokens = max_tokens
+    async def complete(self, system: str, user: str) -> str:
         if self._error:
-            raise RuntimeError("provider boom")
+            raise LLMError("provider boom")
         return self._content
 
 
@@ -71,21 +68,19 @@ def test_review_routine_with_llm_json() -> None:
     assert "48h" in result.sugerencias[0]
 
 
-def test_review_routine_with_llm_fenced_json() -> None:
-    fenced = "```json\n" + _GOOD_JSON + "\n```"
-    result = asyncio.run(review_routine_with_llm(FakeProvider(fenced), _PAYLOAD))
-    assert result.puntos_fuertes[0].startswith("Combina")
+def test_review_routine_with_llm_rejects_plain_solapamientos() -> None:
+    import pytest
 
+    from app.llm.errors import LLMOutputError
 
-def test_review_routine_with_llm_plain_solapamientos_dropped() -> None:
     content = (
         '{"puntos_fuertes": ["ok"],"solapamientos": ["texto libre"],'
         '"sugerencias": ["cambia"]}'
     )
-    result = asyncio.run(review_routine_with_llm(FakeProvider(content), _PAYLOAD))
-    assert result.puntos_fuertes == ["ok"]
-    assert result.solapamientos == []
-    assert result.sugerencias == ["cambia"]
+    provider = FakeProvider(content)
+    with pytest.raises(LLMOutputError):
+        asyncio.run(review_routine_with_llm(provider, _PAYLOAD))
+    assert provider.calls == 2
 
 
 def test_review_routine_deterministic() -> None:

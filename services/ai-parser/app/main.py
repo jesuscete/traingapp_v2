@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from app.api import parse, plan, review
+from app.api.security import verify_internal_token
 from app.core.config import settings
 
 app = FastAPI(
@@ -8,9 +9,10 @@ app = FastAPI(
     version="0.1.0",
 )
 
-app.include_router(parse.router)
-app.include_router(review.router)
-app.include_router(plan.router)
+internal_only = [Depends(verify_internal_token)]
+app.include_router(parse.router, dependencies=internal_only)
+app.include_router(review.router, dependencies=internal_only)
+app.include_router(plan.router, dependencies=internal_only)
 
 
 @app.get("/health", tags=["system"])

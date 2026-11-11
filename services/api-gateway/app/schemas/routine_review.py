@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
@@ -22,6 +24,8 @@ class SolapamientoOut(CamelModel):
 
 
 class RoutineReviewOut(CamelModel):
+    # "llm" = análisis de la IA; "fallback" = reglas deterministas (IA no disponible).
+    source: Literal["llm", "fallback"] | None = None
     puntos_fuertes: list[str] = []
     solapamientos: list[SolapamientoOut] = []
     sugerencias: list[str] = []

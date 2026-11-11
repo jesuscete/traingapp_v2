@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Geist, Geist_Mono, Inter } from "next/font/google";
+import { PendingSync } from "@/components/PendingSync";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
@@ -29,6 +30,14 @@ const barlowCondensed = Barlow_Condensed({
 export const metadata: Metadata = {
   title: "TraingApp",
   description: "Registra y analiza tus entrenamientos con IA",
+  appleWebApp: { capable: true, title: "TrainingApp", statusBarStyle: "black-translucent" },
+  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#15161a",
 };
 
 export default function RootLayout({
@@ -41,6 +50,7 @@ export default function RootLayout({
     >
       <body>
         <ThemeProvider />
+        <PendingSync />
         {children}
       </body>
     </html>

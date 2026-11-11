@@ -8,8 +8,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { ActivityStats } from "@/components/activity/ActivityStats";
 import { ProgressPlaceholder } from "@/components/activity/ProgressPlaceholder";
 import { CaloriesCard } from "@/components/gym/CaloriesCard";
-import { ExerciseRoutine } from "@/components/gym/ExerciseRoutine";
-import { ExerciseStatsPlaceholder } from "@/components/gym/ExerciseStatsPlaceholder";
+import { ExerciseSessionStats } from "@/components/gym/ExerciseSessionStats";
 import { MuscleFatigue } from "@/components/gym/MuscleFatigue";
 import { VolumeBreakdown } from "@/components/gym/VolumeBreakdown";
 import { api } from "@/lib/api";
@@ -83,8 +82,7 @@ export default function EntrenoDetalle() {
 
           {isGym ? (
             <>
-              <ExerciseRoutine exercises={session.workoutExercises} />
-              <ExerciseStatsPlaceholder exercises={session.workoutExercises} />
+              <ExerciseSessionStats exercises={session.workoutExercises} />
               <VolumeBreakdown session={session} />
               <CaloriesCard session={session} />
               <MuscleFatigue impacts={session.muscleImpacts} />

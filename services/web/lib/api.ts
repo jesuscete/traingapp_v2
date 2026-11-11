@@ -5,9 +5,11 @@ import type {
   Discipline,
   Energy,
   ExerciseDraft,
+  ExerciseHistory,
   Fatigue,
   FatigueSeries,
   GymSession,
+  GymSessionIn,
   HistorySummary,
   LiveSession,
   Load,
@@ -29,6 +31,14 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
+export class ApiError extends Error {
+  readonly status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
@@ -43,7 +53,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         ? detail.map((item: { msg?: string }) => item.msg ?? String(item)).join("; ")
         : String(detail);
     }
-    throw new Error(message);
+    throw new ApiError(message, response.status);
   }
   if (response.status === 204) {
     return undefined as T;
@@ -260,6 +270,22 @@ export const api = {
   listCatalogExercises: (token: string) =>
     request<CatalogExercise[]>("/catalog/exercises", {
       headers: { Authorization: `Bearer ${token}` },
+    }),
+  setExerciseFavorite: (token: string, exerciseId: string, favorite: boolean) =>
+    request<void>(`/catalog/exercises/${exerciseId}/favorite`, {
+      method: favorite ? "PUT" : "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  getExerciseHistory: (token: string, exerciseId: string, limit = 20) =>
+    request<ExerciseHistory>(
+      `/catalog/exercises/${exerciseId}/history?limit=${limit}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    ),
+  createGymSession: (token: string, body: GymSessionIn) =>
+    request<GymSession>("/sessions/gym", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
     }),
   listDisciplines: (token: string) =>
     request<Discipline[]>("/catalog/disciplines", {

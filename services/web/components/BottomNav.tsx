@@ -16,7 +16,7 @@ const TABS: Tab[] = [
   { href: "/dashboard", label: "Inicio", match: ["/dashboard"] },
   { href: "/entrenar", label: "Entrenar", match: ["/entrenar", "/registro"] },
   { href: "/entrenos", label: "Historial", match: ["/entrenos"] },
-  { href: "/rutinas", label: "Rutinas", match: ["/rutinas"] },
+  { href: "/rutinas", label: "Rutinas", match: ["/rutinas", "/ejercicios"] },
   { href: "/analisis", label: "Progreso", match: ["/analisis", "/fatiga"] },
 ];
 

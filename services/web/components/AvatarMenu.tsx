@@ -69,6 +69,9 @@ export function AvatarMenu() {
                 <span className="avatar-menu-email">{user.email}</span>
               )}
             </div>
+            <Link className="avatar-menu-link" href="/ejercicios">
+              Ejercicios
+            </Link>
             <Link className="avatar-menu-link" href="/perfil">
               Perfil
             </Link>

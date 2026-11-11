@@ -502,6 +502,19 @@ export type Discipline = {
   muscleLoads: { muscleGroup: string; load: number }[];
 };
 
+export type CatalogExerciseDetails = {
+  source?: string;
+  sourceId?: string;
+  category?: string;
+  force?: string | null;
+  level?: string;
+  mechanic?: string | null;
+  equipment?: string;
+  instructions?: string[];
+  nameEs?: string;
+  instructionsEs?: string[];
+};
+
 export type CatalogExercise = {
   id: string;
   name: string;
@@ -511,16 +524,94 @@ export type CatalogExercise = {
   usesBodyweight: boolean;
   unilateral: boolean;
   images: string[];
-  details: {
-    source?: string;
-    sourceId?: string;
-    category?: string;
-    force?: string | null;
-    level?: string;
-    mechanic?: string | null;
-    equipment?: string;
-    instructions?: string[];
-  } | null;
+  imageUrls: string[];
+  isFavorite: boolean;
+  details: CatalogExerciseDetails | null;
+};
+
+export type ExerciseRecords = {
+  maxWeightKg: number | null;
+  bestE1rmKg: number | null;
+  maxReps: number | null;
+  bestSetVolumeKg: number | null;
+  bestSessionVolumeKg: number | null;
+};
+
+export type ExerciseProgressPoint = {
+  performedAt: string;
+  bestE1rmKg: number | null;
+  topWeightKg: number | null;
+  volumeKg: number | null;
+};
+
+export type ExerciseHistorySet = {
+  setNumber: number;
+  setType: string;
+  isWarmup: boolean;
+  reps: number | null;
+  weightKg: number | null;
+  rpe: number | null;
+  e1rmKg: number | null;
+};
+
+export type ExerciseHistorySession = {
+  sessionId: string;
+  performedAt: string;
+  sets: ExerciseHistorySet[];
+};
+
+export type ExerciseHistory = {
+  exerciseId: string;
+  records: ExerciseRecords;
+  progress: ExerciseProgressPoint[];
+  sessions: ExerciseHistorySession[];
+};
+
+export type GymSetType =
+  | "normal"
+  | "calentamiento"
+  | "dropset"
+  | "al_fallo"
+  | "amrap"
+  | "isometrico";
+
+export type GymSetEntryIn = {
+  entryOrder: number;
+  reps?: number | null;
+  weight?: number | null;
+  weightUnit: "kg";
+  rpe?: number | null;
+  side: "both";
+  durationSeconds?: number | null;
+};
+
+export type GymSetIn = {
+  setNumber: number;
+  setType: GymSetType;
+  restSeconds?: number | null;
+  isWarmup: boolean;
+  entries: GymSetEntryIn[];
+};
+
+export type GymExerciseIn = {
+  exerciseId?: string | null;
+  name: string;
+  orderIndex: number;
+  supersetGroupId?: string | null;
+  sets: GymSetIn[];
+};
+
+export type GymSessionIn = {
+  clientId?: string | null;
+  rawText: string;
+  performedAt: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  durationMinutes?: number | null;
+  intensity?: number | null;
+  note?: string | null;
+  routineDayId?: string | null;
+  exercises: GymExerciseIn[];
 };
 
 export type LiveSet = {

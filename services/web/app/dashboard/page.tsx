@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
 import { BottomNav } from "@/components/BottomNav";
+import { FatigueExplainSheet } from "@/components/gym/FatigueExplainSheet";
 import { HelpTip } from "@/components/HelpTip";
 import { RadarChart } from "@/components/RadarChart";
 import { aggregateByZone } from "@/lib/format";
@@ -15,6 +17,7 @@ import {
   translateZone,
 } from "@/lib/labels";
 import type {
+  Fatigue,
   StatsCardio,
   StatsOverview,
   StatsProgress,
@@ -34,6 +37,8 @@ export default function Dashboard() {
   const [volumeWeek, setVolumeWeek] = useState<StatsVolume | null>(null);
   const [cardio, setCardio] = useState<StatsCardio | null>(null);
   const [progress, setProgress] = useState<StatsProgress | null>(null);
+  const [fatigue, setFatigue] = useState<Fatigue | null>(null);
+  const [explainGroup, setExplainGroup] = useState<string | null>(null);
   const [chatText, setChatText] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +84,14 @@ export default function Dashboard() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    api
+      .statsFatigue(token)
+      .then(setFatigue)
+      .catch(() => setFatigue(null));
+  }, [token]);
 
   async function handleChat(event: React.FormEvent) {    event.preventDefault();
     if (!token) return;
@@ -153,6 +166,11 @@ export default function Dashboard() {
         </div>
       </section>
 
+      <Link className="m4-prep-card" href="/preparacion">
+        <strong>Preparación para boxeo</strong>
+        <span className="muted">Diagnóstico de tu entrenamiento y qué ejercicios añadir →</span>
+      </Link>
+
       {loading ? (
         <p className="muted">Cargando...</p>
       ) : (
@@ -167,6 +185,35 @@ export default function Dashboard() {
                     {item.sessions === 1 ? "sesión" : "sesiones"}
                   </span>
                 ))}
+              </div>
+            </section>
+          )}
+
+          {fatigue && fatigue.muscles.length > 0 && (
+            <section className="block">
+              <h2>Fatiga por músculo</h2>
+              <p className="muted m3-hint">Toca un músculo para ver por qué está fatigado.</p>
+              <div className="bars">
+                {[...fatigue.muscles]
+                  .sort((a, b) => b.fatigue - a.fatigue)
+                  .slice(0, 8)
+                  .map((m) => (
+                    <button
+                      key={m.muscleGroup}
+                      type="button"
+                      className="m3-fatigue-row"
+                      onClick={() => setExplainGroup(m.muscleGroup)}
+                    >
+                      <span className="bar-label">{translateMuscleGroup(m.muscleGroup)}</span>
+                      <div className="bar-track">
+                        <div
+                          className={`bar-fill fatigue-${m.level}`}
+                          style={{ width: `${Math.max(0, Math.min(100, m.fatigue))}%` }}
+                        />
+                      </div>
+                      <span className="bar-value">{Math.round(m.fatigue)}</span>
+                    </button>
+                  ))}
               </div>
             </section>
           )}
@@ -268,6 +315,13 @@ export default function Dashboard() {
             </section>
           )}
         </>
+      )}
+      {explainGroup && token && (
+        <FatigueExplainSheet
+          token={token}
+          group={explainGroup}
+          onClose={() => setExplainGroup(null)}
+        />
       )}
     </main>
   );

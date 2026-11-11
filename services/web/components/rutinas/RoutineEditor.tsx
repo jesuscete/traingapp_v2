@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { exerciseDisplayName } from "@/lib/exerciseSearch";
 import { uid } from "@/lib/workout/ops";
 import { DAY_TYPE_LABELS, DAY_TYPE_OPTIONS, WEEKDAYS } from "@/lib/routines";
+import { AddExerciseSheet } from "@/components/workout/AddExerciseSheet";
 import { DisciplinePicker } from "@/components/rutinas/DisciplinePicker";
 import { RoutineReviewModal } from "@/components/rutinas/RoutineReviewModal";
 import {
@@ -174,6 +175,7 @@ export function RoutineEditor({ token, routine, onSaved, onCancel }: Props) {
   const [catalog, setCatalog] = useState<CatalogExercise[]>([]);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [pickerDay, setPickerDay] = useState<number | null>(null);
+  const [swapTarget, setSwapTarget] = useState<{ dayIndex: number; exIndex: number } | null>(null);
   const [collapsedDays, setCollapsedDays] = useState<Set<number>>(
     () =>
       new Set(
@@ -233,6 +235,23 @@ export function RoutineEditor({ token, routine, onSaved, onCancel }: Props) {
     setDays((prev) =>
       prev.map((day, i) =>
         i === dayIndex ? { ...day, exercises: normalizeSupersets(change(day.exercises)) } : day,
+      ),
+    );
+  }
+
+  function swapExercise(target: { dayIndex: number; exIndex: number }, picked: CatalogExercise) {
+    setSwapTarget(null);
+    const list = days[target.dayIndex]?.exercises ?? [];
+    if (list.some((ex, i) => i !== target.exIndex && ex.exerciseId === picked.id)) {
+      setError("Ese ejercicio ya está en este día.");
+      return;
+    }
+    setError(null);
+    updateExercises(target.dayIndex, (current) =>
+      current.map((ex, i) =>
+        i === target.exIndex
+          ? { ...ex, exerciseId: picked.id, name: exerciseDisplayName(picked) }
+          : ex,
       ),
     );
   }
@@ -559,6 +578,13 @@ export function RoutineEditor({ token, routine, onSaved, onCancel }: Props) {
                     >
                       Notas{exercise.notes.trim() ? " ●" : ""} {notesOpen ? "▴" : "▾"}
                     </button>
+                    <button
+                      type="button"
+                      className="secondary re-action"
+                      onClick={() => setSwapTarget({ dayIndex, exIndex })}
+                    >
+                      Sustituir
+                    </button>
                     {exIndex < day.exercises.length - 1 && (
                       <button
                         type="button"
@@ -632,6 +658,17 @@ export function RoutineEditor({ token, routine, onSaved, onCancel }: Props) {
           }
           onSave={(exercises) => applyPicker(pickerDay, exercises)}
           onCancel={() => setPickerDay(null)}
+        />
+      )}
+
+      {swapTarget && (
+        <AddExerciseSheet
+          token={token}
+          title="Sustituir ejercicio"
+          multiple={false}
+          alternativesFor={days[swapTarget.dayIndex]?.exercises[swapTarget.exIndex]?.exerciseId ?? null}
+          onClose={() => setSwapTarget(null)}
+          onConfirm={(list) => list[0] && swapExercise(swapTarget, list[0])}
         />
       )}
 

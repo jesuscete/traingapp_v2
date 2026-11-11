@@ -95,6 +95,11 @@ export default function Analisis() {
         </p>
       </section>
 
+      <Link className="m4-prep-card" href="/preparacion">
+        <strong>Preparación para boxeo</strong>
+        <span className="muted">Qué te falta para tu deporte principal y cómo corregirlo →</span>
+      </Link>
+
       <p className="block">
         <Link className="back-link" href="/fatiga">
           Ver detalle de fatiga muscular →

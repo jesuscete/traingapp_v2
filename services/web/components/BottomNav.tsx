@@ -14,10 +14,10 @@ type Tab = {
 
 const TABS: Tab[] = [
   { href: "/dashboard", label: "Inicio", match: ["/dashboard"] },
-  { href: "/entrenar", label: "Entrenar", match: ["/entrenar", "/registro"] },
+  { href: "/entrenar", label: "Entrenar", match: ["/entrenar", "/registro", "/registrar"] },
   { href: "/entrenos", label: "Historial", match: ["/entrenos"] },
   { href: "/rutinas", label: "Rutinas", match: ["/rutinas", "/ejercicios"] },
-  { href: "/analisis", label: "Progreso", match: ["/analisis", "/fatiga"] },
+  { href: "/analisis", label: "Progreso", match: ["/analisis", "/fatiga", "/preparacion"] },
 ];
 
 function isMatch(pathname: string, match: string[]): boolean {

@@ -7,13 +7,21 @@ import { useCallback, useEffect, useState } from "react";
 import { BottomNav } from "@/components/BottomNav";
 import { ActivityStats } from "@/components/activity/ActivityStats";
 import { ProgressPlaceholder } from "@/components/activity/ProgressPlaceholder";
+import {
+  ActivityForm,
+  toLocalInput,
+  type ActivitySubmit,
+  type ActivityValues,
+} from "@/components/metrics/ActivityForm";
+import { MetricsView } from "@/components/metrics/MetricsView";
 import { CaloriesCard } from "@/components/gym/CaloriesCard";
 import { ExerciseSessionStats } from "@/components/gym/ExerciseSessionStats";
 import { MuscleFatigue } from "@/components/gym/MuscleFatigue";
 import { VolumeBreakdown } from "@/components/gym/VolumeBreakdown";
 import { api } from "@/lib/api";
 import { translateDiscipline } from "@/lib/labels";
-import type { GymSession, Session } from "@/lib/types";
+import { formToMetrics, metricsKindFor, metricsToForm } from "@/lib/metrics";
+import type { GymSession, Session, SessionUpdate } from "@/lib/types";
 
 const TOKEN_KEY = "traingapp_token";
 
@@ -28,6 +36,9 @@ export default function EntrenoDetalle() {
   const [session, setSession] = useState<Session | GymSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem(TOKEN_KEY);
@@ -53,6 +64,53 @@ export default function EntrenoDetalle() {
   }, []);
 
   const isGym = session != null && isGymSession(session);
+  const metrics = session?.details?.metrics ?? null;
+
+  async function save(data: ActivitySubmit) {
+    if (!token || !session) return;
+    const body: SessionUpdate = {};
+    if (new Date(data.performedAtIso).getTime() !== new Date(session.performedAt).getTime()) {
+      body.performedAt = data.performedAtIso;
+    }
+    if (data.durationMinutes != null && data.durationMinutes !== session.durationMinutes) {
+      body.durationMinutes = data.durationMinutes;
+    }
+    if (data.intensity != null && data.intensity !== session.intensity) {
+      body.intensity = data.intensity;
+    }
+    if (data.note !== (session.note ?? "")) body.note = data.note;
+    if (!isGym && metrics && data.metrics) {
+      const original = formToMetrics(metricsKindFor(session.discipline), metricsToForm(metrics));
+      if (JSON.stringify(original.metrics) !== JSON.stringify(data.metrics)) {
+        body.metrics = data.metrics;
+      }
+    }
+    if (Object.keys(body).length === 0) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await api.updateSession(token, session.id, body);
+      await load(token, session.id);
+      setEditing(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "No se pudo guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function editInitial(current: Session | GymSession): ActivityValues {
+    return {
+      performedAt: toLocalInput(current.performedAt),
+      durationMinutes: current.durationMinutes != null ? String(current.durationMinutes) : "",
+      intensity: current.intensity ?? null,
+      note: current.note ?? "",
+      metricsForm: metricsToForm(current.details?.metrics),
+    };
+  }
 
   return (
     <main className="dashboard">
@@ -78,9 +136,32 @@ export default function EntrenoDetalle() {
                 ? `${session.durationMinutes} min`
                 : "duración no registrada"}
             </p>
+            {!editing && (
+              <button
+                type="button"
+                className="secondary m3-edit-btn"
+                onClick={() => {
+                  setSaveError(null);
+                  setEditing(true);
+                }}
+              >
+                Editar
+              </button>
+            )}
           </section>
 
-          {isGym ? (
+          {editing ? (
+            <ActivityForm
+              discipline={session.discipline}
+              headerOnly={isGym || !metrics}
+              initial={editInitial(session)}
+              submitLabel="Guardar cambios"
+              busy={saving}
+              error={saveError}
+              onSubmit={(data) => void save(data)}
+              onCancel={() => setEditing(false)}
+            />
+          ) : isGym ? (
             <>
               <ExerciseSessionStats exercises={session.workoutExercises} />
               <VolumeBreakdown session={session} />
@@ -90,6 +171,13 @@ export default function EntrenoDetalle() {
           ) : (
             <>
               <ActivityStats session={session} />
+              {metrics && (
+                <MetricsView
+                  metrics={metrics}
+                  discipline={session.discipline}
+                  durationMinutes={session.durationMinutes}
+                />
+              )}
               <MuscleFatigue impacts={session.muscleImpacts ?? []} />
               <CaloriesCard session={session} />
 

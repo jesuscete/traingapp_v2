@@ -4,14 +4,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 import { ChatComposer } from "@/components/ChatComposer";
-import { useChatEngine } from "@/lib/useChatEngine";
+import { ChatChips, ChatThread } from "@/components/ChatThread";
+import { GUIDED_PROMPT, STARTER_PROMPTS, useChatEngine } from "@/lib/useChatEngine";
 
 const TOKEN_KEY = "traingapp_token";
 
 export default function Chat() {
   const router = useRouter();
   const messagesRef = useRef<HTMLDivElement>(null);
-  const { messages, text, setText, busy, handleSend } = useChatEngine();
+  const { messages, text, setText, busy, handleSend, confirmAction, discardAction, newConversation } =
+    useChatEngine();
 
   useEffect(() => {
     if (!localStorage.getItem(TOKEN_KEY)) {
@@ -54,27 +56,34 @@ export default function Chat() {
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
         </button>
-        <span className="chat-page-title">Asistente de entrenamiento</span>
-        <span className="chat-page-header-spacer" />
+        <span className="chat-page-title">Entrenador</span>
+        <button
+          type="button"
+          className="m4-new-chat"
+          disabled={busy}
+          onClick={() => void newConversation()}
+        >
+          Nueva conversación
+        </button>
       </header>
 
       <div className="chat-page-messages" ref={messagesRef}>
-        {messages.map((message, index) => (
-          <div
-            key={`${index}-${message.text}`}
-            className={`chat-page-bubble ${message.role}`}
-          >
-            {message.text}
-          </div>
-        ))}
-        {busy && (
-          <div className="chat-page-bubble assistant chat-widget-typing">
-            <span />
-            <span />
-            <span />
-          </div>
-        )}
+        <ChatThread
+          variant="page"
+          messages={messages}
+          busy={busy}
+          onConfirm={(m, a) => void confirmAction(m, a)}
+          onDiscard={(m, a) => void discardAction(m, a)}
+        />
       </div>
+
+      <ChatChips
+        prompts={messages.length <= 1 ? STARTER_PROMPTS : []}
+        showGuided
+        disabled={busy}
+        onPrompt={(t) => void handleSend(t)}
+        onGuided={() => void handleSend(GUIDED_PROMPT, { guided: true })}
+      />
 
       <form
         className="chat-page-composer"
@@ -84,7 +93,7 @@ export default function Chat() {
         }}
       >
         <ChatComposer
-          placeholder="Escríbeme «recomiéndame un plan»"
+          placeholder="Pregunta o pide algo a tu entrenador…"
           value={text}
           onChange={setText}
           onSubmit={() => void handleSend(text)}

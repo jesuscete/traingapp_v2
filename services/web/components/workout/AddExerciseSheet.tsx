@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { AlternativesList } from "@/components/gym/AlternativesList";
 import { ExerciseLibrary } from "@/components/gym/ExerciseLibrary";
 import { exerciseDisplayName } from "@/lib/exerciseSearch";
 import type { CatalogExercise } from "@/lib/types";
@@ -11,11 +12,13 @@ type Props = {
   title: string;
   /** Una sola selección (sustituir) o varias (añadir). */
   multiple: boolean;
+  /** Si se pasa, muestra alternativas recomendadas para ese ejercicio del catálogo. */
+  alternativesFor?: string | null;
   onClose: () => void;
   onConfirm: (exercises: CatalogExercise[]) => void;
 };
 
-export function AddExerciseSheet({ token, title, multiple, onClose, onConfirm }: Props) {
+export function AddExerciseSheet({ token, title, multiple, alternativesFor, onClose, onConfirm }: Props) {
   const [selected, setSelected] = useState<CatalogExercise[]>([]);
 
   useEffect(() => {
@@ -59,6 +62,9 @@ export function AddExerciseSheet({ token, title, multiple, onClose, onConfirm }:
           </button>
         </div>
         <div className="sheet-body">
+          {alternativesFor && (
+            <AlternativesList token={token} exerciseId={alternativesFor} onPick={pick} />
+          )}
           <ExerciseLibrary token={token} onPick={pick} />
         </div>
         {multiple && (

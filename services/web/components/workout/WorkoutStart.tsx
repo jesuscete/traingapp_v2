@@ -129,8 +129,16 @@ export function WorkoutStart({
       <section className="block">
         <h2>Otros deportes</h2>
         <p className="muted">
-          Para boxeo, running u otras disciplinas, regístralas desde el{" "}
-          <Link href="/chat">chat</Link>.
+          Para boxeo, running, escalada u otras disciplinas usa el registro
+          multideporte.
+        </p>
+        <p>
+          <Link className="btn-secondary m3-link-btn" href="/registrar">
+            Registrar actividad
+          </Link>
+        </p>
+        <p className="muted">
+          ¿Prefieres texto libre? Cuéntaselo al <Link href="/chat">chat</Link>.
         </p>
         {sportDays.map((day) => (
           <p key={day.id} className="muted">

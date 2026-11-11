@@ -4,7 +4,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { ChatComposer } from "@/components/ChatComposer";
-import { useChatEngine } from "@/lib/useChatEngine";
+import { ChatChips, ChatThread } from "@/components/ChatThread";
+import { GUIDED_PROMPT, STARTER_PROMPTS, useChatEngine } from "@/lib/useChatEngine";
 
 const TOKEN_KEY = "traingapp_token";
 
@@ -14,7 +15,7 @@ export function ChatWidget() {
   const messagesRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [open, setOpen] = useState(false);
-  const { messages, text, setText, busy, handleSend } = useChatEngine();
+  const { messages, text, setText, busy, handleSend, confirmAction, discardAction } = useChatEngine();
 
   useEffect(() => {
     if (localStorage.getItem(TOKEN_KEY)) {
@@ -39,7 +40,7 @@ export function ChatWidget() {
       {open && (
         <div className="chat-widget-panel">
           <div className="chat-widget-header">
-            <span className="chat-widget-title">Asistente de entrenamiento</span>
+            <span className="chat-widget-title">Entrenador</span>
             <div className="chat-widget-header-actions">
               <button
                 type="button"
@@ -88,22 +89,21 @@ export function ChatWidget() {
             </div>
           </div>
           <div className="chat-widget-messages" ref={messagesRef}>
-            {messages.map((message, index) => (
-              <div
-                key={`${index}-${message.text}`}
-                className={`chat-widget-bubble ${message.role}`}
-              >
-                {message.text}
-              </div>
-            ))}
-            {busy && (
-              <div className="chat-widget-bubble assistant chat-widget-typing">
-                <span />
-                <span />
-                <span />
-              </div>
-            )}
+            <ChatThread
+              variant="widget"
+              messages={messages}
+              busy={busy}
+              onConfirm={(m, a) => void confirmAction(m, a)}
+              onDiscard={(m, a) => void discardAction(m, a)}
+            />
           </div>
+          <ChatChips
+            prompts={messages.length <= 1 ? STARTER_PROMPTS : []}
+            showGuided
+            disabled={busy}
+            onPrompt={(t) => void handleSend(t)}
+            onGuided={() => void handleSend(GUIDED_PROMPT, { guided: true })}
+          />
           <form
             className="chat-widget-composer"
             onSubmit={(event) => {
@@ -112,7 +112,7 @@ export function ChatWidget() {
             }}
           >
             <ChatComposer
-              placeholder="Escríbeme «recomiéndame un plan»"
+              placeholder="Pregunta o pide algo a tu entrenador…"
               value={text}
               onChange={setText}
               onSubmit={() => void handleSend(text)}

@@ -128,6 +128,11 @@ export function WorkoutScreen({ token, workout, update, onFinished, onDiscard }:
           token={token}
           title={sheet.mode === "add" ? "Añadir ejercicios" : "Sustituir ejercicio"}
           multiple={sheet.mode === "add"}
+          alternativesFor={
+            sheet.mode === "substitute"
+              ? (workout.exercises.find((e) => e.id === sheet.exerciseId)?.exerciseId ?? null)
+              : null
+          }
           onClose={() => setSheet(null)}
           onConfirm={handleSheetConfirm}
         />

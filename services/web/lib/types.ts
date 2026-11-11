@@ -9,7 +9,91 @@ export type Exercise = {
   volumeKg: number;
 };
 
+export type CombatBlockType =
+  | "saco"
+  | "sparring"
+  | "manoplas"
+  | "comba"
+  | "sombra"
+  | "tecnica"
+  | "fisico";
+
+export type CombatBlock = {
+  type: CombatBlockType;
+  rounds?: number | null;
+  roundSeconds?: number | null;
+  minutes?: number | null;
+  strikes?: number | null;
+};
+
+export type ClimbingStyle = "boulder" | "via" | "autobelay" | "exterior";
+
+export type ClimbingRoute = {
+  grade: string;
+  attempts?: number | null;
+  sent: boolean;
+};
+
+export type CombatMetrics = { kind: "combat"; blocks: CombatBlock[] };
+export type EnduranceMetrics = {
+  kind: "endurance";
+  distanceMeters?: number | null;
+  avgHeartRate?: number | null;
+  maxHeartRate?: number | null;
+  elevationGainM?: number | null;
+};
+export type ClimbingMetrics = {
+  kind: "climbing";
+  style: ClimbingStyle;
+  routes: ClimbingRoute[];
+};
+export type GenericMetrics = { kind: "generic"; notes?: string | null };
+
+export type SessionMetrics =
+  | CombatMetrics
+  | EnduranceMetrics
+  | ClimbingMetrics
+  | GenericMetrics;
+
+export type SessionIn = {
+  discipline: string;
+  rawText: string;
+  performedAt: string;
+  durationMinutes?: number;
+  intensity?: number;
+  note?: string;
+  metrics?: SessionMetrics;
+  exercises: [];
+};
+
+export type SessionUpdate = {
+  rawText?: string;
+  performedAt?: string;
+  durationMinutes?: number;
+  intensity?: number;
+  fatigue?: number;
+  note?: string;
+  metrics?: SessionMetrics;
+};
+
+export type FatigueExplainItem = {
+  sessionId: string;
+  performedOn: string;
+  discipline: string;
+  label: string;
+  impulse: number;
+  remaining: number;
+  share: number;
+};
+
+export type FatigueExplain = {
+  group: string;
+  fatigue: number;
+  sessions: FatigueExplainItem[];
+};
+
 export type SessionDetails = {
+  metrics?: SessionMetrics | null;
   rpe?: number | null;
   perceivedFatigue?: number | null;
   [key: string]: unknown;
@@ -118,6 +202,7 @@ export type WorkoutDraft = {
   suggestedRpe: number | null;
   confidence: number;
   unresolved: string[];
+  metrics?: SessionMetrics | null;
 };
 
 export type PlanSplit = {
@@ -671,4 +756,78 @@ export type LiveSession = {
   exercises: LiveExercise[];
   entries: string[];
   entriesCount: number;
+};
+
+/* ===== M4 deporte y entrenador ===== */
+
+export type GapSeverity = "alta" | "media" | "baja";
+export type TargetStatus = "missing" | "low" | "ok" | "high";
+export type SportBasis = "historial" | "rutina" | "sin_datos";
+
+export type SportTarget = {
+  key: string;
+  label: string;
+  value: number;
+  low: number;
+  high: number | null;
+  status: TargetStatus;
+};
+
+export type SportSuggestion = {
+  exerciseId: string;
+  name: string;
+  imageUrl: string | null;
+};
+
+export type SportGap = {
+  code: string;
+  severity: GapSeverity;
+  message: string;
+  suggestions: SportSuggestion[];
+};
+
+export type SportNarrative = {
+  source: "llm" | "fallback";
+  resumen: string;
+  prioridades: string[];
+};
+
+export type SportAnalysis = {
+  sport: string;
+  label: string;
+  basis: SportBasis;
+  weeks: number;
+  score: number;
+  patterns: SportTarget[];
+  muscles: SportTarget[];
+  repZones: SportTarget[];
+  pushSets: number;
+  pullSets: number;
+  pullPushRatio: number | null;
+  gaps: SportGap[];
+  narrative: SportNarrative | null;
+};
+
+export type ExerciseAlternative = {
+  exerciseId: string;
+  name: string;
+  similarity: number;
+  imageUrl: string | null;
+  isCustom: boolean;
+};
+
+export type AgentActionType = "save_workout" | "swap_exercise" | "add_exercise";
+
+export type AgentAction = {
+  id: string;
+  type: AgentActionType;
+  summary: string;
+  requestId: string | null;
+};
+
+export type AgentReply = {
+  source: "llm" | "fallback";
+  reply: string;
+  actions: AgentAction[];
+  toolsUsed: string[];
 };

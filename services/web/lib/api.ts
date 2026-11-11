@@ -1,5 +1,8 @@
 import type {
+  AgentReply,
   CatalogExercise,
+  ExerciseAlternative,
+  SportAnalysis,
   CustomExerciseInput,
   ChatEnqueue,
   ChatMessageOut,
@@ -7,6 +10,7 @@ import type {
   Energy,
   ExerciseDraft,
   ExerciseHistory,
+  FatigueExplain,
   Fatigue,
   FatigueSeries,
   GymSession,
@@ -21,7 +25,9 @@ import type {
   RoutineReview,
   RoutineReviewInput,
   Session,
+  SessionIn,
   SessionPage,
+  SessionUpdate,
   StatsCardio,
   StatsOverview,
   StatsProgress,
@@ -128,6 +134,23 @@ export const api = {
     request<Session | GymSession>(`/sessions/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
+  createSession: (token: string, body: SessionIn) =>
+    request<Session>("/sessions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  updateSession: (token: string, id: string, body: SessionUpdate) =>
+    request<Session | GymSession>(`/sessions/${id}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  getFatigueExplain: (token: string, group: string, days = 28) =>
+    request<FatigueExplain>(
+      `/stats/fatigue/explain?group=${encodeURIComponent(group)}&days=${days}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    ),
   sendChat: (token: string, text: string) =>
     request<ChatEnqueue>("/chat/message", {
       method: "POST",
@@ -373,6 +396,78 @@ export const api = {
     }),
   cancelLive: (token: string) =>
     request<{ status: string }>("/live", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  getSportAnalysis: (
+    token: string,
+    params: {
+      sport?: string;
+      weeks?: number;
+      basis?: "auto" | "historial" | "rutina";
+      narrative?: boolean;
+    },
+  ) => {
+    // Sin sport, el backend usa el deporte principal del perfil.
+    const query = new URLSearchParams();
+    if (params.sport) query.set("sport", params.sport);
+    query.set("weeks", String(params.weeks ?? 4));
+    query.set("basis", params.basis ?? "auto");
+    query.set("narrative", String(params.narrative ?? false));
+    return request<SportAnalysis>(`/analysis/sport?${query.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+  getExerciseAlternatives: (token: string, exerciseId: string, limit = 8) =>
+    request<ExerciseAlternative[]>(
+      `/catalog/exercises/${exerciseId}/alternatives?limit=${limit}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    ),
+  swapRoutineExercise: (
+    token: string,
+    routineId: string,
+    routineExerciseId: string,
+    exerciseId: string,
+  ) =>
+    request<Routine>(`/routines/${routineId}/exercises/${routineExerciseId}/swap`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ exerciseId }),
+    }),
+  addRoutineDayExercise: (
+    token: string,
+    routineId: string,
+    dayOfWeek: number,
+    body: {
+      exerciseId: string;
+      sets?: number;
+      targetRepsMin?: number;
+      targetRepsMax?: number;
+    },
+  ) =>
+    request<Routine>(`/routines/${routineId}/days/${dayOfWeek}/exercises`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  sendAgentMessage: (token: string, text: string) =>
+    request<AgentReply>("/agent/message", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ text }),
+    }),
+  confirmAgentAction: (token: string, actionId: string) =>
+    request<{ message: string }>(`/agent/actions/${actionId}/confirm`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  discardAgentAction: (token: string, actionId: string) =>
+    request<void>(`/agent/actions/${actionId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  resetAgentConversation: (token: string) =>
+    request<void>("/agent/conversation", {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     }),

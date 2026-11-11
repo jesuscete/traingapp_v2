@@ -169,6 +169,15 @@ export function RoutineReviewModal({
             <p className="muted">Generando evaluación por IA...</p>
           ) : server ? (
             <>
+              {server.source && (
+                <p className="review-source">
+                  <span className={`ex-badge${server.source === "fallback" ? " warn" : ""}`}>
+                    {server.source === "llm"
+                      ? "Análisis IA"
+                      : "Análisis básico (IA no disponible)"}
+                  </span>
+                </p>
+              )}
               {server.puntosFuertes.length > 0 && (
                 <>
                   <h4>Puntos fuertes</h4>

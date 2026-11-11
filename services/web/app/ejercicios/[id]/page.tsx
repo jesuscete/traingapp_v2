@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { BodyMap } from "@/components/BodyMap";
@@ -24,7 +24,10 @@ import { useToken } from "@/lib/useToken";
 export default function EjercicioDetalle() {
   const params = useParams<{ id: string }>();
   const token = useToken();
-  const { catalog, loading, error, toggleFavorite } = useCatalog(token);
+  const router = useRouter();
+  const { catalog, loading, error, toggleFavorite, removeExercise } = useCatalog(token);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [history, setHistory] = useState<ExerciseHistory | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -58,6 +61,21 @@ export default function EjercicioDetalle() {
     };
   }, [token, params.id]);
 
+  async function deleteExercise() {
+    if (!token || !exercise) return;
+    if (!window.confirm(`¿Eliminar el ejercicio "${exerciseDisplayName(exercise)}"?`)) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.deleteCustomExercise(token, exercise.id);
+      removeExercise(exercise.id);
+      router.replace("/ejercicios");
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "No se pudo eliminar el ejercicio");
+      setDeleting(false);
+    }
+  }
+
   const instructions = exercise ? exerciseInstructions(exercise) : [];
   const primary = exercise ? primaryMuscles(exercise) : [];
   const secondary = exercise ? secondaryMuscles(exercise) : [];
@@ -79,7 +97,10 @@ export default function EjercicioDetalle() {
         <>
           <section className="ex-detail-head">
             <div>
-              <h2>{exerciseDisplayName(exercise)}</h2>
+              <h2>
+                {exerciseDisplayName(exercise)}
+                {exercise.isCustom && <span className="ex-badge">Propio</span>}
+              </h2>
               {exercise.details?.nameEs && exercise.details.nameEs !== exercise.name && (
                 <p className="muted">{exercise.name}</p>
               )}
@@ -133,6 +154,20 @@ export default function EjercicioDetalle() {
           {historyLoading && <p className="muted">Cargando historial…</p>}
           {historyError && <p className="error">{historyError}</p>}
           {history && <ExerciseHistoryView history={history} />}
+
+          {exercise.isCustom && (
+            <section className="block ce-danger">
+              {deleteError && <p className="error">{deleteError}</p>}
+              <button
+                type="button"
+                className="wk-danger"
+                disabled={deleting}
+                onClick={() => void deleteExercise()}
+              >
+                {deleting ? "Eliminando…" : "Eliminar ejercicio"}
+              </button>
+            </section>
+          )}
         </>
       )}
     </main>

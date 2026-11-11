@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { api } from "@/lib/api";
+import { exerciseDisplayName } from "@/lib/exerciseSearch";
+import { uid } from "@/lib/workout/ops";
 import { DAY_TYPE_LABELS, DAY_TYPE_OPTIONS, WEEKDAYS } from "@/lib/routines";
 import { DisciplinePicker } from "@/components/rutinas/DisciplinePicker";
 import { RoutineReviewModal } from "@/components/rutinas/RoutineReviewModal";
@@ -29,8 +31,48 @@ type DraftSet = {
 type DraftExercise = {
   exerciseId: string;
   name: string;
+  notes: string;
+  supersetGroupId: string | null;
   sets: DraftSet[];
 };
+
+const MAX_NOTES = 500;
+
+/**
+ * Deja los grupos de superserie consistentes: solo ejercicios contiguos y con
+ * al menos 2 miembros. Un grupo partido en varios tramos conserva el id en el
+ * primero y reparte ids nuevos al resto.
+ */
+function normalizeSupersets(exercises: DraftExercise[]): DraftExercise[] {
+  const seen = new Set<string>();
+  let prevOriginal: string | null = null;
+  let runId: string | null = null;
+  const assigned = exercises.map((ex) => {
+    const group = ex.supersetGroupId;
+    if (!group) {
+      prevOriginal = null;
+      runId = null;
+      return ex;
+    }
+    if (prevOriginal !== group || runId === null) {
+      runId = seen.has(group) ? uid() : group;
+      seen.add(group);
+    }
+    prevOriginal = group;
+    return { ...ex, supersetGroupId: runId };
+  });
+  const counts = new Map<string, number>();
+  for (const ex of assigned) {
+    if (ex.supersetGroupId) {
+      counts.set(ex.supersetGroupId, (counts.get(ex.supersetGroupId) ?? 0) + 1);
+    }
+  }
+  return assigned.map((ex) =>
+    ex.supersetGroupId && (counts.get(ex.supersetGroupId) ?? 0) < 2
+      ? { ...ex, supersetGroupId: null }
+      : ex,
+  );
+}
 
 type DraftDay = {
   dayOfWeek: number;
@@ -63,6 +105,8 @@ function toDraftDay(day: RoutineDay): DraftDay {
     exercises: day.exercises.map((exercise) => ({
       exerciseId: exercise.exerciseId ?? "",
       name: exercise.name ?? "",
+      notes: exercise.notes ?? "",
+      supersetGroupId: exercise.supersetGroupId,
       sets: exercise.sets.map((workoutSet) => ({
         setNumber: workoutSet.setNumber,
         targetRepsMin: workoutSet.targetRepsMin,
@@ -101,7 +145,8 @@ function dayToInput(day: DraftDay): RoutineDayInput {
       ? day.exercises.map((exercise, index) => ({
           exerciseId: exercise.exerciseId,
           orderIndex: index,
-          supersetGroupId: null,
+          supersetGroupId: exercise.supersetGroupId,
+          notes: exercise.notes.trim() || null,
           sets: exercise.sets.map((workoutSet) => ({
             setNumber: workoutSet.setNumber,
             setType: "normal",
@@ -140,6 +185,14 @@ export function RoutineEditor({ token, routine, onSaved, onCancel }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
+
+  const catalogById = useMemo(() => new Map(catalog.map((ex) => [ex.id, ex])), [catalog]);
+
+  function displayName(exercise: DraftExercise): string {
+    const found = catalogById.get(exercise.exerciseId);
+    return found ? exerciseDisplayName(found) : exercise.name;
+  }
 
   useEffect(() => {
     api.listCatalogExercises(token).then(setCatalog).catch(() => setCatalog([]));
@@ -151,19 +204,84 @@ export function RoutineEditor({ token, routine, onSaved, onCancel }: Props) {
   }
 
   function applyPicker(dayIndex: number, exercises: PickerExercise[]) {
+    const previous = new Map(
+      (days[dayIndex]?.exercises ?? []).map((ex) => [ex.exerciseId, ex]),
+    );
     updateDay(dayIndex, {
-      exercises: exercises.map((item) => ({
-        exerciseId: item.exerciseId,
-        name: item.name,
-        sets: item.sets.map((workoutSet) => ({
-          setNumber: workoutSet.setNumber,
-          targetRepsMin: workoutSet.reps,
-          targetRepsMax: null,
-          targetWeightKg: workoutSet.weightKg,
+      exercises: normalizeSupersets(
+        exercises.map((item) => ({
+          exerciseId: item.exerciseId,
+          name: item.name,
+          notes: previous.get(item.exerciseId)?.notes ?? "",
+          supersetGroupId: previous.get(item.exerciseId)?.supersetGroupId ?? null,
+          sets: item.sets.map((workoutSet) => ({
+            setNumber: workoutSet.setNumber,
+            targetRepsMin: workoutSet.reps,
+            targetRepsMax: null,
+            targetWeightKg: workoutSet.weightKg,
+          })),
         })),
-      })),
+      ),
     });
     setPickerDay(null);
+  }
+
+  function updateExercises(
+    dayIndex: number,
+    change: (list: DraftExercise[]) => DraftExercise[],
+  ) {
+    setDays((prev) =>
+      prev.map((day, i) =>
+        i === dayIndex ? { ...day, exercises: normalizeSupersets(change(day.exercises)) } : day,
+      ),
+    );
+  }
+
+  function moveExercise(dayIndex: number, from: number, delta: number) {
+    updateExercises(dayIndex, (list) => {
+      const to = from + delta;
+      if (to < 0 || to >= list.length) return list;
+      const next = [...list];
+      [next[from], next[to]] = [next[to], next[from]];
+      return next;
+    });
+  }
+
+  function toggleSuperset(dayIndex: number, index: number) {
+    updateExercises(dayIndex, (list) => {
+      const cur = list[index];
+      const nxt = list[index + 1];
+      if (!cur || !nxt) return list;
+      if (cur.supersetGroupId && cur.supersetGroupId === nxt.supersetGroupId) {
+        const group = cur.supersetGroupId;
+        const fresh = uid();
+        return list.map((ex, j) =>
+          j > index && ex.supersetGroupId === group ? { ...ex, supersetGroupId: fresh } : ex,
+        );
+      }
+      const group = cur.supersetGroupId ?? nxt.supersetGroupId ?? uid();
+      const nextGroup = nxt.supersetGroupId;
+      return list.map((ex, j) =>
+        j === index || j === index + 1 || (nextGroup !== null && ex.supersetGroupId === nextGroup)
+          ? { ...ex, supersetGroupId: group }
+          : ex,
+      );
+    });
+  }
+
+  function setExerciseNotes(dayIndex: number, index: number, notes: string) {
+    updateExercises(dayIndex, (list) =>
+      list.map((ex, j) => (j === index ? { ...ex, notes } : ex)),
+    );
+  }
+
+  function toggleNotes(key: string) {
+    setOpenNotes((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   }
 
   function addDay() {
@@ -373,12 +491,45 @@ export function RoutineEditor({ token, routine, onSaved, onCancel }: Props) {
                   Este día aún no tiene ejercicios. Pulsa "Añadir ejercicio" para configurarlos.
                 </p>
               )}
-              {day.exercises.map((exercise) => (
-                <div key={exercise.exerciseId} className="routine-exercise">
+              {day.exercises.map((exercise, exIndex) => {
+                const group = exercise.supersetGroupId;
+                const prevLinked = exIndex > 0 && day.exercises[exIndex - 1].supersetGroupId === group && group !== null;
+                const nextLinked =
+                  exIndex < day.exercises.length - 1 &&
+                  day.exercises[exIndex + 1].supersetGroupId === group &&
+                  group !== null;
+                const notesKey = `${dayIndex}:${exercise.exerciseId}`;
+                const notesOpen = openNotes.has(notesKey);
+                const ssClass = group
+                  ? ` re-ss${prevLinked ? "" : " re-ss-first"}${nextLinked ? "" : " re-ss-last"}`
+                  : "";
+                return (
+                <div key={exercise.exerciseId} className={`routine-exercise${ssClass}`}>
+                  {group && !prevLinked && <span className="re-ss-tag">Superserie</span>}
                   <div className="routine-exercise-header">
-                    <strong>{exercise.name}</strong>
+                    <strong className="re-name">{displayName(exercise)}</strong>
                     <span className="muted">
                       {exercise.sets.length} {exercise.sets.length === 1 ? "serie" : "series"}
+                    </span>
+                    <span className="re-move">
+                      <button
+                        type="button"
+                        className="secondary"
+                        aria-label="Subir ejercicio"
+                        disabled={exIndex === 0}
+                        onClick={() => moveExercise(dayIndex, exIndex, -1)}
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        aria-label="Bajar ejercicio"
+                        disabled={exIndex === day.exercises.length - 1}
+                        onClick={() => moveExercise(dayIndex, exIndex, 1)}
+                      >
+                        ▼
+                      </button>
                     </span>
                   </div>
                   <table className="plain routine-sets">
@@ -399,8 +550,43 @@ export function RoutineEditor({ token, routine, onSaved, onCancel }: Props) {
                       ))}
                     </tbody>
                   </table>
+                  <div className="re-actions">
+                    <button
+                      type="button"
+                      className="secondary re-action"
+                      aria-expanded={notesOpen}
+                      onClick={() => toggleNotes(notesKey)}
+                    >
+                      Notas{exercise.notes.trim() ? " ●" : ""} {notesOpen ? "▴" : "▾"}
+                    </button>
+                    {exIndex < day.exercises.length - 1 && (
+                      <button
+                        type="button"
+                        className={`secondary re-action${nextLinked ? " on" : ""}`}
+                        aria-pressed={nextLinked}
+                        onClick={() => toggleSuperset(dayIndex, exIndex)}
+                      >
+                        Superserie con el siguiente
+                      </button>
+                    )}
+                  </div>
+                  {notesOpen && (
+                    <label className="re-notes">
+                      <textarea
+                        rows={3}
+                        maxLength={MAX_NOTES}
+                        placeholder="Notas del ejercicio (técnica, tempo, ajustes de máquina…)"
+                        value={exercise.notes}
+                        onChange={(event) => setExerciseNotes(dayIndex, exIndex, event.target.value)}
+                      />
+                      <span className="muted re-notes-count">
+                        {exercise.notes.length}/{MAX_NOTES}
+                      </span>
+                    </label>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </>
           )}
 

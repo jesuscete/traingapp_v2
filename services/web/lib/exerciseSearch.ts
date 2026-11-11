@@ -59,6 +59,7 @@ export type ExerciseFilters = {
   equipment: string | null;
   category: string | null;
   favoritesOnly: boolean;
+  customOnly: boolean;
 };
 
 export const EMPTY_FILTERS: ExerciseFilters = {
@@ -67,6 +68,7 @@ export const EMPTY_FILTERS: ExerciseFilters = {
   equipment: null,
   category: null,
   favoritesOnly: false,
+  customOnly: false,
 };
 
 export function filterExercises(
@@ -77,6 +79,7 @@ export function filterExercises(
   const out: { ex: CatalogExercise; score: number }[] = [];
   for (const item of index) {
     if (filters.favoritesOnly && !item.ex.isFavorite) continue;
+    if (filters.customOnly && !item.ex.isCustom) continue;
     if (filters.muscle && !item.primary.includes(filters.muscle)) continue;
     if (filters.equipment && item.equipment !== filters.equipment) continue;
     if (filters.category && item.category !== filters.category) continue;

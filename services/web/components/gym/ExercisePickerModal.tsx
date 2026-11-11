@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { exerciseDisplayName } from "@/lib/exerciseSearch";
 import { exerciseImageUrl } from "@/lib/format";
 import { translateMuscleGroup } from "@/lib/labels";
 import type { CatalogExercise } from "@/lib/types";
@@ -101,7 +102,9 @@ export function ExercisePickerModal({
   const results = useMemo(() => {
     const q = norm(search.trim());
     if (q !== "") {
-      return catalog.filter((item) => norm(item.name).includes(q));
+      return catalog.filter((item) =>
+        norm(`${exerciseDisplayName(item)} ${item.name}`).includes(q),
+      );
     }
     if (tab === "all") return catalog;
     return catalog.filter((item) => (item.muscleMap[tab] ?? 0) > 0);
@@ -113,7 +116,7 @@ export function ExercisePickerModal({
         ? prev.filter((item) => item.exerciseId !== exercise.id)
         : [
             ...prev,
-            { exerciseId: exercise.id, name: exercise.name, sets: defaultSets() },
+            { exerciseId: exercise.id, name: exerciseDisplayName(exercise), sets: defaultSets() },
           ],
     );
   }
@@ -222,7 +225,7 @@ export function ExercisePickerModal({
                   {image ? (
                     <img className="exercise-thumb" src={image} alt="" loading="lazy" />
                   ) : null}
-                  <span>{exercise.name}</span>
+                  <span>{exerciseDisplayName(exercise)}</span>
                   {locked ? (
                     <em className="picker-locked">En sesión</em>
                   ) : added ? (

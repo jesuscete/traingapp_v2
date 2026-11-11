@@ -23,6 +23,7 @@ export default function Rutinas() {
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [reviewing, setReviewing] = useState<Routine | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(
     async (authToken: string) => {
@@ -62,6 +63,22 @@ export default function Rutinas() {
       setRoutines((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al activar la rutina");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function duplicate(routine: Routine) {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const copy = await api.duplicateRoutine(token, routine.id);
+      await load(token);
+      setNotice(`Rutina duplicada: "${copy.name}".`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al duplicar la rutina");
     } finally {
       setBusy(false);
     }
@@ -125,6 +142,7 @@ export default function Rutinas() {
       </div>
 
       {error && <p className="error">{error}</p>}
+      {notice && <p className="ok">{notice}</p>}
 
       {!loaded && <p className="muted">Cargando...</p>}
 
@@ -189,6 +207,9 @@ export default function Rutinas() {
                   </button>
                   <button type="button" className="secondary" onClick={() => setReviewing(routine)}>
                     Evaluar
+                  </button>
+                  <button type="button" className="secondary" disabled={busy} onClick={() => duplicate(routine)}>
+                    Duplicar
                   </button>
                   <button type="button" className="link" disabled={busy} onClick={() => remove(routine)}>
                     Borrar

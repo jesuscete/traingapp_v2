@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { CreateExerciseSheet } from "@/components/gym/CreateExerciseSheet";
 import { ExerciseThumb } from "@/components/gym/ExerciseThumb";
 import { FavoriteButton } from "@/components/gym/FavoriteButton";
 import {
@@ -42,7 +43,8 @@ type Props = {
 };
 
 export function ExerciseLibrary({ token, onPick, autoFocus }: Props) {
-  const { catalog, loading, error, retry, toggleFavorite } = useCatalog(token);
+  const { catalog, loading, error, retry, toggleFavorite, addExercise } = useCatalog(token);
+  const [creating, setCreating] = useState(false);
   const [filters, setFilters] = useState<ExerciseFilters>(EMPTY_FILTERS);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [limit, setLimit] = useState(PAGE_SIZE);
@@ -105,6 +107,14 @@ export function ExerciseLibrary({ token, onPick, autoFocus }: Props) {
             onClick={() => patch({ favoritesOnly: !filters.favoritesOnly })}
           >
             ★ Favoritos
+          </button>
+          <button
+            type="button"
+            className={`ex-chip${filters.customOnly ? " on" : ""}`}
+            aria-pressed={filters.customOnly}
+            onClick={() => patch({ customOnly: !filters.customOnly })}
+          >
+            Propios
           </button>
           {muscles.map((m) => (
             <button
@@ -174,12 +184,26 @@ export function ExerciseLibrary({ token, onPick, autoFocus }: Props) {
         <p className="muted ex-empty">
           {filters.favoritesOnly && catalog.length > 0
             ? "Aún no tienes favoritos con estos filtros."
-            : "No hay ejercicios que coincidan."}
+            : filters.customOnly && catalog.length > 0
+              ? "Aún no has creado ejercicios propios."
+              : "No hay ejercicios que coincidan."}
         </p>
+      )}
+      {!loading && !error && results.length === 0 && token && (
+        <button type="button" className="secondary ce-create-btn" onClick={() => setCreating(true)}>
+          {filters.query.trim() ? `+ Crear «${filters.query.trim()}»` : "+ Crear ejercicio"}
+        </button>
       )}
 
       {results.length > 0 && (
-        <p className="muted ex-count">{results.length} ejercicios</p>
+        <div className="ex-toolbar">
+          <p className="muted ex-count">{results.length} ejercicios</p>
+          {token && (
+            <button type="button" className="secondary ce-create-btn" onClick={() => setCreating(true)}>
+              + Crear ejercicio
+            </button>
+          )}
+        </div>
       )}
       <ul className="ex-list">
         {results.slice(0, limit).map((ex) => (
@@ -192,6 +216,18 @@ export function ExerciseLibrary({ token, onPick, autoFocus }: Props) {
         ))}
       </ul>
       {hasMore && <div ref={sentinel} className="ex-sentinel" aria-hidden="true" />}
+      {creating && token && (
+        <CreateExerciseSheet
+          token={token}
+          initialName={filters.query.trim()}
+          onClose={() => setCreating(false)}
+          onCreated={(created) => {
+            addExercise(created);
+            setCreating(false);
+            if (onPick) onPick(created);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -216,7 +252,10 @@ function ExerciseRow({
     <>
       <ExerciseThumb src={ex.imageUrls[0]} />
       <span className="ex-row-text">
-        <span className="ex-row-name">{exerciseDisplayName(ex)}</span>
+        <span className="ex-row-name">
+          {exerciseDisplayName(ex)}
+          {ex.isCustom && <span className="ex-badge">Propio</span>}
+        </span>
         <span className="ex-row-meta">{meta || "—"}</span>
       </span>
     </>

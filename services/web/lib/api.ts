@@ -1,5 +1,6 @@
 import type {
   CatalogExercise,
+  CustomExerciseInput,
   ChatEnqueue,
   ChatMessageOut,
   Discipline,
@@ -245,6 +246,11 @@ export const api = {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     }),
+  duplicateRoutine: (token: string, routineId: string) =>
+    request<Routine>(`/routines/${routineId}/duplicate`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
   upsertRoutineDay: (
     token: string,
     routineId: string,
@@ -269,6 +275,17 @@ export const api = {
     }),
   listCatalogExercises: (token: string) =>
     request<CatalogExercise[]>("/catalog/exercises", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  createCustomExercise: (token: string, body: CustomExerciseInput) =>
+    request<CatalogExercise>("/catalog/exercises", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  deleteCustomExercise: (token: string, exerciseId: string) =>
+    request<void>(`/catalog/exercises/${exerciseId}`, {
+      method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     }),
   setExerciseFavorite: (token: string, exerciseId: string, favorite: boolean) =>

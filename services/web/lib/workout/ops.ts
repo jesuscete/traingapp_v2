@@ -108,7 +108,7 @@ export function exercisesFromRoutineDay(
         exerciseId: re.exerciseId,
         name: cat ? exerciseDisplayName(cat) : (re.name ?? "Ejercicio"),
         imageUrl: cat?.imageUrls[0] ?? null,
-        note: "",
+        note: re.notes ?? "",
         supersetGroupId: re.supersetGroupId,
         restSeconds: rest ?? DEFAULT_REST_SECONDS,
         sets: sets.length > 0 ? sets : [newSet()],

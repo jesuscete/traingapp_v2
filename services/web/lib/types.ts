@@ -412,6 +412,7 @@ export type RoutineExercise = {
   name: string | null;
   orderIndex: number;
   supersetGroupId: string | null;
+  notes: string | null;
   sets: RoutineSet[];
 };
 
@@ -449,6 +450,7 @@ export type RoutineExerciseInput = {
   exerciseId: string;
   orderIndex?: number;
   supersetGroupId?: string | null;
+  notes?: string | null;
   sets: RoutineSetInput[];
 };
 
@@ -487,6 +489,7 @@ export type Solapamiento = {
 };
 
 export type RoutineReview = {
+  source?: "llm" | "fallback";
   puntosFuertes: string[];
   solapamientos: Solapamiento[];
   sugerencias: string[];
@@ -526,7 +529,33 @@ export type CatalogExercise = {
   images: string[];
   imageUrls: string[];
   isFavorite: boolean;
+  isCustom?: boolean;
   details: CatalogExerciseDetails | null;
+};
+
+export type MuscleGroupKey =
+  | "back"
+  | "biceps"
+  | "calves"
+  | "chest"
+  | "core"
+  | "forearms"
+  | "glutes"
+  | "hamstrings"
+  | "neck"
+  | "quadriceps"
+  | "shoulders"
+  | "triceps";
+
+export type CustomExerciseInput = {
+  name: string;
+  primaryMuscles: MuscleGroupKey[];
+  secondaryMuscles?: MuscleGroupKey[];
+  equipment?: string | null;
+  category?: string;
+  usesBodyweight?: boolean;
+  unilateral?: boolean;
+  instructions?: string[];
 };
 
 export type ExerciseRecords = {

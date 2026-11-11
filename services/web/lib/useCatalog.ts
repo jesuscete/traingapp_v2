@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { getCatalog, patchCachedFavorite, peekCatalog } from "@/lib/catalogCache";
+import {
+  getCatalog,
+  patchCachedFavorite,
+  peekCatalog,
+  removeCachedExercise,
+  upsertCachedExercise,
+} from "@/lib/catalogCache";
 import { api } from "@/lib/api";
 import type { CatalogExercise } from "@/lib/types";
 
@@ -56,5 +62,17 @@ export function useCatalog(token: string | null) {
     [token, catalog],
   );
 
-  return { catalog, loading, error, retry, toggleFavorite };
+  const addExercise = useCallback((exercise: CatalogExercise) => {
+    upsertCachedExercise(exercise);
+    setCatalog((list) =>
+      list.some((ex) => ex.id === exercise.id) ? list : [...list, exercise],
+    );
+  }, []);
+
+  const removeExercise = useCallback((id: string) => {
+    removeCachedExercise(id);
+    setCatalog((list) => list.filter((ex) => ex.id !== id));
+  }, []);
+
+  return { catalog, loading, error, retry, toggleFavorite, addExercise, removeExercise };
 }

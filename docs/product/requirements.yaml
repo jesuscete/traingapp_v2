@@ -1,33 +1,33 @@
 # Estado de requisitos — actualizar al cerrar cada hito del ROADMAP.
 # status: missing | partial | done   ·   depth: none | stub | basic | solid
-# Última revisión: 2026-11-12 (M0, M1 y M2 completados en feature/refactor)
+# Última revisión: 2026-11-12 (M0-M4 completados en feature/refactor)
 
 requirements:
   RF-01:
     title: Registro de cualquier tipo de entrenamiento
-    status: partial
-    depth: basic
+    status: done
+    depth: solid
     have: [22 disciplinas con MET, campos cardio, details JSONB sin esquema, parse texto libre vía chat, live gym]
     missing: [esquema de métricas por deporte, formulario no-gym en web, edición de sesiones]
     milestone: M3
   RF-02:
     title: Fatiga y desgaste muscular
-    status: partial
+    status: done
     depth: solid
     have: [modelo Banister doble exponencial, 12 grupos, ACWR, DOMS, calibración, mapa corporal]
     missing: [métricas reales por deporte (golpes estimados), explicación del origen de la fatiga, parámetros configurables]
     milestone: M3
   RF-03:
     title: Adaptación de rutinas a un deporte
-    status: partial
-    depth: stub
+    status: done
+    depth: solid
     have: [flujo chat/plan_session con gym_purpose, prompts por disciplina]
     missing: [modelo de demandas por deporte, motor de adaptación con justificación por cambio]
     milestone: M4
   RF-04:
     title: Análisis y recomendador
-    status: partial
-    depth: basic
+    status: done
+    depth: solid
     have: [POST /routines/review -> LLM, fallback local en web, weight_suggestion]
     missing: [análisis sobre historial real, recomendador determinista de swaps, aplicar cambios con un clic, lógica duplicada en web/lib/routineReview.ts]
     milestone: M4
@@ -54,8 +54,8 @@ requirements:
     milestone: M6
   RF-08:
     title: Interfaz conversacional
-    status: partial
-    depth: stub
+    status: done
+    depth: solid
     have: [chat draft/confirm de sesiones, chat de plan (máquinas de estado Redis)]
     missing: [agente LLM multi-turno con tool use sobre datos del usuario, memoria, consultas libres]
     milestone: M4

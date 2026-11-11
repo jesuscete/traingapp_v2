@@ -37,17 +37,25 @@
 - [x] Timeouts coherentes (90 s / 200 s). **Cambio:** sin cola, ver [ADR-003](decisions/ADR-003-llamadas-llm-sincronas.md).
 - [x] Corregido: el prompt de revisión pedía `solapamientos` como texto y el código los descartaba todos.
 
-### M3 · Registro multideporte y fatiga (RF-01, RF-02)
-- [ ] Esquemas de métricas por deporte (pydantic discriminado sobre `details`): fuerza, resistencia, combate (rounds × duración; saco/sparring/manoplas/comba), escalada, genérico.
-- [ ] Formulario web dinámico por disciplina y edición de sesiones.
-- [ ] La fatiga usa las métricas reales de combate y resistencia. Completar `CARDIO_DISCIPLINES`.
-- [ ] Endpoint de "explicación de la fatiga": qué sesiones cargan cada músculo.
+### M3 · Registro multideporte y fatiga (RF-01, RF-02) ✅ (2026-11-12)
+- [x] Métricas por deporte validadas (`schemas/metrics.py`, en `details.metrics`): combate (bloques saco/sparring/manoplas/comba/sombra/técnica/físico con rounds×duración o minutos), resistencia (distancia, FC, desnivel), escalada (estilo + vías con grado), genérica. Se rechazan las que no encajan con la disciplina (422).
+- [x] La duración se deriva de los bloques; la distancia, la FC y el desnivel alimentan sus columnas y las kcal.
+- [x] Fatiga: volumen de combate a partir de los bloques (golpes equivalentes por tipo), ciclismo y natación por km con pendiente, artes marciales como combate.
+- [x] **Fix:** la fatiga y las kcal ignoraban `intensity` (las 30 sesiones de gym contaban con RPE 5). Ahora: `details.rpe` → `intensity` → RPE medio de las series.
+- [x] `GET /stats/fatigue/explain?group=`: descomposición exacta de la fatiga actual por sesión.
+- [x] `PUT /sessions/{id}`: edición parcial (en gym solo los datos generales).
+- [x] IA: el parseo extrae bloques de combate y datos de resistencia, y el chat los guarda al confirmar (probado con Claude: 4,9 s).
+- [x] Web: `/registrar` con formulario por deporte, detalle y edición de sesiones, explicación de la fatiga en el dashboard y métricas en el borrador del chat.
+- [ ] *Aplazado:* retirar la tabla `exercises` (segunda parte del ADR-001); dividir una sesión mixta en varias.
 
-### M4 · Deporte principal y agente (RF-03, RF-04, RF-08)
-- [ ] Perfil de demandas por deporte (empezar por boxeo): cualidades, patrones, músculos y rangos de reps/intensidad.
-- [ ] Analizador determinista del historial real frente a las demandas, para obtener carencias. Claude redacta y justifica, no calcula.
-- [ ] Recomendador de sustituciones por similitud (músculos, patrón, equipo) y "aplicar cambio" con un clic. Mover `web/lib/routineReview.ts` al backend.
-- [ ] Agente conversacional con herramientas sobre los datos del usuario, memoria y confirmación antes de escribir. Sustituye progresivamente a `chat/plan_session.py`.
+### M4 · Deporte principal y agente (RF-03, RF-04, RF-08) ✅ (2026-11-12)
+- [x] Perfil de demandas del boxeo (`analytics/sport_analysis.py`): patrones (rotación, anti-rotación, pliometría, explosivos, unilateral, bisagra, cuello, tirones), rangos de series por músculo, zonas de repeticiones, equilibrio tirón/empuje y conflictos con los días de deporte. Hay un perfil genérico para el resto de deportes.
+- [x] Clasificación de patrones de movimiento por ejercicio (`analytics/patterns.py`).
+- [x] `GET /analysis/sport`: análisis determinista del historial (≥3 sesiones en 4 semanas) o de la rutina activa, con puntuación, carencias y ejercicios sugeridos. Con `narrative=true`, Claude redacta el diagnóstico y las prioridades.
+- [x] Recomendador: `GET /catalog/exercises/{id}/alternatives` (similitud muscular, de fuerza y de patrón) y aplicar con un clic (`POST /routines/{id}/exercises/{eid}/swap`, `POST /routines/{id}/days/{dow}/exercises`).
+- [x] Agente conversacional con 10 herramientas, memoria y confirmación antes de escribir ([ADR-004](decisions/ADR-004-agente-conversacional.md)). Probado con Claude: 8-14 s por turno.
+- [x] Motor de fatiga movido a `services/fatigue_engine.py` (lo comparten las estadísticas y el agente).
+- [ ] *Aplazado:* mover `web/lib/routineReview.ts` al backend (es un fichero con cambios locales del Arquitecto); planes multisemana generados por el agente.
 
 ### M5 · Nutrición (RF-05)
 - [ ] Decisión sobre la API de alimentos (FatSecret, Open Food Facts o Edamam: coste, cobertura en España, licencia).
@@ -81,4 +89,4 @@ M1..M6 ─► M7 ─► M8
 M1 solo usa el LLM para traducir las instrucciones (un lote único). Si M2 no está listo, se hace con el CLI a mano.
 
 ## Siguiente paso
-Prueba real de M1 y M2 en el móvil. Después, M3: registro multideporte con métricas por deporte (el parseo ya detecta sesiones mixtas, pero las clasifica con una sola disciplina).
+Prueba real de M1–M4 en el móvil. Después, M5 (nutrición) o M6 (Strava), que son independientes.

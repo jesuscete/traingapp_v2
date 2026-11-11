@@ -1,6 +1,6 @@
 # ADR-001 · Modelo de sesiones: cabecera común + detalle por tipo
 
-**Estado:** Aceptada · 2026-11-11 · Aplicada en M1 (fuerza → modelo gym); la parte de M3 sigue pendiente
+**Estado:** Aceptada · 2026-11-11 · Aplicada en M1 (fuerza → modelo gym) y M3 (métricas por deporte en `details.metrics`). Pendiente: retirar la tabla `exercises`, que conservan las sesiones no-gym antiguas
 
 ## Problema
 Conviven dos formas de guardar el detalle de una sesión:

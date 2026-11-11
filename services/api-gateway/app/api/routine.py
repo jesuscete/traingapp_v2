@@ -1,5 +1,6 @@
 import logging
 import uuid
+from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
@@ -8,10 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.review import fetch_routine_review
+from app.crud import catalog as catalog_crud
 from app.crud import routine as routine_crud
 from app.crud.catalog import catalog_lookup
 from app.models import Routine, User
 from app.schemas.routine import (
+    RoutineDayIn,
     RoutineDayUpsert,
     RoutineIn,
     RoutineOut,
@@ -68,12 +71,24 @@ async def get_active_routine(
     return await _to_routine_out(session, routine)
 
 
+async def _ensure_exercises_visible(
+    session: AsyncSession, user: User, days: Sequence[RoutineDayIn | RoutineDayUpsert]
+) -> None:
+    ids = {exercise.exercise_id for day in days for exercise in day.exercises}
+    if await catalog_crud.invisible_ids(session, user.id, ids):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="La rutina incluye ejercicios que no existen",
+        )
+
+
 @router.post("", response_model=RoutineOut, status_code=status.HTTP_201_CREATED)
 async def create_routine(
     body: RoutineIn,
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> RoutineOut:
+    await _ensure_exercises_visible(session, current_user, body.days)
     routine = await routine_crud.create_routine(session, current_user.id, body)
     return await _to_routine_out(session, routine)
 
@@ -116,6 +131,23 @@ async def update_routine(
     return await _to_routine_out(session, updated)
 
 
+MAX_ROUTINE_NAME = 120
+
+
+@router.post(
+    "/{routine_id}/duplicate", response_model=RoutineOut, status_code=status.HTTP_201_CREATED
+)
+async def duplicate_routine(
+    routine_id: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> RoutineOut:
+    source = await _routine_or_404(session, current_user.id, routine_id)
+    name = f"{source.name} (copia)"[:MAX_ROUTINE_NAME]
+    copy = await routine_crud.duplicate_routine(session, current_user.id, source, name=name)
+    return await _to_routine_out(session, copy)
+
+
 @router.delete("/{routine_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_routine(
     routine_id: uuid.UUID,
@@ -135,6 +167,7 @@ async def upsert_day(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> RoutineOut:
     routine = await _routine_or_404(session, current_user.id, routine_id)
+    await _ensure_exercises_visible(session, current_user, [body])
     updated = await routine_crud.upsert_day(
         session, current_user.id, routine.id, day_of_week, body
     )

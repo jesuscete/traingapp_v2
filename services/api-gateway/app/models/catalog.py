@@ -1,7 +1,19 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Uuid, func
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    String,
+    UniqueConstraint,
+    Uuid,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,10 +31,24 @@ class ExerciseCatalog(Base):
     """
 
     __tablename__ = "exercise_catalog"
+    __table_args__ = (
+        UniqueConstraint("owner_user_id", "normalized_name", name="uq_exercise_owner_name"),
+        Index(
+            "uq_exercise_catalog_global_name",
+            "normalized_name",
+            unique=True,
+            postgresql_where=text("owner_user_id IS NULL"),
+            sqlite_where=text("owner_user_id IS NULL"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(120))
-    normalized_name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    normalized_name: Mapped[str] = mapped_column(String(120), index=True)
+    # NULL = catálogo global; si no, ejercicio personalizado de ese usuario.
+    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     exercise_type: Mapped[str] = mapped_column(String(20))
     muscle_map: Mapped[dict[str, float]] = mapped_column(_JSONB)
     uses_bodyweight: Mapped[bool] = mapped_column(Boolean, default=False)

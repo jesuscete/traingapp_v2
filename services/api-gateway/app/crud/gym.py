@@ -8,7 +8,7 @@ from app.analytics import gym as gym_analytics
 from app.analytics import kcal as kcal_analytics
 from app.analytics.catalog import normalize_exercise_name
 from app.analytics.weight_suggestion import WeightRecord
-from app.crud.catalog import catalog_lookup, uses_bodyweight_map
+from app.crud.catalog import catalog_lookup, custom_lookup, uses_bodyweight_map
 from app.models import (
     SetEntry,
     TrainingSession,
@@ -155,8 +155,12 @@ async def create_gym(
     await session.flush()
 
     workout_exercises: list[WorkoutExercise] = []
+    by_id = {entry.id: entry for entry in lookup.values()}
+    by_id.update(await custom_lookup(session, user_id))
     for i, exercise in enumerate(data.exercises):
-        cat = lookup.get(normalize_exercise_name(exercise.name))
+        cat = (by_id.get(exercise.exercise_id) if exercise.exercise_id else None) or lookup.get(
+            normalize_exercise_name(exercise.name)
+        )
         uses_bw = bool(cat and cat.uses_bodyweight)
         volume = gym_analytics.compute_exercise_volume(
             exercise, user_weight_kg=weight_kg, uses_bodyweight=uses_bw

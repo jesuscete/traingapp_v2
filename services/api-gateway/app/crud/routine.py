@@ -108,6 +108,21 @@ async def create_routine(
     return result.scalar_one()
 
 
+async def duplicate_routine(
+    session: AsyncSession, user_id: uuid.UUID, source: Routine, *, name: str
+) -> Routine:
+    """Copia completa (días, ejercicios, series y notas) como rutina inactiva."""
+    copy = Routine(user_id=user_id, name=name, is_active=False)
+    for day in source.days:
+        copy.days.append(_build_day(day.day_of_week, RoutineDayIn.model_validate(day)))
+    session.add(copy)
+    await session.commit()
+    result = await session.execute(
+        select(Routine).where(Routine.id == copy.id).options(*_ROUTINE_LOADS)
+    )
+    return result.scalar_one()
+
+
 async def update_routine(
     session: AsyncSession,
     user_id: uuid.UUID,

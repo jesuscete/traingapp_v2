@@ -282,3 +282,31 @@ def test_routine_exercise_notes_roundtrip(client: TestClient, seed_catalog) -> N
     )
     assert created.status_code == 201, created.text
     assert created.json()["days"][0]["exercises"][0]["notes"] == "Agarre cerrado, pausa abajo"
+
+
+def test_duplicate_routine_copies_everything_as_inactive(
+    client: TestClient, seed_catalog
+) -> None:
+    headers = _register(client, "dup@example.com")
+    exercise_id = _exercise_id(client, headers, "press banca")
+    day = _gym_day(exercise_id)
+    day["exercises"][0]["notes"] = "Pausa abajo"
+    original = client.post(
+        "/routines", json=_routine_payload(exercise_id, days=[day]), headers=headers
+    ).json()
+
+    copy = client.post(f"/routines/{original['id']}/duplicate", headers=headers)
+    assert copy.status_code == 201, copy.text
+    data = copy.json()
+    assert data["name"] == "Rutina A (copia)"
+    assert data["isActive"] is False
+    assert data["id"] != original["id"]
+    copied_exercise = data["days"][0]["exercises"][0]
+    assert copied_exercise["notes"] == "Pausa abajo"
+    assert len(copied_exercise["sets"]) == 2
+    active = client.get("/routines/active", headers=headers).json()
+    assert active["id"] == original["id"]
+
+    stranger = _register(client, "dup-stranger@example.com")
+    url = f"/routines/{original['id']}/duplicate"
+    assert client.post(url, headers=stranger).status_code == 404

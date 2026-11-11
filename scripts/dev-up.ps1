@@ -13,14 +13,18 @@
 #   .\scripts\dev-up.ps1 -SkipInfra  # solo servicios (si ya hay contenedores arriba)
 #   .\scripts\dev-up.ps1 -Lan        # accesible desde el móvil en la red local (IP autodetectada)
 #   .\scripts\dev-up.ps1 -Lan -LanIp 192.168.1.50
+#   .\scripts\dev-up.ps1 -Https      # LAN + HTTPS (PWA instalable y pantalla siempre encendida)
 #
 # -Lan expone api-gateway (:8000) y web (:3000) en la red local: úsalo solo en redes de confianza.
+# -Https requiere mkcert (una vez):  winget install FiloSottile.mkcert ; mkcert -install
+#   y en el móvil instalar como certificado de CA el fichero rootCA.pem de `mkcert -CAROOT`.
 #
 param(
     [switch]$SkipInfra,
     [switch]$SkipMigrations,
     [switch]$Lan,
-    [string]$LanIp
+    [string]$LanIp,
+    [switch]$Https
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,6 +33,9 @@ $pidFile = Join-Path $root ".dev-pids"
 $nodeExe = "E:\nodejs\node.exe"
 $bindHost = "127.0.0.1"
 $webArgs = @("node_modules\next\dist\bin\next", "dev")
+$gatewayArgs = @("-m", "uvicorn", "app.main:app", "--host", $bindHost, "--port", "8000")
+$scheme = "http"
+if ($Https) { $Lan = $true }
 
 if ($Lan) {
     if (-not $LanIp) {
@@ -39,18 +46,43 @@ if ($Lan) {
     if (-not $LanIp) { throw "No se pudo detectar la IP local. Pásala con -LanIp." }
     $bindHost = "0.0.0.0"
     $webArgs = @("node_modules\next\dist\bin\next", "dev", "-H", "0.0.0.0")
+    $gatewayArgs = @("-m", "uvicorn", "app.main:app", "--host", $bindHost, "--port", "8000")
+
+    if ($Https) {
+        if (-not (Get-Command mkcert -ErrorAction SilentlyContinue)) {
+            throw "Falta mkcert. Instálalo con: winget install FiloSottile.mkcert ; mkcert -install"
+        }
+        $certDir = Join-Path $root ".certs"
+        New-Item -ItemType Directory -Force -Path $certDir | Out-Null
+        $cert = Join-Path $certDir "dev.pem"
+        $key = Join-Path $certDir "dev-key.pem"
+        $ipFile = Join-Path $certDir "ip.txt"
+        $previousIp = if (Test-Path $ipFile) { (Get-Content $ipFile -Raw).Trim() } else { "" }
+        if (-not (Test-Path $cert) -or $previousIp -ne $LanIp) {
+            & mkcert -cert-file $cert -key-file $key localhost 127.0.0.1 $LanIp
+            if ($LASTEXITCODE -ne 0) { throw "mkcert no pudo generar el certificado." }
+            Set-Content -Path $ipFile -Value $LanIp
+        }
+        $scheme = "https"
+        $gatewayArgs += @("--ssl-certfile", $cert, "--ssl-keyfile", $key)
+        $webArgs += @("--experimental-https", "--experimental-https-cert", $cert, "--experimental-https-key", $key)
+    }
+
     # Los procesos hijos heredan estas variables.
-    $env:APP_CORS_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000,http://${LanIp}:3000"
-    $env:NEXT_PUBLIC_API_URL = "http://${LanIp}:8000"
+    $env:APP_CORS_ORIGINS = "${scheme}://localhost:3000,${scheme}://127.0.0.1:3000,${scheme}://${LanIp}:3000"
+    $env:NEXT_PUBLIC_API_URL = "${scheme}://${LanIp}:8000"
     $env:LAN_DEV_ORIGIN = $LanIp
-    Write-Host "Modo LAN: abre http://${LanIp}:3000 en el móvil (misma red Wi-Fi)." -ForegroundColor Cyan
+    Write-Host "Modo LAN: abre ${scheme}://${LanIp}:3000 en el móvil (misma red Wi-Fi)." -ForegroundColor Cyan
+    if ($Https) {
+        Write-Host "  Certificado raíz para el móvil: $(& mkcert -CAROOT)\rootCA.pem" -ForegroundColor Cyan
+    }
 }
 
 $services = @(
-    @{ Name = "api-gateway"; Port = 8000; File = "$root\services\api-gateway\.venv\Scripts\python.exe"; Args = @("-m", "uvicorn", "app.main:app", "--host", $bindHost, "--port", "8000"); WorkDir = "$root\services\api-gateway"; Log = "uvicorn"; Health = "http://127.0.0.1:8000/health"; Tries = 30 },
+    @{ Name = "api-gateway"; Port = 8000; File = "$root\services\api-gateway\.venv\Scripts\python.exe"; Args = $gatewayArgs; WorkDir = "$root\services\api-gateway"; Log = "uvicorn"; Health = "${scheme}://127.0.0.1:8000/health"; Tries = 30 },
     @{ Name = "ai-parser";   Port = 8100; File = "$root\services\ai-parser\.venv\Scripts\python.exe";     Args = @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8100"); WorkDir = "$root\services\ai-parser";     Log = "ai-parser"; Health = "http://127.0.0.1:8100/health"; Tries = 30 },
     @{ Name = "worker";      Port = $null; File = "$root\services\ai-parser\.venv\Scripts\python.exe";     Args = @("-m", "app.worker");                                                 WorkDir = "$root\services\ai-parser";     Log = "worker";      Health = $null; Tries = 0 },
-    @{ Name = "web";         Port = 3000; File = $nodeExe;                                                Args = $webArgs;                                                                 WorkDir = "$root\services\web";           Log = "next";       Health = "http://localhost:3000";      Tries = 90 }
+    @{ Name = "web";         Port = 3000; File = $nodeExe;                                                Args = $webArgs;                                                                 WorkDir = "$root\services\web";           Log = "next";       Health = "${scheme}://localhost:3000";      Tries = 90 }
 )
 
 function Test-PortInUse {

@@ -19,41 +19,23 @@
 - [x] Higiene: los logs de `dev-up.ps1` van a `logs/`, se borraron logs y caché obsoleta y hay un README real en web.
 - [x] Modelo de sesiones: [ADR-001](decisions/ADR-001-modelo-sesiones.md). Proveedor LLM: [ADR-002](decisions/ADR-002-proveedor-llm.md).
 
-### M1 · Experiencia de gimnasio (RF-06), prioridad alta 🟢 FUNCIONAL (falta probarla en el móvil)
-Rediseño completo del flujo de gym, mobile-first, sobre el dataset ya cargado.
+### M1 · Experiencia de gimnasio (RF-06) ✅ (2026-11-12, falta probarla en el móvil)
+- [x] ADR-001 aplicado; `migrate_legacy_gym` ejecutado (0 sesiones que migrar).
+- [x] Biblioteca: imágenes, búsqueda sin tildes, filtros, favoritos, **ejercicios propios** (crear/borrar, aislados por usuario), ficha con récords, 1RM e historial.
+- [x] Traducción al español (873 ejercicios). Los ejercicios se resuelven por `exerciseId` y por nombre en español (corregida la pérdida de historial y de impactos musculares).
+- [x] Entreno en vivo: estado local persistente, "Anterior", tipos de serie, descanso con vibración, superseries, cola offline idempotente (`clientId`), resumen con récords.
+- [x] Rutinas: duplicar (plantilla), reordenar, notas y superseries en el editor; las notas pasan al entreno. Validación de ejercicios ajenos o inexistentes (422).
+- [x] PWA (manifest), `dev-up.ps1 -Lan` y `-Https` (mkcert) para instalarla de verdad en el móvil.
+- [ ] Probar en el móvil en el gym y ajustar la UX.
+- [ ] *Aplazado:* carpetas de rutinas, programas multisemana, progresión sugerida (al planificador de M4).
 
-**Backend (225 tests en verde, ruff y mypy sin errores, migraciones probadas en PostgreSQL de ida y vuelta):**
-- [x] ADR-001 aplicado (`services/session_ingest.py`). `migrate_legacy_gym` ejecutado: 0 sesiones antiguas que migrar.
-- [x] Catálogo: `imageUrls`, favoritos, historial, récords y progresión (`/catalog/exercises/{id}/history`).
-- [x] Traducción al español: 873 ejercicios en `data/exercises_es.json`; 821 de 865 en BD (los 44 restantes son del catálogo propio, ya en español).
-- [x] Idempotencia: `clientId` en `POST /sessions/gym` (un reintento devuelve 200 con la misma sesión).
-- [x] Notas por ejercicio en rutinas (`routine_exercise.notes`).
-- [x] Corregido: la sugerencia de peso usaba series de todos los usuarios.
-- [x] `dev-up.ps1 -Lan` para usar la app desde el móvil.
-
-**Frontend (tsc y `next build` correctos, probado por HTTP de punta a punta):**
-- [x] `/ejercicios`: búsqueda sin tildes, filtros por músculo/equipo/categoría/favoritos, scroll infinito.
-- [x] `/ejercicios/[id]`: animación de 2 frames, músculos, instrucciones, récords, gráfica de 1RM e historial.
-- [x] `/entrenar`: estado local persistente, columna "Anterior", tipos de serie, temporizador de descanso con vibración y pitido, superseries, sustituir/mover, Wake Lock, resumen con récords y músculos.
-- [x] Cola de envío sin red con reintentos idempotentes. Los rechazos definitivos se guardan en `traingapp_failed_workouts_v1` (no se pierden).
-- [x] PWA (manifest + icono), `/entrenos/[id]` con contenido real para gym.
-- [x] Corregido: los ids no eran UUID por http://IP (sin `crypto.randomUUID`), así que el entreno se perdía al enviarlo desde el móvil.
-
-**Pendiente / limitaciones conocidas:**
-- [ ] **Probarlo de verdad en el móvil en el gym** y recoger ajustes de UX.
-- [ ] Por http://IP no hay Wake Lock (requiere HTTPS): la pantalla puede apagarse. Opción: HTTPS local (mkcert) en M1.x o M8.
-- [ ] Editor de rutinas: rediseño (plantillas y carpetas, reordenar, editar notas en la UI).
-- [ ] Ejercicios personalizados (requiere cambiar la unicidad de `normalized_name` por usuario).
-- [ ] `/ejercicios` no está en la barra inferior (ya tiene 5 pestañas); se llega por avatar, Entrenar y Rutinas.
-- [ ] Deportes no-gym: solo por chat (se resuelve en M3).
-- [ ] *Después:* programas multisemana y progresión sugerida.
-
-### M2 · IA fiable con Claude (RNF-03)
-- [ ] Proveedor `claude_cli` en `ai-parser/app/llm/factory.py`: subproceso asíncrono `claude -p --output-format json --json-schema <schema> --model <m>`, con timeout y control de errores.
-- [ ] Esquemas pydantic como fuente de verdad de la salida: eliminar la extracción por regex duplicada y añadir un reintento de reparación.
-- [ ] Campo `source: llm|fallback` en las respuestas. Registrar los fallos en log en vez de ocultarlos con un `except` silencioso.
-- [ ] Llamadas largas (review/plan) por la cola Redis existente, con polling o SSE. Timeouts unificados.
-- [ ] Autenticación servicio a servicio en ai-parser. Datos de usuario delimitados en el prompt, sin override del system prompt.
+### M2 · IA fiable con Claude (RNF-03) ✅ (2026-11-12)
+- [x] Proveedor `claude_cli` (ADR-002), activo en el `.env` local; Ollama y OpenAI se mantienen.
+- [x] Salida estructurada nativa en los 3 proveedores + validación pydantic + 1 reintento de reparación (`llm/structured.py`). Eliminada la extracción por regex.
+- [x] `source: llm|fallback` en todas las respuestas de ai-parser y en `/routines/review` (con indicador en la web). Solo se captura `LLMError`, y el fallo se registra en el log antes del fallback.
+- [x] `X-Internal-Token` obligatorio en ai-parser; datos del usuario delimitados (`<datos_usuario>`). Probado: ignora la inyección de prompt y la anota.
+- [x] Timeouts coherentes (90 s / 200 s). **Cambio:** sin cola, ver [ADR-003](decisions/ADR-003-llamadas-llm-sincronas.md).
+- [x] Corregido: el prompt de revisión pedía `solapamientos` como texto y el código los descartaba todos.
 
 ### M3 · Registro multideporte y fatiga (RF-01, RF-02)
 - [ ] Esquemas de métricas por deporte (pydantic discriminado sobre `details`): fuerza, resistencia, combate (rounds × duración; saco/sparring/manoplas/comba), escalada, genérico.
@@ -99,4 +81,4 @@ M1..M6 ─► M7 ─► M8
 M1 solo usa el LLM para traducir las instrucciones (un lote único). Si M2 no está listo, se hace con el CLI a mano.
 
 ## Siguiente paso
-M1: empieza por aplicar ADR-001 (gym canónico + migración de datos) y por servir las imágenes del catálogo.
+Prueba real de M1 y M2 en el móvil. Después, M3: registro multideporte con métricas por deporte (el parseo ya detecta sesiones mixtas, pero las clasifica con una sola disciplina).

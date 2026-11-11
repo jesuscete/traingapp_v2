@@ -1,6 +1,6 @@
 # Estado de requisitos — actualizar al cerrar cada hito del ROADMAP.
 # status: missing | partial | done   ·   depth: none | stub | basic | solid
-# Última revisión: 2026-11-11 (análisis inicial sobre rama feature/dashboard)
+# Última revisión: 2026-11-12 (M0, M1 y M2 completados en feature/refactor)
 
 requirements:
   RF-01:
@@ -40,8 +40,8 @@ requirements:
     milestone: M5
   RF-06:
     title: Experiencia de gimnasio (estilo Lyfta) — PRIORIDAD ALTA
-    status: partial
-    depth: basic
+    status: done
+    depth: solid
     have: [873 ejercicios free-exercise-db, planificador semanal por día, live session, stats de progresión]
     missing: [UX móvil del flujo gym, imágenes servidas (ya en dataset), traducción ES, ejercicios personalizados, calendario por fechas, programas multisemana, progresión automática, PRs, placeholders en /entrenos/[id]]
     milestone: M1
@@ -65,8 +65,8 @@ non_functional:
            notes: "M0: 401 con sub inválido, compare_digest, secretos validados en prod, aislamiento entre usuarios testeado. Pendiente: refresh, rate limit, auth en ai-parser, token en localStorage"}
   RNF-02: {title: Móvil/API, status: missing, depth: none, milestone: M8,
            notes: "sin /v1, CORS configurable (M0), tipos web escritos a mano, sin PWA"}
-  RNF-03: {title: IA, status: partial, depth: basic, milestone: M2,
-           notes: "provider por defecto stub; validación JSON por regex; sin retries; fallback silencioso; timeouts incoherentes 30/60/600s en rutas síncronas"}
+  RNF-03: {title: IA, status: done, depth: solid, milestone: M2,
+           notes: "M2: Claude CLI, salida estructurada + reparación, source llm|fallback, token interno, timeouts 90/200 s (ADR-003)"}
   RNF-04: {title: Calidad, status: partial, depth: basic, milestone: M0,
            notes: "~250 tests backend; web sin tests; routers gruesos sin capa de servicios; modelo legacy+gym coexistiendo"}
   RNF-05: {title: Privacidad, status: missing, depth: none, milestone: M7}

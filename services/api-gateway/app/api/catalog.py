@@ -14,14 +14,15 @@ from app.analytics.catalog_seed import (
     MUSCLE_ZONES,
 )
 from app.api.deps import get_current_user
-from app.core.config import settings
 from app.core.database import get_db
 from app.crud import catalog as catalog_crud
 from app.crud import routine as routine_crud
 from app.models import ExerciseCatalog, Muscle, User
 from app.schemas.exercise_history import ExerciseHistoryOut
 from app.schemas.routine import DisciplineOut
+from app.schemas.sport_analysis import AlternativeOut
 from app.services import exercise_history
+from app.services.sport_analysis import alternatives, image_url
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 
@@ -52,12 +53,6 @@ class CatalogExerciseOut(BaseModel):
         return value or []
 
 
-def _image_url(path: str) -> str:
-    if path.startswith(("http://", "https://")):
-        return path
-    return settings.exercise_image_base_url.rstrip("/") + "/" + path.lstrip("/")
-
-
 @router.get("/exercises", response_model=list[CatalogExerciseOut])
 async def list_catalog_exercises(
     session: Annotated[AsyncSession, Depends(get_db)],
@@ -70,7 +65,7 @@ async def list_catalog_exercises(
 
 def _exercise_out(exercise: ExerciseCatalog, favorites: set[uuid.UUID]) -> CatalogExerciseOut:
     item = CatalogExerciseOut.model_validate(exercise)
-    item.image_urls = [_image_url(path) for path in item.images]
+    item.image_urls = [image_url(path) for path in item.images]
     item.is_favorite = exercise.id in favorites
     item.is_custom = exercise.owner_user_id is not None
     return item
@@ -259,3 +254,17 @@ async def list_zones(
         )
         for index, (code, _, _) in enumerate(MUSCLE_ZONES)
     ]
+
+
+@router.get("/exercises/{exercise_id}/alternatives", response_model=list[AlternativeOut])
+async def get_exercise_alternatives(
+    exercise_id: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    limit: Annotated[int, Query(ge=1, le=30)] = 8,
+) -> list[AlternativeOut]:
+    """Ejercicios parecidos (músculos, tipo de fuerza y patrón) para sustituir."""
+    result = await alternatives(session, current_user, exercise_id, limit=limit)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exercise not found")
+    return result

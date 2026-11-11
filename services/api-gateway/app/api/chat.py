@@ -23,6 +23,7 @@ from app.chat.conversation import (
     start_live,
     start_live_routine,
 )
+from app.chat.drafts import draft_key
 from app.chat.plan_session import (
     PlanResult,
     get_plan,
@@ -67,6 +68,7 @@ from app.schemas.gym import (
     WorkoutExerciseIn,
     WorkoutSetIn,
 )
+from app.schemas.metrics import SessionMetrics, metrics_kind_for
 from app.schemas.plan import PlanDecisionIn
 from app.schemas.session import (
     Discipline,
@@ -79,13 +81,16 @@ from app.schemas.session import (
 )
 
 WORKOUT_PARSE_QUEUE = "workout:parse"
-DRAFT_PREFIX = "chat:draft"
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-def _draft_key(user_id: uuid.UUID, request_id: uuid.UUID) -> str:
-    return f"{DRAFT_PREFIX}:{user_id}:{request_id}"
+def _matching_metrics(draft: WorkoutDraftOut) -> SessionMetrics | None:
+    """Métricas del borrador solo si encajan con la disciplina (si no, se omiten)."""
+    metrics = draft.metrics
+    if metrics is None or draft.discipline == "gym":
+        return None
+    return metrics if metrics.kind in (metrics_kind_for(draft.discipline), "generic") else None
 
 
 @router.post(
@@ -185,7 +190,7 @@ async def create_draft(
         if duration > 0:
             draft.duration_minutes = duration
         await redis.setex(
-            _draft_key(current_user.id, request_id),
+            draft_key(current_user.id, request_id),
             settings.chat_draft_ttl_seconds,
             draft.model_dump_json(),
         )
@@ -227,7 +232,7 @@ async def create_draft(
     payload = await fetch_draft(body.text)
     draft = WorkoutDraftOut.model_validate(payload)
     await redis.setex(
-        _draft_key(current_user.id, request_id),
+        draft_key(current_user.id, request_id),
         settings.chat_draft_ttl_seconds,
         draft.model_dump_json(),
     )
@@ -324,7 +329,7 @@ async def confirm_draft(
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> GymSessionOut | SessionOut:
-    key = _draft_key(current_user.id, body.requestId)
+    key = draft_key(current_user.id, body.requestId)
     stored = await redis.get(key)
     if stored is None:
         raise HTTPException(
@@ -382,6 +387,7 @@ async def confirm_draft(
             else None
         ),
         details=details or None,
+        metrics=_matching_metrics(draft),
         exercises=[_to_exercise_in(exercise) for exercise in exercises],
     )
     record = await sessions.create(
@@ -408,7 +414,7 @@ async def cancel_draft(
     redis: Annotated[aioredis.Redis, Depends(get_redis)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict[str, str]:
-    await redis.delete(_draft_key(current_user.id, body.requestId))
+    await redis.delete(draft_key(current_user.id, body.requestId))
     return {"status": "cancelled"}
 
 

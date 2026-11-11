@@ -200,3 +200,14 @@ class RoutineReviewOut(CamelModel):
     puntos_fuerte: list[str] = Field(default_factory=list)
     solapamientos: list[SolapamientoOut] = Field(default_factory=list)
     sugerencias: list[str] = Field(default_factory=list)
+
+
+class RoutineSwapIn(CamelModel):
+    exercise_id: uuid.UUID
+
+
+class RoutineAddExerciseIn(CamelModel):
+    exercise_id: uuid.UUID
+    sets: int = Field(default=3, ge=1, le=10)
+    target_reps_min: int = Field(default=8, ge=1, le=50)
+    target_reps_max: int = Field(default=12, ge=1, le=50)

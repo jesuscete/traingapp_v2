@@ -2,8 +2,10 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
+
+from app.schemas.metrics import SessionMetrics, metrics_kind_for
 
 # Enum de disciplinas del catalogo canonical (`discipline_seed.DISCIPLINE_SEED`).
 # Mantener sincronizado con la semilla: no hay validacion dinamica en schemas.
@@ -74,7 +76,34 @@ class SessionIn(CamelModel):
     note: str | None = None
     routine_day_id: uuid.UUID | None = None
     details: dict[str, object] | None = None
+    metrics: SessionMetrics | None = None
     exercises: list[ExerciseIn] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _metrics_match_discipline(self) -> "SessionIn":
+        if self.metrics is None:
+            return self
+        if self.discipline == "gym":
+            raise ValueError("Las sesiones de gimnasio usan series, no métricas")
+        expected = metrics_kind_for(self.discipline)
+        if self.metrics.kind not in (expected, "generic"):
+            raise ValueError(
+                f"Métricas '{self.metrics.kind}' no válidas para {self.discipline} "
+                f"(se esperan '{expected}')"
+            )
+        return self
+
+
+class SessionUpdateIn(CamelModel):
+    """Edición parcial: solo se aplican los campos enviados."""
+
+    raw_text: str | None = Field(default=None, min_length=1)
+    performed_at: datetime | None = None
+    duration_minutes: int | None = Field(default=None, ge=0)
+    intensity: int | None = Field(default=None, ge=1, le=10)
+    fatigue: int | None = Field(default=None, ge=1, le=10)
+    note: str | None = Field(default=None, max_length=2000)
+    metrics: SessionMetrics | None = None
 
 
 class MuscleImpactOut(CamelModel):

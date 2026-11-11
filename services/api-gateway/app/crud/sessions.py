@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 
+from pydantic import ValidationError
 from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -9,7 +10,8 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.analytics import kcal as kcal_analytics
 from app.crud.disciplines import load_catalog
 from app.models import Exercise, TrainingSession, WorkoutExercise, WorkoutSet
-from app.schemas.session import SessionIn
+from app.schemas.metrics import CombatMetrics, EnduranceMetrics
+from app.schemas.session import SessionIn, SessionUpdateIn
 
 _GYM_LOADS = (
     selectinload(TrainingSession.workout_exercises)
@@ -62,7 +64,7 @@ def _estimate_kcal(
         discipline=data.discipline,
         weight_kg=weight_kg,
         duration_minutes=int(minutes) if minutes is not None else None,
-        rpe=_as_int(details.get("rpe")),
+        rpe=_as_int(details.get("rpe")) or data.intensity,
         avg_heart_rate=_as_float(details.get("avgHeartRate")),
         workout_type=_as_str(details.get("workoutType")),
         distance_meters=data.distance_meters,
@@ -86,6 +88,35 @@ def _estimate_kcal(
     return estimate.kcal, details
 
 
+def _with_metrics(data: SessionIn) -> SessionIn:
+    """Vuelca las métricas en `details` y completa distancia y duración si faltan."""
+    metrics = data.metrics
+    if metrics is None:
+        return data
+    details = dict(data.details or {})
+    details["metrics"] = metrics.model_dump(by_alias=True, exclude_none=True)
+    update: dict[str, object] = {"details": details}
+    if isinstance(metrics, EnduranceMetrics):
+        if data.distance_meters is None and metrics.distance_meters is not None:
+            update["distance_meters"] = metrics.distance_meters
+        if metrics.avg_heart_rate is not None:
+            details.setdefault("avgHeartRate", metrics.avg_heart_rate)
+    if isinstance(metrics, CombatMetrics) and data.duration_minutes is None:
+        update["duration_minutes"] = round(sum(b.total_minutes() for b in metrics.blocks))
+    return data.model_copy(update=update)
+
+
+def _endurance_columns(data: SessionIn) -> dict[str, float | None]:
+    metrics = data.metrics
+    if not isinstance(metrics, EnduranceMetrics):
+        return {}
+    return {
+        "avg_heart_rate": metrics.avg_heart_rate,
+        "max_heart_rate": metrics.max_heart_rate,
+        "elevation_gain_m": metrics.elevation_gain_m,
+    }
+
+
 async def create(
     session: AsyncSession,
     user_id: uuid.UUID,
@@ -93,6 +124,7 @@ async def create(
     *,
     weight_kg: float | None = None,
 ) -> TrainingSession:
+    data = _with_metrics(data)
     exercises = [
         Exercise(**exercise.model_dump(exclude_none=True))
         for exercise in data.exercises
@@ -123,6 +155,7 @@ async def create(
         estimated_kcal=estimated_kcal,
         volume_kg=sum(exercise.volume_kg for exercise in exercises),
         exercises=exercises,
+        **_endurance_columns(data),
     )
     session.add(record)
     await session.commit()
@@ -265,6 +298,70 @@ async def get_for_user(
         .options(selectinload(TrainingSession.exercises), *_GYM_LOADS)
     )
     return result.scalar_one_or_none()
+
+
+class SessionUpdateError(Exception):
+    """La edición no es válida para esta sesión."""
+
+
+HEADER_FIELDS = ("raw_text", "performed_at", "duration_minutes", "intensity", "fatigue", "note")
+
+
+async def update_for_user(
+    session: AsyncSession,
+    record: TrainingSession,
+    data: SessionUpdateIn,
+    *,
+    weight_kg: float | None,
+) -> None:
+    """Aplica una edición parcial; en sesiones no-gym valida métricas y recalcula kcal."""
+    sent = data.model_fields_set
+    for field in HEADER_FIELDS:
+        if field in sent:
+            setattr(record, field, getattr(data, field))
+    is_strength = record.discipline == "gym" or bool(record.workout_exercises)
+    if "metrics" in sent and data.metrics is not None:
+        if is_strength:
+            raise SessionUpdateError("Las sesiones de gimnasio no admiten métricas")
+        try:
+            rebuilt = SessionIn.model_validate(
+                {
+                    "discipline": record.discipline,
+                    "raw_text": record.raw_text,
+                    "performed_at": record.performed_at,
+                    "metrics": data.metrics,
+                }
+            )
+        except ValidationError as exc:
+            raise SessionUpdateError(exc.errors(include_url=False)[0]["msg"]) from exc
+        normalized = _with_metrics(rebuilt.model_copy(update={"details": record.details}))
+        record.details = normalized.details
+        for column, value in _endurance_columns(normalized).items():
+            setattr(record, column, value)
+        if normalized.distance_meters is not None:
+            record.distance_meters = normalized.distance_meters
+        if record.duration_minutes is None and normalized.duration_minutes is not None:
+            record.duration_minutes = normalized.duration_minutes
+    if not is_strength:
+        current = SessionIn.model_validate(
+            {
+                "discipline": record.discipline,
+                "raw_text": record.raw_text,
+                "performed_at": record.performed_at,
+                "duration_minutes": record.duration_minutes,
+                "distance_meters": record.distance_meters,
+                "intensity": record.intensity,
+                "details": record.details,
+            }
+        )
+        info = (await load_catalog(session)).info(record.discipline)
+        record.estimated_kcal, record.details = _estimate_kcal(
+            current,
+            weight_kg,
+            kind=info.kind if info else None,
+            met_value=info.met if info else None,
+        )
+    await session.commit()
 
 
 async def delete_for_user(

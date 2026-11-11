@@ -276,3 +276,49 @@ def test_cancel_discards_draft(client: TestClient, _fake_redis, monkeypatch) -> 
 def test_draft_requires_auth(client: TestClient) -> None:
     response = client.post("/chat/draft", json={"text": "carrera de 30 min"})
     assert response.status_code == 401
+
+
+BOXING_DRAFT = {
+    "rawText": "5 rounds de saco y 20 min de comba",
+    "discipline": "boxing",
+    "performedAt": "2026-08-08T18:30:00Z",
+    "durationMinutes": None,
+    "exercises": [],
+    "suggestedRpe": 8.0,
+    "confidence": 0.9,
+    "unresolved": [],
+    "metrics": {
+        "kind": "combat",
+        "blocks": [
+            {"type": "saco", "rounds": 5, "roundSeconds": 180},
+            {"type": "comba", "minutes": 20},
+        ],
+    },
+}
+
+
+def test_confirm_carries_sport_metrics(client: TestClient, _fake_redis, monkeypatch) -> None:
+    async def fake(raw_text: str) -> dict:
+        return BOXING_DRAFT
+
+    monkeypatch.setattr("app.api.chat.fetch_draft", fake)
+    headers = _auth_headers(client, "chat-metrics@example.com")
+    draft = client.post("/chat/draft", json={"text": "boxeo"}, headers=headers).json()
+    assert draft["draft"]["metrics"]["kind"] == "combat"
+
+    created = client.post(
+        "/chat/confirm", json={"requestId": draft["requestId"]}, headers=headers
+    ).json()
+    assert created["durationMinutes"] == 35
+    assert len(created["details"]["metrics"]["blocks"]) == 2
+
+
+def test_draft_drops_malformed_metrics(client: TestClient, _fake_redis, monkeypatch) -> None:
+    async def fake(raw_text: str) -> dict:
+        return {**BOXING_DRAFT, "metrics": {"kind": "combat", "blocks": [{"type": "nope"}]}}
+
+    monkeypatch.setattr("app.api.chat.fetch_draft", fake)
+    headers = _auth_headers(client, "chat-bad-metrics@example.com")
+    response = client.post("/chat/draft", json={"text": "boxeo"}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["draft"]["metrics"] is None

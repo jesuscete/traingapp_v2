@@ -1,7 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, catalog, chat, gym, internal, live, profile, routine, sessions, stats
+from app.api import (
+    agent,
+    analysis,
+    auth,
+    catalog,
+    chat,
+    gym,
+    internal,
+    live,
+    profile,
+    routine,
+    sessions,
+    stats,
+)
 from app.core.config import settings
 
 app = FastAPI(
@@ -27,6 +40,8 @@ app.include_router(routine.router)
 app.include_router(catalog.router)
 app.include_router(internal.router)
 app.include_router(stats.router)
+app.include_router(analysis.router)
+app.include_router(agent.router)
 
 
 @app.get("/health", tags=["system"])

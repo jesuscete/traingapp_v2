@@ -2,9 +2,17 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    ValidatorFunctionWrapHandler,
+    field_validator,
+)
 from pydantic.alias_generators import to_camel
 
+from app.schemas.metrics import SessionMetrics
 from app.schemas.plan import PlanSplitOut, PlanSummaryOut
 
 
@@ -42,6 +50,16 @@ class WorkoutDraftOut(CamelModel):
     suggested_rpe: float | None = None
     confidence: float = 0.0
     unresolved: list[str] = Field(default_factory=list)
+    metrics: SessionMetrics | None = None
+
+    @field_validator("metrics", mode="wrap")
+    @classmethod
+    def _drop_invalid_metrics(cls, value: object, handler: ValidatorFunctionWrapHandler) -> object:
+        """Métricas mal formadas del LLM no deben romper el borrador: se descartan."""
+        try:
+            return handler(value)
+        except ValidationError:
+            return None
 
 
 class ChatDraftOut(BaseModel):

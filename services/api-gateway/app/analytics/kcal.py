@@ -23,7 +23,10 @@ METABOLIC_EFFICIENCY = 0.22  # fraccion de energia quimica -> trabajo mecanico
 GRAVITY = 9.81
 KJ_TO_KCAL = 1 / 4.184
 
-CARDIO_DISCIPLINES = frozenset({"boxing", "running", "cycling", "swimming", "other"})
+# Solo se usa si la disciplina no tiene `kind` en el catálogo (que manda).
+CARDIO_DISCIPLINES = frozenset(
+    {"boxing", "martial_arts", "running", "cycling", "swimming", "ski_snowboard", "other"}
+)
 
 # Factor por tipo de sesion (cardio): sin dato -> neutro 1.0.
 WORKOUT_TYPE_FACTOR: dict[str, float] = {

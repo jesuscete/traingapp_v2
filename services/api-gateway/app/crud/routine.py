@@ -108,6 +108,53 @@ async def create_routine(
     return result.scalar_one()
 
 
+async def _reload(session: AsyncSession, routine_id: uuid.UUID) -> Routine:
+    result = await session.execute(
+        select(Routine).where(Routine.id == routine_id).options(*_ROUTINE_LOADS)
+    )
+    return result.scalar_one()
+
+
+async def swap_exercise(
+    session: AsyncSession,
+    routine: Routine,
+    routine_exercise_id: uuid.UUID,
+    exercise_id: uuid.UUID,
+) -> Routine | None:
+    """Cambia el ejercicio de una entrada de la rutina conservando series y notas."""
+    for day in routine.days:
+        for entry in day.exercises:
+            if entry.id == routine_exercise_id:
+                entry.exercise_id = exercise_id
+                await session.commit()
+                return await _reload(session, routine.id)
+    return None
+
+
+async def add_exercise(
+    session: AsyncSession,
+    routine: Routine,
+    day_of_week: int,
+    exercise_id: uuid.UUID,
+    *,
+    sets: int,
+    reps_min: int,
+    reps_max: int,
+) -> Routine | None:
+    """Añade un ejercicio al final de un día de gimnasio; None si el día no es de gimnasio."""
+    day = next((d for d in routine.days if d.day_of_week == day_of_week), None)
+    if day is None or day.day_type != "gimnasio":
+        return None
+    entry = RoutineExercise(exercise_id=exercise_id, order_index=len(day.exercises))
+    for number in range(1, sets + 1):
+        entry.sets.append(
+            RoutineSet(set_number=number, target_reps_min=reps_min, target_reps_max=reps_max)
+        )
+    day.exercises.append(entry)
+    await session.commit()
+    return await _reload(session, routine.id)
+
+
 async def duplicate_routine(
     session: AsyncSession, user_id: uuid.UUID, source: Routine, *, name: str
 ) -> Routine:

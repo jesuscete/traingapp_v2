@@ -14,10 +14,12 @@ from app.crud import routine as routine_crud
 from app.crud.catalog import catalog_lookup
 from app.models import Routine, User
 from app.schemas.routine import (
+    RoutineAddExerciseIn,
     RoutineDayIn,
     RoutineDayUpsert,
     RoutineIn,
     RoutineOut,
+    RoutineSwapIn,
     RoutineUpdateIn,
 )
 from app.schemas.routine_review import RoutineReviewIn, RoutineReviewOut
@@ -128,6 +130,62 @@ async def update_routine(
         is_active=body.is_active,
     )
     assert updated is not None
+    return await _to_routine_out(session, updated)
+
+
+async def _ensure_visible(session: AsyncSession, user: User, exercise_id: uuid.UUID) -> None:
+    if await catalog_crud.invisible_ids(session, user.id, {exercise_id}):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Ejercicio no encontrado"
+        )
+
+
+@router.post("/{routine_id}/exercises/{routine_exercise_id}/swap", response_model=RoutineOut)
+async def swap_routine_exercise(
+    routine_id: uuid.UUID,
+    routine_exercise_id: uuid.UUID,
+    body: RoutineSwapIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> RoutineOut:
+    """Aplica una sustitución recomendada manteniendo series, objetivos y notas."""
+    routine = await _routine_or_404(session, current_user.id, routine_id)
+    await _ensure_visible(session, current_user, body.exercise_id)
+    updated = await routine_crud.swap_exercise(
+        session, routine, routine_exercise_id, body.exercise_id
+    )
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Routine exercise not found"
+        )
+    return await _to_routine_out(session, updated)
+
+
+@router.post("/{routine_id}/days/{day_of_week}/exercises", response_model=RoutineOut)
+async def add_routine_exercise(
+    routine_id: uuid.UUID,
+    day_of_week: Annotated[int, Path(ge=1, le=7)],
+    body: RoutineAddExerciseIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> RoutineOut:
+    """Añade un ejercicio sugerido al final de un día de gimnasio."""
+    routine = await _routine_or_404(session, current_user.id, routine_id)
+    await _ensure_visible(session, current_user, body.exercise_id)
+    updated = await routine_crud.add_exercise(
+        session,
+        routine,
+        day_of_week,
+        body.exercise_id,
+        sets=body.sets,
+        reps_min=body.target_reps_min,
+        reps_max=max(body.target_reps_min, body.target_reps_max),
+    )
+    if updated is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Ese día no es de gimnasio en la rutina",
+        )
     return await _to_routine_out(session, updated)
 
 

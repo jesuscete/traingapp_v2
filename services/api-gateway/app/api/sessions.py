@@ -22,6 +22,7 @@ from app.schemas.session import (
 from app.schemas.session import (
     SessionIn,
     SessionOut,
+    SessionUpdateIn,
 )
 from app.services import session_ingest
 
@@ -152,6 +153,27 @@ async def session_out(
         for item in impacts
     ]
     return out_legacy
+
+
+@router.put("/{session_id}", response_model=GymSessionOut | SessionOut)
+async def update_session(
+    session_id: uuid.UUID,
+    body: SessionUpdateIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> GymSessionOut | SessionOut:
+    record = await sessions.get_for_user(session, session_id, current_user.id)
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    try:
+        await sessions.update_for_user(session, record, body, weight_kg=current_user.weight_kg)
+    except sessions.SessionUpdateError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from None
+    reloaded = await sessions.get_for_user(session, session_id, current_user.id)
+    assert reloaded is not None
+    return await session_out(session, reloaded)
 
 
 @router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)

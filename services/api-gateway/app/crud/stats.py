@@ -12,6 +12,7 @@ _LOADS = (
     selectinload(TrainingSession.workout_exercises)
     .selectinload(WorkoutExercise.sets)
     .selectinload(WorkoutSet.entries),
+    selectinload(TrainingSession.summary),
 )
 
 

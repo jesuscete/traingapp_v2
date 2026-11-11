@@ -226,3 +226,19 @@ class CalibrationOut(CamelModel):
     confidence_level: str
     pearson_r: float | None = None
     groups: list[CalibrationGroupOut]
+
+
+class FatigueContributionOut(CamelModel):
+    session_id: str | None
+    performed_on: date
+    discipline: str
+    label: str | None
+    impulse: float
+    remaining: float
+    share: float
+
+
+class FatigueExplainOut(CamelModel):
+    group: str
+    fatigue: float
+    sessions: list[FatigueContributionOut]

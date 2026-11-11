@@ -53,6 +53,9 @@ RUNNING_REF_KM = 10.0
 RUNNING_REF_MIN = 60.0
 GYM_REF_KG = 15000.0
 GENERIC_REF_MIN = 90.0
+CYCLING_REF_KM = 40.0
+SWIMMING_REF_KM = 2.5
+COMBAT_DISCIPLINES = frozenset({"boxing", "martial_arts"})
 
 # Estimacion de golpes por minuto segun el tipo de sesion (sin datos reales).
 STRIKES_PER_MIN = {"sparring": 120, "technique": 80, "bag": 100}
@@ -70,6 +73,8 @@ class SessionData:
     rpe: int | None = None
     strikes: int | None = None
     details: dict[str, object] | None = None
+    session_id: str | None = None
+    label: str | None = None
 
 
 @dataclass(frozen=True)
@@ -290,7 +295,7 @@ def estimate_strikes(data: SessionData) -> int:
 def relative_volume(data: SessionData) -> float:
     """Volumen relativo V_rel (cap 1.0) para normalizar el impulso."""
     disc = data.discipline
-    if disc == "boxing":
+    if disc in COMBAT_DISCIPLINES:
         strikes = estimate_strikes(data)
         details = data.details or {}
         bag = _as_float(details.get("bag_minutes"))
@@ -305,6 +310,13 @@ def relative_volume(data: SessionData) -> float:
             gradient = _as_float((data.details or {}).get("avg_gradient"))
             return min(1.0, km * (1 + gradient / 100) / RUNNING_REF_KM)
         return min(1.0, (data.duration_minutes or 0) / RUNNING_REF_MIN)
+    if disc in ("cycling", "swimming"):
+        km = (data.distance_meters or 0.0) / 1000.0
+        if km > 0:
+            reference = CYCLING_REF_KM if disc == "cycling" else SWIMMING_REF_KM
+            gradient = _as_float((data.details or {}).get("avg_gradient"))
+            return min(1.0, km * (1 + gradient / 100) / reference)
+        return min(1.0, (data.duration_minutes or 0) / GENERIC_REF_MIN)
     if disc == "gym":
         if data.volume_kg > 0:
             return min(1.0, data.volume_kg / GYM_REF_KG)
@@ -329,6 +341,72 @@ def session_load(
     }
 
 
+def _day_factors(
+    previous_date: date | None,
+    readiness: dict[date, ReadinessData],
+    doms_by_group: dict[date, dict[str, int]] | None,
+    tau2_factors: dict[str, float] | None,
+) -> dict[str, float]:
+    """Factor de recuperación de cada grupo al pasar del día anterior al actual."""
+    if previous_date is None:
+        return {g: 1.0 for g in MUSCLE_GROUPS}
+    prior = readiness.get(previous_date)
+    day_doms = doms_by_group.get(previous_date) if doms_by_group is not None else None
+    return {
+        g: decay_for_group(mod_for_group(prior, day_doms, g), (tau2_factors or {}).get(g, 1.0))
+        for g in MUSCLE_GROUPS
+    }
+
+
+@dataclass(frozen=True)
+class Contribution:
+    """Lo que una sesión aporta hoy a la fatiga de un grupo."""
+
+    performed_on: date
+    session: SessionData
+    impulse: float
+    remaining: float
+
+
+def contributions(
+    events: dict[date, list[SessionData]],
+    readiness: dict[date, ReadinessData],
+    weights: dict[str, dict[str, float]],
+    today: date,
+    group: str,
+    doms_by_group: dict[date, dict[str, int]] | None = None,
+    tau2_factors: dict[str, float] | None = None,
+) -> list[Contribution]:
+    """Descompone la fatiga actual de `group` por sesión (misma dinámica que `simulate`).
+
+    Como el estado es lineal (estado = factor x estado_previo + impulso), la fatiga
+    de hoy es la suma de cada impulso multiplicado por los factores posteriores.
+    """
+    if not events:
+        return []
+    start = min(min(events), today)
+    tracked: list[tuple[date, SessionData, float, float]] = []
+    previous_date: date | None = None
+    current = start
+    while current <= today:
+        factor = _day_factors(previous_date, readiness, doms_by_group, tau2_factors)[group]
+        tracked = [(d, s, imp, rem * factor) for d, s, imp, rem in tracked]
+        for data in events.get(current, []):
+            impulse = session_load(data, weights)[group]
+            if impulse > 0:
+                tracked.append((current, data, impulse, impulse))
+        previous_date = current
+        current += timedelta(days=1)
+    return sorted(
+        (
+            Contribution(performed_on=d, session=s, impulse=round(imp, 1), remaining=round(rem, 1))
+            for d, s, imp, rem in tracked
+        ),
+        key=lambda c: c.remaining,
+        reverse=True,
+    )
+
+
 def simulate(
     events: dict[date, list[SessionData]],
     readiness: dict[date, ReadinessData],
@@ -351,20 +429,7 @@ def simulate(
     previous_date: date | None = None
     current = start
     while current <= today:
-        if previous_date is not None:
-            prior = readiness.get(previous_date)
-            day_doms = (
-                doms_by_group.get(previous_date) if doms_by_group is not None else None
-            )
-            factors = {
-                g: decay_for_group(
-                    mod_for_group(prior, day_doms, g),
-                    (tau2_factors or {}).get(g, 1.0),
-                )
-                for g in MUSCLE_GROUPS
-            }
-        else:
-            factors = {g: 1.0 for g in MUSCLE_GROUPS}
+        factors = _day_factors(previous_date, readiness, doms_by_group, tau2_factors)
         state = {g: factors[g] * previous[g] for g in MUSCLE_GROUPS}
         day_impulses: dict[str, float] = {g: 0.0 for g in MUSCLE_GROUPS}
         for data in events.get(current, []):

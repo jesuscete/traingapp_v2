@@ -23,19 +23,25 @@ from app.schemas.session import (
     SessionIn,
     SessionOut,
 )
+from app.services import session_ingest
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 
-@router.post("", response_model=SessionOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=GymSessionOut | SessionOut, status_code=status.HTTP_201_CREATED
+)
 async def create_session(
     body: SessionIn,
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
-) -> TrainingSession:
-    return await sessions.create(
+) -> GymSessionOut | SessionOut:
+    record = await session_ingest.create_session(
         session, current_user.id, body, weight_kg=current_user.weight_kg
     )
+    reloaded = await sessions.get_for_user(session, record.id, current_user.id)
+    assert reloaded is not None
+    return await session_out(session, reloaded)
 
 
 @router.get("", response_model=SessionPageOut)
@@ -110,6 +116,12 @@ async def get_session(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
+    return await session_out(session, record)
+
+
+async def session_out(
+    session: AsyncSession, record: TrainingSession
+) -> GymSessionOut | SessionOut:
     catalog = await exercise_muscle_map(session)
     if record.workout_exercises:
         flat = gym_analytics.flatten_workout_exercises(record.workout_exercises)

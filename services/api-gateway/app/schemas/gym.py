@@ -58,6 +58,7 @@ class WorkoutExerciseIn(CamelModel):
 
 
 class GymSessionIn(CamelModel):
+    client_id: uuid.UUID | None = None
     raw_text: str = Field(min_length=1)
     performed_at: datetime
     start_time: datetime | None = None

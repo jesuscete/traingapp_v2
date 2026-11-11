@@ -148,6 +148,7 @@ class RoutineExercise(Base):
     )
     order_index: Mapped[int] = mapped_column(Integer, default=0)
     superset_group_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     routine_day: Mapped[RoutineDay] = relationship(back_populates="exercises")
     sets: Mapped[list["RoutineSet"]] = relationship(

@@ -60,7 +60,7 @@ def resolve_routine_day(routine: Routine, text: str) -> RoutineDay | None:
 
 
 async def build_routine_exercises(
-    session: AsyncSession, day: RoutineDay
+    session: AsyncSession, user_id: uuid.UUID, day: RoutineDay
 ) -> list[LiveExercise]:
     """Ejercicios/series objetivo de un dia de gimnasio, con peso sugerido."""
     catalog = await catalog_lookup(session)
@@ -71,7 +71,7 @@ async def build_routine_exercises(
     exercises: list[LiveExercise] = []
     for routine_exercise in day.exercises:
         history = (
-            await weight_history(session, routine_exercise.exercise_id)
+            await weight_history(session, user_id, routine_exercise.exercise_id)
             if routine_exercise.exercise_id is not None
             else []
         )

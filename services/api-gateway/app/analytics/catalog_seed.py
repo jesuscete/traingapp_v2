@@ -236,10 +236,46 @@ def parse_free_exercise_db(data: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows
 
 
+TRANSLATIONS_FILENAME = "exercises_es.json"
+
+
+def translated_details(
+    details: dict[str, Any], translations: dict[str, dict[str, Any]]
+) -> dict[str, Any] | None:
+    """Detalles con `nameEs`/`instructionsEs` añadidos, o None si no hay traducción."""
+    translation = translations.get(str(details.get("sourceId")))
+    if not translation:
+        return None
+    merged = dict(details)
+    if translation.get("nameEs"):
+        merged["nameEs"] = translation["nameEs"]
+    if translation.get("instructionsEs"):
+        merged["instructionsEs"] = list(translation["instructionsEs"])
+    return merged if merged != details else None
+
+
+def load_translations(path: str | Path) -> dict[str, dict[str, Any]]:
+    """Traducciones {sourceId: {nameEs, instructionsEs}}; vacío si el fichero no existe."""
+    file = Path(path)
+    if not file.exists():
+        return {}
+    data = json.loads(file.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
+
+
 def load_free_exercise_db(path: str | Path) -> list[dict[str, Any]]:
-    """Carga y transforma `dist/exercises.json` del dataset free-exercise-db."""
+    """Carga y transforma `dist/exercises.json` del dataset free-exercise-db.
+
+    Si junto al dataset existe `exercises_es.json`, añade la traducción al español.
+    """
     with open(path, encoding="utf-8") as handle:
         raw = json.load(handle)
     if isinstance(raw, dict) and isinstance(raw.get("exercises"), list):
         raw = raw["exercises"]
-    return parse_free_exercise_db(raw)
+    rows = parse_free_exercise_db(raw)
+    translations = load_translations(Path(path).with_name(TRANSLATIONS_FILENAME))
+    for row in rows:
+        merged = translated_details(row["details"], translations)
+        if merged is not None:
+            row["details"] = merged
+    return rows

@@ -32,7 +32,12 @@ def test_create_and_get_session(client: TestClient) -> None:
     assert response.status_code == 201
     data = response.json()
     assert data["volumeKg"] == 2000
-    assert data["exercises"][0]["volumeKg"] == 2000
+    # ADR-001: la fuerza se guarda en el modelo gym (5 series x 5 reps x 80 kg).
+    exercise = data["workoutExercises"][0]
+    assert exercise["volumeKg"] == 2000
+    assert len(exercise["sets"]) == 5
+    assert exercise["sets"][0]["entries"][0]["reps"] == 5
+    assert exercise["sets"][0]["entries"][0]["weight"] == 80
     assert data["rawText"] == "5x5 press banca 80kg"
 
     fetched = client.get(f"/sessions/{data['id']}", headers=headers)
@@ -74,7 +79,9 @@ def test_create_session_with_flexible_details(client: TestClient) -> None:
     assert data["details"]["plan"] == "A"
     assert data["details"]["nivel"] == "intermedio"
     assert data["details"]["kcal_confidence_level"] in ("alta", "media", "baja")
-    assert data["exercises"][0]["details"] == {"rpe": 8, "descanso": 90}
+    first_set = data["workoutExercises"][0]["sets"][0]
+    assert first_set["restSeconds"] == 90
+    assert first_set["entries"][0]["rpe"] == 8
 
 
 def test_estimated_kcal_boxing_with_user_weight(client: TestClient) -> None:
@@ -264,3 +271,12 @@ def test_cannot_access_other_users_session(client: TestClient) -> None:
     assert (
         client.get(f"/sessions/{session_id}", headers=other_headers).status_code == 404
     )
+
+
+def test_non_strength_session_keeps_generic_model(client: TestClient) -> None:
+    headers = _auth_headers(client)
+    response = client.post("/sessions", json=BOXING_SESSION, headers=headers)
+    assert response.status_code == 201
+    data = response.json()
+    assert "workoutExercises" not in data
+    assert data["exercises"] == []

@@ -1,7 +1,8 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics import gym as gym_analytics
@@ -37,15 +38,37 @@ async def _impacts_out(session: AsyncSession, record: TrainingSession) -> GymSes
     return _to_out(record, compute_muscle_impacts(flat, catalog))
 
 
-@router.post("", response_model=GymSessionOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=GymSessionOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={200: {"description": "Ya existía una sesión con ese clientId (reintento)"}},
+)
 async def create_gym_session(
     body: GymSessionIn,
+    response: Response,
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> GymSessionOut:
-    record = await gym_crud.create_gym(
-        session, current_user.id, body, weight_kg=current_user.weight_kg
-    )
+    if body.client_id is not None:
+        existing = await gym_crud.get_gym_by_client_id(session, current_user.id, body.client_id)
+        if existing is not None:
+            response.status_code = status.HTTP_200_OK
+            return await _impacts_out(session, existing)
+    try:
+        record = await gym_crud.create_gym(
+            session, current_user.id, body, weight_kg=current_user.weight_kg
+        )
+    except IntegrityError:
+        # Dos reintentos simultáneos con el mismo clientId: gana el primero.
+        await session.rollback()
+        if body.client_id is None:
+            raise
+        existing = await gym_crud.get_gym_by_client_id(session, current_user.id, body.client_id)
+        if existing is None:
+            raise
+        response.status_code = status.HTTP_200_OK
+        return await _impacts_out(session, existing)
     return await _impacts_out(session, record)
 
 

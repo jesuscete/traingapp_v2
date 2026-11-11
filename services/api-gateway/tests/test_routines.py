@@ -270,3 +270,15 @@ def test_delete_routine(
 
     active = client.get("/routines/active", headers=headers)
     assert active.json() is None
+
+
+def test_routine_exercise_notes_roundtrip(client: TestClient, seed_catalog) -> None:
+    headers = _register(client, "notes@example.com")
+    exercise_id = _exercise_id(client, headers, "press banca")
+    day = _gym_day(exercise_id)
+    day["exercises"][0]["notes"] = "Agarre cerrado, pausa abajo"
+    created = client.post(
+        "/routines", json=_routine_payload(exercise_id, days=[day]), headers=headers
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["days"][0]["exercises"][0]["notes"] == "Agarre cerrado, pausa abajo"

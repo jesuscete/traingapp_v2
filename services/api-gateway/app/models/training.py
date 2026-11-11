@@ -2,7 +2,18 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text, Uuid, func
+from sqlalchemy import (
+    JSON,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,6 +26,9 @@ _JSONB = JSON().with_variant(JSONB(), "postgresql")
 
 
 class TrainingSession(Base):
+    __table_args__ = (
+        UniqueConstraint("user_id", "client_id", name="uq_training_sessions_user_client"),
+    )
     __tablename__ = "training_sessions"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -36,6 +50,8 @@ class TrainingSession(Base):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     details: Mapped[dict[str, object] | None] = mapped_column(_JSONB, nullable=True)
     workout_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Id generado por el cliente para que los reintentos no dupliquen la sesión.
+    client_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     routine_day_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid,
         ForeignKey("routine_day.id", ondelete="SET NULL"),

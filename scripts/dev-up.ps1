@@ -11,22 +11,46 @@
 # Uso:
 #   .\scripts\dev-up.ps1             # todo
 #   .\scripts\dev-up.ps1 -SkipInfra  # solo servicios (si ya hay contenedores arriba)
+#   .\scripts\dev-up.ps1 -Lan        # accesible desde el móvil en la red local (IP autodetectada)
+#   .\scripts\dev-up.ps1 -Lan -LanIp 192.168.1.50
+#
+# -Lan expone api-gateway (:8000) y web (:3000) en la red local: úsalo solo en redes de confianza.
 #
 param(
     [switch]$SkipInfra,
-    [switch]$SkipMigrations
+    [switch]$SkipMigrations,
+    [switch]$Lan,
+    [string]$LanIp
 )
 
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path "$PSScriptRoot\..").Path
 $pidFile = Join-Path $root ".dev-pids"
 $nodeExe = "E:\nodejs\node.exe"
+$bindHost = "127.0.0.1"
+$webArgs = @("node_modules\next\dist\bin\next", "dev")
+
+if ($Lan) {
+    if (-not $LanIp) {
+        $LanIp = (Get-NetIPAddress -AddressFamily IPv4 |
+            Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" -and $_.PrefixOrigin -in @("Dhcp", "Manual") } |
+            Select-Object -First 1).IPAddress
+    }
+    if (-not $LanIp) { throw "No se pudo detectar la IP local. Pásala con -LanIp." }
+    $bindHost = "0.0.0.0"
+    $webArgs = @("node_modules\next\dist\bin\next", "dev", "-H", "0.0.0.0")
+    # Los procesos hijos heredan estas variables.
+    $env:APP_CORS_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000,http://${LanIp}:3000"
+    $env:NEXT_PUBLIC_API_URL = "http://${LanIp}:8000"
+    $env:LAN_DEV_ORIGIN = $LanIp
+    Write-Host "Modo LAN: abre http://${LanIp}:3000 en el móvil (misma red Wi-Fi)." -ForegroundColor Cyan
+}
 
 $services = @(
-    @{ Name = "api-gateway"; Port = 8000; File = "$root\services\api-gateway\.venv\Scripts\python.exe"; Args = @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"); WorkDir = "$root\services\api-gateway"; Log = "uvicorn"; Health = "http://127.0.0.1:8000/health"; Tries = 30 },
+    @{ Name = "api-gateway"; Port = 8000; File = "$root\services\api-gateway\.venv\Scripts\python.exe"; Args = @("-m", "uvicorn", "app.main:app", "--host", $bindHost, "--port", "8000"); WorkDir = "$root\services\api-gateway"; Log = "uvicorn"; Health = "http://127.0.0.1:8000/health"; Tries = 30 },
     @{ Name = "ai-parser";   Port = 8100; File = "$root\services\ai-parser\.venv\Scripts\python.exe";     Args = @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8100"); WorkDir = "$root\services\ai-parser";     Log = "ai-parser"; Health = "http://127.0.0.1:8100/health"; Tries = 30 },
     @{ Name = "worker";      Port = $null; File = "$root\services\ai-parser\.venv\Scripts\python.exe";     Args = @("-m", "app.worker");                                                 WorkDir = "$root\services\ai-parser";     Log = "worker";      Health = $null; Tries = 0 },
-    @{ Name = "web";         Port = 3000; File = $nodeExe;                                                Args = @("node_modules\next\dist\bin\next", "dev");                              WorkDir = "$root\services\web";           Log = "next";       Health = "http://localhost:3000";      Tries = 90 }
+    @{ Name = "web";         Port = 3000; File = $nodeExe;                                                Args = $webArgs;                                                                 WorkDir = "$root\services\web";           Log = "next";       Health = "http://localhost:3000";      Tries = 90 }
 )
 
 function Test-PortInUse {
@@ -103,8 +127,10 @@ foreach ($service in $services) {
         continue
     }
 
-    $outLog = Join-Path $service.WorkDir "$($service.Log).log"
-    $errLog = Join-Path $service.WorkDir "$($service.Log).err.log"
+    $logDir = Join-Path $root "logs"
+    New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+    $outLog = Join-Path $logDir "$($service.Log).log"
+    $errLog = Join-Path $logDir "$($service.Log).err.log"
     $process = Start-Process -FilePath $service.File -ArgumentList $service.Args `
         -WorkingDirectory $service.WorkDir -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput $outLog -RedirectStandardError $errLog
@@ -115,7 +141,7 @@ foreach ($service in $services) {
         exit 1
     }
     Add-Content -LiteralPath $pidFile -Value "$($process.Id)"
-    Write-Host "  [$name] arrancado (PID $($process.Id)). Log: $($service.Log).log" -ForegroundColor Green
+    Write-Host "  [$name] arrancado (PID $($process.Id)). Log: logs\$($service.Log).log" -ForegroundColor Green
 }
 
 # --- 4. Health checks ---

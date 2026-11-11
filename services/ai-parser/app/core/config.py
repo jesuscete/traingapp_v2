@@ -1,4 +1,10 @@
+from typing import Self
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEV_INTERNAL_TOKEN = "internal-dev-token"
+MIN_SECRET_LENGTH = 32
 
 
 class Settings(BaseSettings):
@@ -8,7 +14,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     redis_url: str = "redis://localhost:6379/0"
     internal_api_url: str = "http://localhost:8000"
-    internal_token: str = "internal-dev-token"
+    internal_token: str = DEV_INTERNAL_TOKEN
 
     # Adaptador LLM plug-and-play (ADR-012): ollama | openai | stub
     llm_provider: str = "stub"
@@ -22,6 +28,18 @@ class Settings(BaseSettings):
     # Tope de tokens de salida para la evaluación de rutinas (reduce la latencia
     # de generación en CPU; la respuesta tiene pocos items).
     llm_review_max_tokens: int = 800
+
+    @model_validator(mode="after")
+    def _reject_dev_secrets_in_production(self) -> Self:
+        if self.app_env == "production" and (
+            self.internal_token == DEV_INTERNAL_TOKEN
+            or len(self.internal_token) < MIN_SECRET_LENGTH
+        ):
+            raise ValueError(
+                "Secretos inseguros en producción: APP_INTERNAL_TOKEN "
+                f"(default o < {MIN_SECRET_LENGTH} caracteres)"
+            )
+        return self
 
 
 settings = Settings()

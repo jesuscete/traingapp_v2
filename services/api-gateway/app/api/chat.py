@@ -145,7 +145,7 @@ async def create_draft(
                     exercises=[],
                 )
             else:
-                exercises = await build_routine_exercises(session, day)
+                exercises = await build_routine_exercises(session, current_user.id, day)
                 started = await start_live_routine(
                     redis,
                     current_user.id,

@@ -55,6 +55,7 @@ class RoutineExerciseIn(CamelModel):
     exercise_id: uuid.UUID
     order_index: int = 0
     superset_group_id: uuid.UUID | None = None
+    notes: str | None = Field(default=None, max_length=500)
     sets: list[RoutineSetIn] = Field(min_length=1)
 
 
@@ -150,6 +151,7 @@ class RoutineExerciseOut(CamelModel):
     name: str | None = None
     order_index: int
     superset_group_id: uuid.UUID | None = None
+    notes: str | None = None
     sets: list[RoutineSetOut]
 
 

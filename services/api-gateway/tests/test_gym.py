@@ -294,3 +294,18 @@ def test_list_gym_sessions(client: TestClient) -> None:
     data = response.json()
     assert len(data) == 2
     assert data[0]["summary"]["totalVolume"] > 0
+
+
+def test_gym_session_retry_with_same_client_id_is_idempotent(client: TestClient) -> None:
+    headers = _auth_headers(client, "idem@example.com")
+    body = _session(_exercise("press banca", [_set(1, [_entry(0, reps=5, weight=80)])]))
+    body["clientId"] = "5f1c2d3e-0000-4000-8000-000000000001"
+
+    first = client.post("/sessions/gym", json=body, headers=headers)
+    retry = client.post("/sessions/gym", json=body, headers=headers)
+    assert (first.status_code, retry.status_code) == (201, 200)
+    assert first.json()["id"] == retry.json()["id"]
+    assert len(client.get("/sessions/gym", headers=headers).json()) == 1
+
+    other = _auth_headers(client, "idem-other@example.com")
+    assert client.post("/sessions/gym", json=body, headers=other).status_code == 201

@@ -89,3 +89,19 @@ class ExerciseMuscle(Base):
 
     exercise: Mapped[ExerciseCatalog] = relationship(back_populates="muscles")
     muscle: Mapped[Muscle] = relationship(back_populates="exercises")
+
+
+class UserFavoriteExercise(Base):
+    """Ejercicios marcados como favoritos por cada usuario."""
+
+    __tablename__ = "user_favorite_exercise"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    exercise_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("exercise_catalog.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

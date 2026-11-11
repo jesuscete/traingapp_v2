@@ -171,7 +171,7 @@ async def start_live_session(
         )
         return _to_out(live)
 
-    exercises = await build_routine_exercises(session, day)
+    exercises = await build_routine_exercises(session, current_user.id, day)
     live = await start_live_routine(
         redis,
         current_user.id,

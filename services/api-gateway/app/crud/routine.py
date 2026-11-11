@@ -41,6 +41,7 @@ def _build_day(
             exercise_id=exercise.exercise_id,
             order_index=exercise.order_index or index,
             superset_group_id=exercise.superset_group_id,
+            notes=exercise.notes,
         )
         for set_in in exercise.sets:
             routine_exercise.sets.append(

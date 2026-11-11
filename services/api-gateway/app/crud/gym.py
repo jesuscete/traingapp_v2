@@ -27,7 +27,7 @@ _LOADS = (
 
 
 async def weight_history(
-    session: AsyncSession, exercise_id: uuid.UUID
+    session: AsyncSession, user_id: uuid.UUID, exercise_id: uuid.UUID
 ) -> list[WeightRecord]:
     """Ultimos pesos registrados para un `exercise_id` (set_entry reales).
 
@@ -48,6 +48,7 @@ async def weight_history(
         .join(WorkoutExercise, WorkoutExercise.id == WorkoutSet.workout_exercise_id)
         .join(TrainingSession, TrainingSession.id == WorkoutExercise.session_id)
         .where(
+            TrainingSession.user_id == user_id,
             WorkoutExercise.exercise_id == exercise_id,
             SetEntry.weight.is_not(None),
             SetEntry.entry_order == 0,
@@ -135,6 +136,7 @@ async def create_gym(
 
     record = TrainingSession(
         user_id=user_id,
+        client_id=data.client_id,
         discipline="gym",
         raw_text=data.raw_text,
         performed_at=data.performed_at,
@@ -209,6 +211,17 @@ async def create_gym(
         .options(*_LOADS)
     )
     return result.scalar_one()
+
+
+async def get_gym_by_client_id(
+    session: AsyncSession, user_id: uuid.UUID, client_id: uuid.UUID
+) -> TrainingSession | None:
+    result = await session.execute(
+        select(TrainingSession)
+        .where(TrainingSession.user_id == user_id, TrainingSession.client_id == client_id)
+        .options(*_LOADS)
+    )
+    return result.scalar_one_or_none()
 
 
 async def get_gym_for_user(

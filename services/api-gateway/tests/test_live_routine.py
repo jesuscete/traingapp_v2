@@ -95,6 +95,22 @@ def test_live_start_suggests_weight_from_history(
     assert sets[1]["suggestedWeight"] == 82.5
 
 
+def test_live_suggestion_ignores_other_users_history(
+    client: TestClient, seed_catalog, _fake_redis
+) -> None:
+    other = _register(client, "other-lifter@example.com")
+    exercise_id = _exercise_id(client, other, "press banca")
+    _seed_history(client, other, exercise_id)
+
+    headers = _register(client, "fresh-lifter@example.com")
+    routine = _create_routine(client, headers, exercise_id)
+    started = client.post(
+        "/live/start", json={"routineDayId": routine["days"][0]["id"]}, headers=headers
+    )
+    assert started.status_code == 200
+    assert all(s["suggestedWeight"] is None for s in started.json()["exercises"][0]["sets"])
+
+
 def test_live_finish_discards_sets_without_weight(
     client: TestClient, seed_catalog, _fake_redis
 ) -> None:

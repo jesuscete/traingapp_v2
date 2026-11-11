@@ -240,6 +240,22 @@ async def list_in_range_light(
     return list(result.scalars().all())
 
 
+async def legacy_strength_sessions(
+    session: AsyncSession, disciplines: frozenset[str]
+) -> list[TrainingSession]:
+    """Sesiones de fuerza con ejercicios planos y sin modelo gym (ADR-001)."""
+    result = await session.execute(
+        select(TrainingSession)
+        .where(
+            TrainingSession.discipline.in_(disciplines),
+            exists().where(Exercise.session_id == TrainingSession.id),
+            ~exists().where(WorkoutExercise.session_id == TrainingSession.id),
+        )
+        .options(selectinload(TrainingSession.exercises))
+    )
+    return list(result.scalars().all())
+
+
 async def get_for_user(
     session: AsyncSession, session_id: uuid.UUID, user_id: uuid.UUID
 ) -> TrainingSession | None:

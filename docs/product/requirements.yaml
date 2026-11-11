@@ -1,0 +1,74 @@
+# Estado de requisitos — actualizar al cerrar cada hito del ROADMAP.
+# status: missing | partial | done   ·   depth: none | stub | basic | solid
+# Última revisión: 2026-11-11 (análisis inicial sobre rama feature/dashboard)
+
+requirements:
+  RF-01:
+    title: Registro de cualquier tipo de entrenamiento
+    status: partial
+    depth: basic
+    have: [22 disciplinas con MET, campos cardio, details JSONB sin esquema, parse texto libre vía chat, live gym]
+    missing: [esquema de métricas por deporte, formulario no-gym en web, edición de sesiones]
+    milestone: M3
+  RF-02:
+    title: Fatiga y desgaste muscular
+    status: partial
+    depth: solid
+    have: [modelo Banister doble exponencial, 12 grupos, ACWR, DOMS, calibración, mapa corporal]
+    missing: [métricas reales por deporte (golpes estimados), explicación del origen de la fatiga, parámetros configurables]
+    milestone: M3
+  RF-03:
+    title: Adaptación de rutinas a un deporte
+    status: partial
+    depth: stub
+    have: [flujo chat/plan_session con gym_purpose, prompts por disciplina]
+    missing: [modelo de demandas por deporte, motor de adaptación con justificación por cambio]
+    milestone: M4
+  RF-04:
+    title: Análisis y recomendador
+    status: partial
+    depth: basic
+    have: [POST /routines/review -> LLM, fallback local en web, weight_suggestion]
+    missing: [análisis sobre historial real, recomendador determinista de swaps, aplicar cambios con un clic, lógica duplicada en web/lib/routineReview.ts]
+    milestone: M4
+  RF-05:
+    title: Nutrición y calorías
+    status: missing
+    depth: none
+    have: [gasto energético kcal.py]
+    missing: [modelo de alimentos/ingesta, cliente API externa, UI, balance ingesta-gasto]
+    milestone: M5
+  RF-06:
+    title: Experiencia de gimnasio (estilo Lyfta) — PRIORIDAD ALTA
+    status: partial
+    depth: basic
+    have: [873 ejercicios free-exercise-db, planificador semanal por día, live session, stats de progresión]
+    missing: [UX móvil del flujo gym, imágenes servidas (ya en dataset), traducción ES, ejercicios personalizados, calendario por fechas, programas multisemana, progresión automática, PRs, placeholders en /entrenos/[id]]
+    milestone: M1
+  RF-07:
+    title: Integración Strava / Garmin
+    status: missing
+    depth: none
+    have: [campos cardio en modelo, endpoint /internal/sessions]
+    missing: [OAuth, webhooks, importador, dedupe]
+    milestone: M6
+  RF-08:
+    title: Interfaz conversacional
+    status: partial
+    depth: stub
+    have: [chat draft/confirm de sesiones, chat de plan (máquinas de estado Redis)]
+    missing: [agente LLM multi-turno con tool use sobre datos del usuario, memoria, consultas libres]
+    milestone: M4
+
+non_functional:
+  RNF-01: {title: Seguridad, status: partial, depth: stub, milestone: M7,
+           notes: "M0: 401 con sub inválido, compare_digest, secretos validados en prod, aislamiento entre usuarios testeado. Pendiente: refresh, rate limit, auth en ai-parser, token en localStorage"}
+  RNF-02: {title: Móvil/API, status: missing, depth: none, milestone: M8,
+           notes: "sin /v1, CORS configurable (M0), tipos web escritos a mano, sin PWA"}
+  RNF-03: {title: IA, status: partial, depth: basic, milestone: M2,
+           notes: "provider por defecto stub; validación JSON por regex; sin retries; fallback silencioso; timeouts incoherentes 30/60/600s en rutas síncronas"}
+  RNF-04: {title: Calidad, status: partial, depth: basic, milestone: M0,
+           notes: "~250 tests backend; web sin tests; routers gruesos sin capa de servicios; modelo legacy+gym coexistiendo"}
+  RNF-05: {title: Privacidad, status: missing, depth: none, milestone: M7}
+  RNF-06: {title: UX, status: partial, depth: basic, milestone: M1,
+           notes: "responsive con BottomNav; sin i18n; /configuracion placeholder; auth repetida por página"}

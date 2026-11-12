@@ -68,7 +68,8 @@ export default function Registrar() {
       <section className="welcome">
         <h2>Registrar actividad</h2>
         <p className="subtitle">
-          ¿Gimnasio? <Link href="/entrenar">Ve a Entrenar</Link>
+          ¿Gimnasio? <Link href="/entrenar">Ve a Entrenar</Link> · ¿Archivo del reloj?{" "}
+          <Link href="/importar">Importar actividad</Link>
         </p>
       </section>
 

@@ -42,6 +42,8 @@ _PROFILE_FIELDS = (
     "body_fat_pct",
     "fitness_level",
     "weekly_availability",
+    "max_hr",
+    "resting_hr",
     "injuries",
     "goals",
 )

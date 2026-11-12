@@ -16,6 +16,7 @@ dependencies = [
     "bcrypt>=4.2",
     "email-validator>=2.1",
     "httpx>=0.27",
+    "fitdecode>=0.10",
 ]
 
 [dependency-groups]
@@ -48,3 +49,8 @@ plugins = ["pydantic.mypy"]
 
 [tool.uv]
 package = false
+
+[[tool.mypy.overrides]]
+# fitdecode (lector de archivos FIT) no publica tipos.
+module = ["fitdecode", "fitdecode.*"]
+ignore_missing_imports = true

@@ -50,6 +50,8 @@ class UserOut(CamelModel):
     body_fat_pct: float | None = None
     fitness_level: FitnessLevel | None = None
     weekly_availability: int | None = None
+    max_hr: int | None = None
+    resting_hr: int | None = None
     injuries: list[object] | None = None
     goals: list[Goals] | None = None
     created_at: datetime
@@ -66,6 +68,9 @@ class ProfileIn(CamelModel):
     body_fat_pct: float | None = Field(default=None, ge=5, le=60)
     fitness_level: FitnessLevel | None = None
     weekly_availability: int | None = Field(default=None, ge=0, le=7)
+    # Frecuencia cardiaca (M6): zonas por reserva de FC (Karvonen) y TRIMP.
+    max_hr: int | None = Field(default=None, ge=120, le=230)
+    resting_hr: int | None = Field(default=None, ge=30, le=110)
     injuries: list[object] | None = None
     goals: list[Goals] | None = None
 

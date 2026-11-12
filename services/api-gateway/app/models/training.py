@@ -28,6 +28,9 @@ _JSONB = JSON().with_variant(JSONB(), "postgresql")
 class TrainingSession(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "client_id", name="uq_training_sessions_user_client"),
+        UniqueConstraint(
+            "user_id", "external_source", "external_id", name="uq_training_sessions_external"
+        ),
     )
     __tablename__ = "training_sessions"
 
@@ -50,6 +53,9 @@ class TrainingSession(Base):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     details: Mapped[dict[str, object] | None] = mapped_column(_JSONB, nullable=True)
     workout_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Origen externo (M6): archivo FIT/GPX/TCX o Garmin; evita importar dos veces.
+    external_source: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    external_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
     # Id generado por el cliente para que los reintentos no dupliquen la sesión.
     client_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     routine_day_id: Mapped[uuid.UUID | None] = mapped_column(

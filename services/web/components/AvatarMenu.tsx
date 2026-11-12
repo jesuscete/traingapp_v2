@@ -75,6 +75,9 @@ export function AvatarMenu() {
             <Link className="avatar-menu-link" href="/registrar">
               Registrar actividad
             </Link>
+            <Link className="avatar-menu-link" href="/importar">
+              Importar actividad
+            </Link>
             <Link className="avatar-menu-link" href="/ejercicios">
               Ejercicios
             </Link>

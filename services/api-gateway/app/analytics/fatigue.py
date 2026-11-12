@@ -57,6 +57,7 @@ TAU_RESIDUAL: dict[str, float] = {
 # Saturación: más volumen sigue sumando con rendimiento decreciente (sin tope duro).
 SATURATION_K = 1.6  # volumen relativo 1.0 -> 80 % del impulso máximo
 GYM_REF_SETS = 6.0  # series efectivas por grupo para 1-e^-1 (63 %); 10 series -> 81 %
+TRIMP_REF = 100.0  # TRIMP de ~1 h a ritmo medio-alto = volumen relativo 1.0 (M6)
 
 # Umbrales de riesgo local.
 WARN_LEVEL = 70.0

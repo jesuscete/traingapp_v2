@@ -25,6 +25,8 @@ class User(Base):
     sports: Mapped[list[str] | None] = mapped_column(_JSONB, nullable=True)
     body_fat_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     fitness_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    max_hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    resting_hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
     weekly_availability: Mapped[int | None] = mapped_column(Integer, nullable=True)
     injuries: Mapped[list[object] | None] = mapped_column(_JSONB, nullable=True)
     goals: Mapped[list[str] | None] = mapped_column(_JSONB, nullable=True)

@@ -187,6 +187,12 @@ Una sola fuente estructurada y versionada por deporte: `data/sport_profiles/<dep
 ## 7. Strava / Garmin (RF-07)
 
 ### Strava: ⚠️ conflicto con la IA de la app
+> ✅ **Confirmado en la fuente oficial** (API Agreement y API Policy 2026, vigentes desde el 1-jun-2026, https://www.strava.com/legal/api_policy):
+> - §5.3 prohíbe el uso "in connection with the development, training, evaluation, or operation of any AI Application", incluida la "ingestion into a context window" y el RAG, también con datos derivados.
+> - §6.2: "You may not retain Strava Data in your cache for longer than seven (7) days".
+> - El Standard Tier puede exigir suscripción de Strava.
+> - Decisión en el ROADMAP (M6): la fuente es el reloj (FIT/GPX/TCX y la API de Garmin).
+
 - **Acuerdo de la API (desde noviembre de 2024, endurecido en 2026):**
   - Prohíbe usar los datos de la API para entrenar modelos de IA.
   - Según la lectura de Terra (agregador), prohíbe también usarlos en **aplicaciones de IA (prompts, RAG)**, incluso derivados.

@@ -261,6 +261,8 @@ export type User = {
   sex: string | null;
   goal: string | null;
   sports: string[] | null;
+  maxHr?: number | null;
+  restingHr?: number | null;
 };
 
 export type Energy = {
@@ -980,4 +982,74 @@ export type MealTemplate = {
   name: string;
   items: { foodId: string; grams: number }[];
   kcal: number;
+};
+
+/* ===== M6 actividades ===== */
+export type ImportStatus = "imported" | "duplicate" | "overlap" | "error";
+
+export type ImportResult = {
+  filename: string;
+  status: ImportStatus;
+  message: string;
+  sessionId: string | null;
+  discipline: string | null;
+  suggestedMaxHr: number | null;
+};
+
+export type KmSplit = {
+  km: number;
+  seconds: number;
+  paceSPerKm: number;
+  avgHr: number | null;
+};
+
+export type ActivitySummary = {
+  source: string;
+  /** Datos del reloj (más fiables que recalcularlos desde las muestras). */
+  distanceM?: number | null;
+  durationS?: number | null;
+  ascentM?: number | null;
+  sport: string | null;
+  subSport: string | null;
+  avgHr: number | null;
+  maxHr: number | null;
+  avgCadence: number | null;
+  deviceCalories: number | null;
+  trimp: number | null;
+  zonesSeconds: number[] | null;
+  zoneBounds: [number, number][];
+  hrProfile: {
+    maxHr: number;
+    restingHr: number;
+    maxEstimated: boolean;
+    restingEstimated: boolean;
+  };
+  kmSplits: KmSplit[];
+  laps: number;
+};
+
+export type ActivitySamples = {
+  t?: number[];
+  hr?: (number | null)[];
+  speed?: (number | null)[];
+  altitude?: (number | null)[];
+  cadence?: (number | null)[];
+  power?: (number | null)[];
+  distance?: (number | null)[];
+};
+
+export type ActivityLap = {
+  start_s: number;
+  duration_s: number;
+  distance_m: number | null;
+  avg_hr: number | null;
+  max_hr: number | null;
+};
+
+export type ActivityDetail = {
+  sessionId: string;
+  discipline: string;
+  summary: ActivitySummary | null;
+  samples: ActivitySamples;
+  laps: ActivityLap[];
 };

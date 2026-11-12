@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
+    activities,
     agent,
     analysis,
     auth,
@@ -44,6 +45,7 @@ app.include_router(stats.router)
 app.include_router(analysis.router)
 app.include_router(agent.router)
 app.include_router(nutrition.router)
+app.include_router(activities.router)
 
 
 @app.get("/health", tags=["system"])

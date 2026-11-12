@@ -88,6 +88,10 @@ export function WorkoutStart({
         Entreno vacío
       </button>
 
+      <Link className="imp-start-link" href="/importar">
+        Importar actividad (.fit, .gpx, .tcx)
+      </Link>
+
       <section className="block">
         <h2>Día de tu rutina</h2>
         {loading && <p className="muted">Cargando rutina…</p>}

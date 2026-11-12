@@ -1,5 +1,7 @@
 import type {
+  ActivityDetail,
   AgentReply,
+  ImportResult,
   Food,
   FoodInput,
   MealEntry,
@@ -78,6 +80,32 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     return undefined as T;
   }
   return (await response.json()) as T;
+}
+
+/** Sube el archivo en crudo (no multipart); un archivo por petición. */
+async function uploadActivity(
+  token: string,
+  file: File,
+  force: boolean,
+): Promise<ImportResult> {
+  const query = new URLSearchParams({ filename: file.name, force: String(force) });
+  const response = await fetch(`${API_URL}/activities/import?${query.toString()}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/octet-stream",
+    },
+    body: file,
+  });
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null);
+    let message = `Error ${response.status}`;
+    if (body && typeof body === "object" && "detail" in body) {
+      message = String((body as { detail: unknown }).detail);
+    }
+    throw new ApiError(message, response.status);
+  }
+  return (await response.json()) as ImportResult;
 }
 
 export type Credentials = { email: string; password: string };
@@ -481,6 +509,13 @@ export const api = {
   resetAgentConversation: (token: string) =>
     request<void>("/agent/conversation", {
       method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  /* ===== M6 actividades ===== */
+  importActivity: uploadActivity,
+  getActivity: (token: string, sessionId: string) =>
+    request<ActivityDetail>(`/activities/${sessionId}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
 

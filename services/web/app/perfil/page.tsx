@@ -34,6 +34,8 @@ export default function Perfil() {
   const [birthYear, setBirthYear] = useState("");
   const [sex, setSex] = useState("");
   const [goal, setGoal] = useState("");
+  const [maxHr, setMaxHr] = useState("");
+  const [restingHr, setRestingHr] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +74,8 @@ export default function Perfil() {
       setBirthYear(p.birthYear != null ? String(p.birthYear) : "");
       setSex(p.sex ?? "");
       setGoal(p.goal ?? "");
+      setMaxHr(p.maxHr != null ? String(p.maxHr) : "");
+      setRestingHr(p.restingHr != null ? String(p.restingHr) : "");
       try {
         const e = await api.statsEnergy(accessToken);
         setEnergy(e);
@@ -100,6 +104,8 @@ export default function Perfil() {
         birthYear: birthYear !== "" ? Number(birthYear) : null,
         sex: sex !== "" ? sex : null,
         goal: goal !== "" ? goal : null,
+        maxHr: maxHr !== "" ? Number(maxHr) : null,
+        restingHr: restingHr !== "" ? Number(restingHr) : null,
       };
       const updated = await api.updateProfile(token, body);
       setProfile(updated);
@@ -247,6 +253,34 @@ export default function Perfil() {
               ))}
             </select>
           </label>
+
+          <label>
+            FC máxima (lpm)
+            <input
+              type="number"
+              min="120"
+              max="230"
+              placeholder="Ej: 190"
+              value={maxHr}
+              onChange={(e) => setMaxHr(e.target.value)}
+            />
+          </label>
+
+          <label>
+            FC en reposo (lpm)
+            <input
+              type="number"
+              min="30"
+              max="110"
+              placeholder="Ej: 55"
+              value={restingHr}
+              onChange={(e) => setRestingHr(e.target.value)}
+            />
+          </label>
+          <p className="muted">
+            Las zonas de FC se calculan por reserva de FC (Karvonen). Si no sabes tu FC máxima se
+            estima con 208 − 0,7·edad.
+          </p>
 
           {error && <p className="error">{error}</p>}
           {message && <p className="ok">{message}</p>}

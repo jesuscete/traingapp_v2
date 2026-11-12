@@ -47,8 +47,8 @@ requirements:
     milestone: M1
   RF-07:
     title: Integración Strava / Garmin
-    status: missing
-    depth: none
+    status: partial
+    depth: basic
     have: [campos cardio en modelo, endpoint /internal/sessions]
     missing: [OAuth, webhooks, importador, dedupe]
     milestone: M6

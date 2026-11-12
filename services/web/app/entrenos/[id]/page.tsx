@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { ActivitySection } from "@/components/activity/ActivitySection";
 import { ActivityStats } from "@/components/activity/ActivityStats";
 import { ProgressPlaceholder } from "@/components/activity/ProgressPlaceholder";
 import {
@@ -164,6 +165,13 @@ export default function EntrenoDetalle() {
           ) : isGym ? (
             <>
               <ExerciseSessionStats exercises={session.workoutExercises} />
+              {token && (
+                <ActivitySection
+                  token={token}
+                  sessionId={session.id}
+                  discipline={session.discipline}
+                />
+              )}
               <VolumeBreakdown session={session} />
               <CaloriesCard session={session} />
               <MuscleFatigue impacts={session.muscleImpacts} />
@@ -176,6 +184,13 @@ export default function EntrenoDetalle() {
                   metrics={metrics}
                   discipline={session.discipline}
                   durationMinutes={session.durationMinutes}
+                />
+              )}
+              {token && (
+                <ActivitySection
+                  token={token}
+                  sessionId={session.id}
+                  discipline={session.discipline}
                 />
               )}
               <MuscleFatigue impacts={session.muscleImpacts ?? []} />

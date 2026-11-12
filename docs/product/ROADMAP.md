@@ -14,7 +14,7 @@
 | M4.1 Mejoras encontradas | ✅ fatiga, 1RM y registro de deporte |
 | M5 Nutrición | ✅ |
 | **M5.1 Prueba en el móvil en local y depuración** | ⏳ **Siguiente** |
-| M6 Garmin (antes "Strava/Garmin") | ⏳ |
+| M6 Actividades de reloj | 🟡 M6.1 (archivos) ✅ · M6.2 Garmin ⏳ · M6.3 global ⏳ |
 | M7 Blindaje | 🟡 parcial |
 | M8 App móvil | 🟡 parcial (PWA, `-Lan`, `-Https`) |
 
@@ -108,11 +108,30 @@ Origen: [ANALISIS_TECNICO.md](ANALISIS_TECNICO.md) §2, §3 y §5.
 - [ ] `dev-up.ps1 -Lan` / `-Https` en el móvil: registrar comidas y entrenos, chat, preparación, fatiga.
 - [ ] Lista de errores y ajustes de UX; corregirlos antes de seguir.
 
-### M6 · Garmin (RF-07)
-- [x] Decisión (análisis §7): **Strava descartado de momento**, porque su acuerdo de API prohíbe usar sus datos en aplicaciones de IA y desde 2026 exige suscripción. **Garmin con clave personal + importación FIT.**
-- [ ] `external_account` (tokens cifrados), `external_source` + `external_id` para deduplicar, ingesta por la cola Redis.
-- [ ] Parser FIT (`fitdecode`) → disciplina + métricas de resistencia (FC, desnivel) → kcal y fatiga.
-- [ ] Health Connect / HealthKit en la app nativa (M8).
+### M6 · Actividades de reloj: archivos → Garmin → global (RF-07)
+**Decisión:** fuente = **el reloj** (archivo FIT/GPX/TCX y API de Garmin), no Strava. El acuerdo oficial de la API de Strava (2026) prohíbe usar sus datos en aplicaciones de IA (incluido el contexto de un LLM) y guardarlos más de 7 días, lo que choca con el historial y con el agente. Los datos que vienen directamente del reloj son del usuario y no tienen esas restricciones.
+
+**Multideporte:** el FIT trae el deporte de cada actividad, así que el importador sirve para todo: running, ciclismo, natación (largos y brazadas), cardio/HIIT, senderismo, remo… y **fuerza** (Garmin guarda las series, repeticiones y ejercicios, que se mapean al modelo de gym).
+
+#### M6.1 · Importar archivos a mano ✅ (2026-11-12, [ADR-007](decisions/ADR-007-importacion-actividades.md); falta probarlo con un .fit real de tu Garmin)
+- [x] Perfil: **FC máxima** (191 en tu caso) y **FC en reposo** (opcional). Si faltan: FC máxima estimada (208 − 0,7·edad) y FC en reposo estimada. **Se aprenden solas:** si una actividad supera tu FC máxima se propone actualizarla; la FC en reposo llegará de Garmin (M6.2).
+- [x] Subir uno o varios archivos **FIT, GPX o TCX** desde la web/móvil (también para importar el historial de golpe).
+- [x] Lector (`fitdecode` + GPX/TCX): resumen (deporte, inicio, duración, distancia, desnivel, FC media y máxima, cadencia, potencia, kcal del reloj), **series temporales** (FC, ritmo/velocidad, altitud, cadencia, potencia), **vueltas y parciales por km**; natación: largos/estilo; fuerza: series y repeticiones.
+- [x] Mapeo del deporte del FIT → disciplina de la app (running, cycling, swimming, gym…) y sus métricas de resistencia (M3). Lo desconocido va a "other" con aviso.
+- [x] **Deduplicación:** `external_source` + `external_id` (o huella del archivo) y comprobación de solapamiento horario con sesiones registradas a mano (propone fusionar).
+- [x] **Zonas de FC:** 5 zonas por reserva de FC (Karvonen), **tiempo en cada zona** y **TRIMP** (carga por FC).
+- [x] La actividad alimenta: **fatiga** (carga por TRIMP/FC en lugar de solo duración), **kcal** (ecuación por FC, Keytel), balance de comidas, análisis del deporte y agente.
+- [x] Web: botón "Importar actividad" y detalle con **gráficas de FC y ritmo, parciales, tiempo en zonas** y mapa de desnivel.
+
+#### M6.2 · Conexión automática con Garmin (después)
+- [ ] Clave personal de la API oficial de Garmin (solo lectura de tus datos): conectar la cuenta, **tokens cifrados**, revocar.
+- [ ] Sincronización: aviso de Garmin si lo permite, si no sondeo periódico por la cola Redis (el worker ya existe). La actividad aparece sola unos minutos después de sincronizar el reloj.
+- [ ] Datos de salud diarios: **FC en reposo**, sueño, estrés/Body Battery o HRV si están disponibles → readiness de la fatiga (hoy se rellena a mano).
+- [ ] Importar el historial pasado. Atribución "Garmin" donde se muestren sus datos.
+
+#### M6.3 · Global (más adelante, con la app nativa de M8)
+- [ ] **Health Connect** (Android) / **HealthKit** (iOS): reciben datos de casi cualquier reloj o app (Coros, Polar, Samsung, Apple…).
+- [ ] El importador de archivos de M6.1 ya cubre cualquier marca mientras tanto.
 
 ### M7 · Blindaje (RNF-01, RNF-05)
 - [ ] Token de acceso corto con refresh rotatorio y revocación. Cookie httpOnly en web.

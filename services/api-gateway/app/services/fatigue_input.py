@@ -141,6 +141,22 @@ def combat_group_load(discipline: str, metrics: CombatMetrics) -> dict[str, floa
     return {g: round(v * scale, 4) for g, v in load.items()}
 
 
+def trimp_of(details: Mapping[str, object]) -> float | None:
+    value = details.get("trimp")
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+        return None
+    return float(value)
+
+
+def trimp_group_load(discipline: str, trimp: float) -> dict[str, float]:
+    """Actividad con pulsómetro: la carga sale del TRIMP (ya incluye la intensidad)."""
+    weights = fatigue_analytics.MUSCLE_LOAD_DEFAULT.get(
+        discipline, fatigue_analytics.MUSCLE_LOAD_DEFAULT["other"]
+    )
+    scale = fatigue_analytics.SATURATION_K * trimp / fatigue_analytics.TRIMP_REF
+    return {g: round(w * scale, 4) for g, w in weights.items()}
+
+
 def session_data(ts: TrainingSession, maps: MuscleMaps | None = None) -> SessionData:
     details = dict(ts.details or {})
     strikes = details.get("strikes")
@@ -152,6 +168,8 @@ def session_data(ts: TrainingSession, maps: MuscleMaps | None = None) -> Session
     elif isinstance(metrics, CombatMetrics):
         strikes = combat_strikes(metrics)
         group_load = combat_group_load(ts.discipline, metrics)
+    elif (trimp := trimp_of(details)) is not None:
+        group_load, includes_effort = trimp_group_load(ts.discipline, trimp), True
     distance = ts.distance_meters
     if isinstance(metrics, EnduranceMetrics):
         distance = distance or metrics.distance_meters

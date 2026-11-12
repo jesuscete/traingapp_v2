@@ -6,17 +6,15 @@ from datetime import date, datetime, timedelta
 from app.analytics import catalog
 from app.analytics.catalog_seed import zone_of
 from app.analytics.gym import flatten_workout_exercises
+from app.analytics.strength import estimated_1rm
 from app.models import TrainingSession
 
 CARDIO_DISCIPLINES = frozenset({"running", "cycling", "swimming", "boxing"})
 
 
 def est_1rm(weight_kg: float | None, reps: int | None) -> float | None:
-    if weight_kg is None or reps is None or reps < 1:
-        return None
-    if reps == 1:
-        return weight_kg
-    return weight_kg * (1 + reps / 30)
+    """Delegado en la fórmula única (`analytics.strength`)."""
+    return estimated_1rm(weight_kg, reps)
 
 
 def _week_start(day: datetime) -> date:

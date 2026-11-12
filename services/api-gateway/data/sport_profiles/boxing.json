@@ -1,0 +1,86 @@
+{
+  "sport": "boxing",
+  "label": "Boxeo",
+  "aliases": ["martial_arts"],
+  "version": 1,
+  "summary": "Deporte de combate intermitente de alta intensidad: rounds de 3 min con 1 min de descanso y esfuerzos explosivos repetidos (golpeo y desplazamientos) sobre una base aeróbica. La potencia nace en piernas y cadera y se transmite por un core rotacional; hombros, cuello y antebrazos sostienen la guardia y absorben impactos.",
+  "qualities": [
+    {"key": "potencia_rotacional", "label": "Potencia rotacional y transferencia cadera-tronco", "priority": 5},
+    {"key": "resistencia_potencia", "label": "Resistencia a la potencia (repetir golpes explosivos round tras round)", "priority": 5},
+    {"key": "aerobica", "label": "Base aeróbica para recuperar entre rounds", "priority": 4},
+    {"key": "resistencia_hombro", "label": "Resistencia muscular de hombro para la guardia", "priority": 4},
+    {"key": "cuello", "label": "Fuerza de cuello para absorber impactos", "priority": 4},
+    {"key": "fuerza_maxima", "label": "Fuerza máxima de base (tren inferior y tirón)", "priority": 3},
+    {"key": "movilidad", "label": "Movilidad de cadera, torácica y tobillo", "priority": 3}
+  ],
+  "energy_systems": {
+    "formato": "3 min de trabajo / 1 min de descanso, de 3 a 12 rounds",
+    "aerobico": "alto",
+    "glucolitico": "alto",
+    "fosfagenos": "alto (golpes y desplazamientos explosivos)"
+  },
+  "pattern_targets": {
+    "rotacion": 6,
+    "anti_rotacion": 4,
+    "pliometria": 6,
+    "olimpico": 3,
+    "unilateral": 6,
+    "bisagra": 4,
+    "cuello": 4,
+    "tiron_horizontal": 6,
+    "tiron_vertical": 4
+  },
+  "key_exercises": {
+    "rotacion": ["lanzamiento lateral de balón medicinal", "giro ruso", "leñador en polea", "landmine rotacional"],
+    "anti_rotacion": ["press Pallof", "plancha lateral", "paseo con peso a un lado"],
+    "pliometria": ["saltos al cajón", "lanzamiento de balón medicinal", "saltos laterales"],
+    "olimpico": ["cargada de potencia", "press empujadora", "balanceo con kettlebell"],
+    "unilateral": ["sentadilla búlgara", "step-up", "peso muerto rumano a una pierna"],
+    "bisagra": ["peso muerto rumano", "hip thrust"],
+    "cuello": ["isométricos de cuello (4 direcciones)", "flexión y extensión de cuello con arnés"],
+    "tiron_horizontal": ["remo con barra", "remo con mancuerna", "face pull"],
+    "tiron_vertical": ["dominadas", "jalón al pecho"]
+  },
+  "muscle_targets": {
+    "shoulders": [6, 12],
+    "core": [8, 16],
+    "back": [10, 18],
+    "glutes": [8, 14],
+    "quadriceps": [8, 14],
+    "hamstrings": [6, 12],
+    "calves": [6, 12],
+    "chest": [6, 12],
+    "neck": [3, 8],
+    "forearms": [3, 8]
+  },
+  "rep_zones_by_phase": {
+    "general": {"fuerza": [0.30, 0.55], "hipertrofia": [0.30, 0.55], "resistencia": [0.05, 0.25]},
+    "especifica": {"fuerza": [0.40, 0.60], "hipertrofia": [0.20, 0.40], "resistencia": [0.10, 0.30]},
+    "precompeticion": {"fuerza": [0.50, 0.75], "hipertrofia": [0.05, 0.25], "resistencia": [0.10, 0.30]},
+    "descarga": {"fuerza": [0.20, 0.50], "hipertrofia": [0.20, 0.50], "resistencia": [0.10, 0.40]}
+  },
+  "min_pull_push_ratio": 1.0,
+  "conflict_groups": ["shoulders", "quadriceps", "hamstrings", "glutes", "calves"],
+  "load_rules": [
+    "Nada de gimnasio pesado de hombros ni de piernas la víspera del sparring.",
+    "Separa al menos 48 h el trabajo pesado de piernas del sparring.",
+    "La potencia y la pliometría van al principio de la sesión, sin fatiga previa.",
+    "Semana de combate: volumen de gimnasio -40/-50 %, mantener la intensidad y la potencia."
+  ],
+  "injury_risks": [
+    {"zona": "hombro", "riesgo": "sobreuso del manguito rotador por el volumen de golpeo", "prehab": ["rotación externa con banda", "face pull", "Y-T-W en banco inclinado"]},
+    {"zona": "muñeca y mano", "riesgo": "impactos repetidos", "prehab": ["curl de muñeca y extensión de antebrazo", "agarre (paseo del granjero)"]},
+    {"zona": "cuello", "riesgo": "latigazo en los impactos", "prehab": ["isométricos de cuello"]},
+    {"zona": "cadera y zona lumbar", "riesgo": "rotación repetida bajo carga", "prehab": ["movilidad de cadera", "anti-rotación (press Pallof)"]}
+  ],
+  "block_muscle_weights": {
+    "saco": {"shoulders": 0.95, "triceps": 0.8, "core": 0.85, "forearms": 0.7, "back": 0.5, "chest": 0.45, "quadriceps": 0.45, "glutes": 0.45, "calves": 0.45, "biceps": 0.4, "neck": 0.3, "hamstrings": 0.3},
+    "sparring": {"shoulders": 0.95, "core": 0.9, "neck": 0.85, "triceps": 0.8, "forearms": 0.7, "calves": 0.65, "quadriceps": 0.6, "glutes": 0.5, "back": 0.5, "hamstrings": 0.45, "biceps": 0.45, "chest": 0.4},
+    "manoplas": {"shoulders": 0.95, "triceps": 0.8, "core": 0.8, "forearms": 0.65, "calves": 0.55, "quadriceps": 0.45, "back": 0.45, "chest": 0.4, "glutes": 0.4, "biceps": 0.4, "neck": 0.3, "hamstrings": 0.3},
+    "comba": {"calves": 0.95, "shoulders": 0.5, "forearms": 0.45, "quadriceps": 0.45, "core": 0.35, "glutes": 0.3, "hamstrings": 0.25},
+    "sombra": {"shoulders": 0.7, "core": 0.6, "calves": 0.5, "triceps": 0.45, "quadriceps": 0.35, "glutes": 0.3, "forearms": 0.3},
+    "tecnica": {"shoulders": 0.6, "core": 0.5, "calves": 0.4, "triceps": 0.4, "quadriceps": 0.3, "forearms": 0.3},
+    "fisico": {"core": 0.8, "quadriceps": 0.7, "glutes": 0.65, "shoulders": 0.6, "chest": 0.5, "hamstrings": 0.5, "calves": 0.5, "back": 0.45, "triceps": 0.4}
+  },
+  "coach_notes": "Prioriza la calidad de la potencia sobre llegar a la fatiga. Rangos bajos y explosivos para potencia; fuerza máxima de 3-6 reps en básicos; hipertrofia moderada para no ganar peso fuera de categoría. Hombro y cuello se entrenan siempre, aunque sea poco volumen, por prevención."
+}

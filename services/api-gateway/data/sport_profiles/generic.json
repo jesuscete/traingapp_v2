@@ -1,0 +1,38 @@
+{
+  "sport": "generic",
+  "label": "Rendimiento general",
+  "aliases": [],
+  "version": 1,
+  "summary": "Perfil por defecto: fuerza y salud general con los patrones básicos equilibrados.",
+  "qualities": [
+    {"key": "fuerza", "label": "Fuerza general", "priority": 4},
+    {"key": "hipertrofia", "label": "Masa muscular", "priority": 3},
+    {"key": "aerobica", "label": "Condición aeróbica", "priority": 3}
+  ],
+  "energy_systems": {},
+  "pattern_targets": {
+    "empuje_horizontal": 4,
+    "tiron_horizontal": 4,
+    "sentadilla": 4,
+    "bisagra": 4,
+    "anti_rotacion": 2
+  },
+  "key_exercises": {},
+  "muscle_targets": {
+    "back": [8, 18],
+    "chest": [6, 16],
+    "quadriceps": [8, 16],
+    "hamstrings": [6, 14],
+    "glutes": [6, 14],
+    "core": [6, 14]
+  },
+  "rep_zones_by_phase": {
+    "general": {"fuerza": [0.15, 0.45], "hipertrofia": [0.40, 0.75], "resistencia": [0.0, 0.30]}
+  },
+  "min_pull_push_ratio": 0.9,
+  "conflict_groups": ["quadriceps", "hamstrings", "glutes"],
+  "load_rules": [],
+  "injury_risks": [],
+  "block_muscle_weights": {},
+  "coach_notes": ""
+}

@@ -1,5 +1,7 @@
 """Análisis del entrenamiento frente a las demandas del deporte principal (RF-03/RF-04).
 
+Los perfiles de cada deporte viven en `data/sport_profiles/*.json` (services/sport_registry).
+
 Determinista y puro: calcula carencias y desequilibrios. El LLM solo redacta a partir
 de este resultado.
 """
@@ -29,67 +31,6 @@ class SportProfile:
     rep_zones: Mapping[RepZone, tuple[float, float]]  # rango de proporción de series
     min_pull_push_ratio: float
     conflict_groups: frozenset[str]  # grupos que no conviene machacar la víspera
-
-
-BOXING = SportProfile(
-    sport="boxing",
-    label="Boxeo",
-    pattern_targets={
-        "rotacion": 6,
-        "anti_rotacion": 4,
-        "pliometria": 6,
-        "olimpico": 3,
-        "unilateral": 6,
-        "bisagra": 4,
-        "cuello": 4,
-        "tiron_horizontal": 6,
-        "tiron_vertical": 4,
-    },
-    muscle_targets={
-        "shoulders": (6, 12),
-        "core": (8, 16),
-        "back": (10, 18),
-        "glutes": (8, 14),
-        "quadriceps": (8, 14),
-        "hamstrings": (6, 12),
-        "calves": (6, 12),
-        "chest": (6, 12),
-        "neck": (3, 8),
-        "forearms": (3, 8),
-    },
-    rep_zones={"fuerza": (0.30, 0.55), "hipertrofia": (0.30, 0.55), "resistencia": (0.05, 0.25)},
-    min_pull_push_ratio=1.0,
-    conflict_groups=frozenset({"shoulders", "quadriceps", "hamstrings", "glutes", "calves"}),
-)
-
-GENERIC = SportProfile(
-    sport="generic",
-    label="Rendimiento general",
-    pattern_targets={
-        "empuje_horizontal": 4,
-        "tiron_horizontal": 4,
-        "sentadilla": 4,
-        "bisagra": 4,
-        "anti_rotacion": 2,
-    },
-    muscle_targets={
-        "back": (8, 18),
-        "chest": (6, 16),
-        "quadriceps": (8, 16),
-        "hamstrings": (6, 14),
-        "glutes": (6, 14),
-        "core": (6, 14),
-    },
-    rep_zones={"fuerza": (0.15, 0.45), "hipertrofia": (0.40, 0.75), "resistencia": (0.0, 0.30)},
-    min_pull_push_ratio=0.9,
-    conflict_groups=frozenset({"quadriceps", "hamstrings", "glutes"}),
-)
-
-PROFILES: dict[str, SportProfile] = {"boxing": BOXING, "martial_arts": BOXING}
-
-
-def profile_for(sport: str | None) -> SportProfile:
-    return PROFILES.get(sport or "", GENERIC)
 
 
 @dataclass(frozen=True)

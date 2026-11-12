@@ -15,7 +15,6 @@ from app.analytics.sport_analysis import (
     SportAnalysis,
     Status,
     analyze,
-    profile_for,
 )
 from app.core.config import settings
 from app.crud import catalog as catalog_crud
@@ -29,6 +28,7 @@ from app.schemas.sport_analysis import (
     SuggestionOut,
     TargetStatusOut,
 )
+from app.services import sport_registry
 
 MIN_HISTORY_SESSIONS = 3
 SUGGESTIONS_PER_GAP = 3
@@ -242,7 +242,7 @@ async def analyze_user(
     weeks: int,
     basis: str,
 ) -> SportAnalysisOut:
-    profile = profile_for(main_sport(user, sport))
+    profile = sport_registry.sport_profile(main_sport(user, sport))
     rows = await catalog_crud.list_visible(session, user.id)
     catalog = [_catalog_item(r) for r in rows]
     by_id = {c.row.id: c for c in catalog}

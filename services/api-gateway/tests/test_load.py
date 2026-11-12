@@ -59,7 +59,8 @@ def test_mod_for_group_doms_penalizes_only_group() -> None:
     # Un grupo sin dolor en el mapa mantiene el m global.
     assert abs(other - base) < 1e-9
     # El grupo con dolor deja MAS fatiga residual al dia siguiente.
-    assert fatigue_analytics.decay(with_doms) > fatigue_analytics.decay(base)
+    factor = fatigue_analytics.compartment_factors
+    assert factor(with_doms, "shoulders")[1] > factor(base, "shoulders")[1]
 
 
 def test_fatigue_projection_next_72h(client: TestClient) -> None:

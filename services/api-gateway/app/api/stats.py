@@ -110,11 +110,11 @@ async def stats_fatigue(
     project_days: Annotated[int, Query(alias="projectDays", ge=0, le=7)] = 0,
 ) -> stats_schemas.FatigueOut:
     """Fatiga muscular local (0-100 por grupo) + proyeccion 24/48/72h."""
-    states, impulses, doms_map, weights, today = await fatigue_engine.simulate_fatigue(
+    fatigue = await fatigue_engine.simulate_fatigue(
         session, current_user.id
     )
-    state_today = states.get(today, {g: 0.0 for g in fatigue_analytics.MUSCLE_GROUPS})
-    state = fatigue_analytics.project(state_today, project_days)
+    states, impulses, today = fatigue.states, fatigue.impulses, fatigue.today
+    state = fatigue.projected(project_days)
 
     muscles: list[stats_schemas.FatigueMuscleOut] = []
     risks: list[stats_schemas.FatigueRiskOut] = []
@@ -161,10 +161,8 @@ async def stats_fatigue(
     fatigue_values = [item.fatigue for item in muscles]
 
     projection: list[stats_schemas.FatigueProjectionOut] = []
-    running = state_today
     for days_ahead in (1, 2, 3):
-        running = fatigue_analytics.project(running, 1)
-        values = list(running.values())
+        values = list(fatigue.projected(days_ahead).values())
         projection.append(
             stats_schemas.FatigueProjectionOut(
                 days_ahead=days_ahead,
@@ -209,9 +207,10 @@ async def stats_fatigue_series(
     days: Annotated[int, Query(ge=1, le=365)] = 30,
 ) -> stats_schemas.FatigueSeriesOut:
     """Serie temporal de fatiga por grupo (graficos y comparativas hoy/ayer/7d)."""
-    states, impulses, doms_map, weights, today = await fatigue_engine.simulate_fatigue(
+    fatigue = await fatigue_engine.simulate_fatigue(
         session, current_user.id, days_back=max(days, 14)
     )
+    states, today = fatigue.states, fatigue.today
     start = today - timedelta(days=days - 1)
     series: list[stats_schemas.FatigueSeriesDayOut] = []
     for day in sorted(states):
@@ -245,9 +244,10 @@ async def stats_load(
     days: Annotated[int, Query(ge=1, le=365)] = 30,
 ) -> stats_schemas.LoadOut:
     """Analisis de carga del periodo: volumen, intensidad, carga, monotonia y strain."""
-    states, impulses, doms_map, weights, today = await fatigue_engine.simulate_fatigue(
+    fatigue = await fatigue_engine.simulate_fatigue(
         session, current_user.id, days_back=days
     )
+    states, impulses, today = fatigue.states, fatigue.impulses, fatigue.today
     state_today = states.get(today, {g: 0.0 for g in fatigue_analytics.MUSCLE_GROUPS})
     analysis = load_analytics.analyse(impulses, state_today)
     by_muscle_group = cast(
@@ -422,9 +422,10 @@ async def stats_calibration(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> stats_schemas.CalibrationOut:
     """Estado del calibrador DOMS vs fatiga (spec 7.3)."""
-    states, _impulses, doms_map, _weights, today = await fatigue_engine.simulate_fatigue(
+    fatigue = await fatigue_engine.simulate_fatigue(
         session, current_user.id, days_back=60, apply_calibration=False
     )
+    states, doms_map, today = fatigue.states, fatigue.doms, fatigue.today
     rows = await fatigue_crud.get_calibration(session, current_user.id)
     params = {
         group: _CalibrationState(
@@ -444,9 +445,10 @@ async def apply_calibration(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> stats_schemas.CalibrationOut:
     """Aplica un paso de gradiente con el DOMS reportado y persiste (spec 7.3)."""
-    states, _impulses, doms_map, _weights, today = await fatigue_engine.simulate_fatigue(
+    fatigue = await fatigue_engine.simulate_fatigue(
         session, current_user.id, days_back=60, apply_calibration=False
     )
+    states, doms_map, today = fatigue.states, fatigue.doms, fatigue.today
     current = await fatigue_crud.get_calibration(session, current_user.id)
 
     window_start = today - timedelta(days=30)

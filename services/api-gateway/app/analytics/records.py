@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-MAX_REPS_FOR_E1RM = 12
+from app.analytics.strength import estimated_1rm
 
 
 @dataclass(frozen=True)
@@ -12,6 +12,7 @@ class SetPerformance:
     reps: int | None
     weight_kg: float | None
     is_warmup: bool = False
+    rpe: float | None = None
 
 
 @dataclass(frozen=True)
@@ -38,17 +39,6 @@ class ProgressPoint:
     volume_kg: float
 
 
-def estimated_1rm(weight_kg: float | None, reps: int | None) -> float | None:
-    """1RM estimado (Epley). Fuera de 1..12 reps la estimación no es fiable."""
-    if weight_kg is None or reps is None or weight_kg <= 0:
-        return None
-    if reps < 1 or reps > MAX_REPS_FOR_E1RM:
-        return None
-    if reps == 1:
-        return round(weight_kg, 1)
-    return round(weight_kg * (1 + reps / 30), 1)
-
-
 def _working(sets: Sequence[SetPerformance]) -> list[SetPerformance]:
     return [s for s in sets if not s.is_warmup]
 
@@ -65,7 +55,7 @@ def _max(values: list[float]) -> float | None:
 
 def progress_point(perf: SessionPerformance) -> ProgressPoint:
     working = _working(perf.sets)
-    e1rms = [v for s in working if (v := estimated_1rm(s.weight_kg, s.reps)) is not None]
+    e1rms = [v for s in working if (v := estimated_1rm(s.weight_kg, s.reps, s.rpe)) is not None]
     weights = [s.weight_kg for s in working if s.weight_kg is not None and s.reps]
     return ProgressPoint(
         performed_at=perf.performed_at,

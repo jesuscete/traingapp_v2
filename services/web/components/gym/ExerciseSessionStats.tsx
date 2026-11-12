@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { translateSetType } from "@/lib/labels";
+import { estimated1rm } from "@/lib/strength";
 import type { WorkoutExercise } from "@/lib/types";
 
 function best1rm(exercise: WorkoutExercise): number | null {
@@ -9,7 +10,8 @@ function best1rm(exercise: WorkoutExercise): number | null {
     if (set.isWarmup) continue;
     const entry = set.entries[0];
     if (!entry || entry.weight == null || !entry.reps) continue;
-    const value = entry.reps <= 1 ? entry.weight : entry.weight * (1 + entry.reps / 30);
+    const value = estimated1rm(entry.weight, entry.reps, entry.rpe);
+    if (value == null) continue;
     if (best === null || value > best) best = value;
   }
   return best;

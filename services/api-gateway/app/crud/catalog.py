@@ -140,6 +140,16 @@ async def custom_lookup(
     }
 
 
+async def muscle_maps_for_user(
+    session: AsyncSession, user_id: uuid.UUID
+) -> tuple[dict[uuid.UUID, dict[str, float]], dict[str, dict[str, float]]]:
+    """Mapas musculares (global + propios) por id y por nombre (canónico y español)."""
+    rows = await list_visible(session, user_id)
+    by_id = {row.id: row.muscle_map for row in rows}
+    by_name = _keyed_by_names([r for r in rows if r.owner_user_id is None], lambda r: r.muscle_map)
+    return by_id, by_name
+
+
 class CustomExerciseNameTaken(Exception):
     """Ya existe un ejercicio global o propio con ese nombre."""
 

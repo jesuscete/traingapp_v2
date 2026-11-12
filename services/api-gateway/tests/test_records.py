@@ -13,12 +13,9 @@ def _perf(day: int, sets: list[SetPerformance]) -> SessionPerformance:
     return SessionPerformance(str(day), datetime(2026, 9, day, tzinfo=UTC), sets)
 
 
-def test_estimated_1rm_epley_and_limits() -> None:
-    assert estimated_1rm(100, 1) == 100
-    assert estimated_1rm(100, 5) == 116.7
+def test_estimated_1rm_delegates_to_rpe_chart() -> None:
+    assert estimated_1rm(100, 5) == 115.9
     assert estimated_1rm(100, 13) is None
-    assert estimated_1rm(None, 5) is None
-    assert estimated_1rm(0, 5) is None
 
 
 def test_records_ignore_warmups_and_pick_bests() -> None:
@@ -31,7 +28,7 @@ def test_records_ignore_warmups_and_pick_bests() -> None:
     ]
     rec = compute_records(history)
     assert rec.max_weight_kg == 90
-    assert rec.best_e1rm_kg == 99.0
+    assert rec.best_e1rm_kg == 97.6  # 90 kg x 3 a RPE 10 (92,2 %)
     assert rec.max_reps == 12
     assert rec.best_set_volume_kg == 600
     assert rec.best_session_volume_kg == 870

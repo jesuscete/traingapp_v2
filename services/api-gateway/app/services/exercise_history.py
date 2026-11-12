@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics import gym as gym_analytics
 from app.analytics import records
+from app.analytics.strength import estimated_1rm
 from app.crud import catalog as catalog_crud
 from app.models import WorkoutSet
 from app.schemas.exercise_history import (
@@ -30,7 +31,9 @@ def _history_set(workout_set: WorkoutSet) -> HistorySetOut:
         reps=reps,
         weight_kg=weight,
         rpe=main.rpe if main else None,
-        e1rm_kg=None if workout_set.is_warmup else records.estimated_1rm(weight, reps),
+        e1rm_kg=None
+        if workout_set.is_warmup
+        else estimated_1rm(weight, reps, main.rpe if main else None),
     )
 
 
@@ -51,7 +54,9 @@ async def build_history(
             session_id=str(item.session_id),
             performed_at=item.performed_at,
             sets=[
-                records.SetPerformance(reps=s.reps, weight_kg=s.weight_kg, is_warmup=s.is_warmup)
+                records.SetPerformance(
+                    reps=s.reps, weight_kg=s.weight_kg, is_warmup=s.is_warmup, rpe=s.rpe
+                )
                 for s in item.sets
             ],
         )

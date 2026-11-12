@@ -145,7 +145,7 @@ def test_volume_by_muscle_group(client: TestClient) -> None:
     assert data["unclassifiedVolumeKg"] == 0
 
     press = next(item for item in data["exerciseProgress"] if item["exercise"] == "press banca")
-    assert press["best1Rm"] == 80 * (1 + 5 / 30)
+    assert press["best1Rm"] == 92.7  # 80 kg x 5 con la tabla RPE (86,3 %)
     assert press["sessions"] == 1
     assert press["deltaPct"] == 0
 

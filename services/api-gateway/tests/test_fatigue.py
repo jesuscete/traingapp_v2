@@ -53,11 +53,13 @@ def _create_session(
     assert response.status_code == 201
 
 
-def test_decay_monotonic_and_limits() -> None:
-    assert 0 < fatigue_analytics.decay(1.0) < 1.0
-    # Mas recuperacion (m mayor) deja MENOS fatiga residual (factor menor).
-    assert fatigue_analytics.decay(1.2) < fatigue_analytics.decay(0.8)
-    assert fatigue_analytics.decay(100.0) > 0.0
+def test_compartment_factors_monotonic_and_by_group() -> None:
+    acute, residual = fatigue_analytics.compartment_factors(1.0, "quadriceps")
+    assert 0 < acute < residual < 1.0  # lo agudo se va en horas; el daño, en días
+    # Mas recuperacion (m mayor) deja MENOS fatiga (factor menor).
+    assert fatigue_analytics.compartment_factors(1.2, "quadriceps")[1] < residual
+    # Grupos grandes/excéntricos se recuperan más despacio que los pequeños.
+    assert residual > fatigue_analytics.compartment_factors(1.0, "forearms")[1]
 
 
 def test_mod_from_readiness_neutral_and_extremes() -> None:
@@ -85,10 +87,10 @@ def test_boxing_impulse_matches_spec_example() -> None:
     loads = fatigue_analytics.session_load(
         data, fatigue_analytics.MUSCLE_LOAD_DEFAULT
     )
-    # I = 100 * 0.95 * min(1, 1500/2000) * 0.8 = 57
-    assert abs(loads["shoulders"] - 57.0) < 0.1
-    assert abs(loads["core"] - 54.0) < 0.1
-    assert abs(loads["forearms"] - 48.0) < 0.1
+    # I = 100 * peso * (1 - e^(-1.6 * 1500/2000)) * 0.8 ; saturación 0.6988
+    assert abs(loads["shoulders"] - 53.1) < 0.1
+    assert abs(loads["core"] - 50.3) < 0.1
+    assert abs(loads["forearms"] - 44.7) < 0.1
 
 
 def test_boxing_accumulation_two_sessions(client: TestClient) -> None:

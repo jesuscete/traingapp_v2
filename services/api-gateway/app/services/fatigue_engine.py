@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics import calibration as calibration_analytics
 from app.analytics import fatigue as fatigue_analytics
+from app.crud import catalog as catalog_crud
 from app.crud import fatigue as fatigue_crud
 from app.crud import stats as stats_crud
 from app.services import fatigue_input
@@ -49,11 +50,13 @@ async def fatigue_inputs(
         session, user_id, (datetime.now(UTC) - timedelta(days=days_back)).date()
     )
     weights = await fatigue_crud.load_map(session)
+    by_id, by_name = await catalog_crud.muscle_maps_for_user(session, user_id)
+    maps = fatigue_input.MuscleMaps(by_id=by_id, by_name=by_name)
 
     today = datetime.now(UTC).date()
     events: dict[date, list[fatigue_analytics.SessionData]] = defaultdict(list)
     for ts in records:
-        events[ts.performed_at.date()].append(fatigue_input.session_data(ts))
+        events[ts.performed_at.date()].append(fatigue_input.session_data(ts, maps))
 
     readiness_map = {
         row.date: fatigue_analytics.ReadinessData(
@@ -96,21 +99,32 @@ async def fatigue_inputs(
 
 
 
+@dataclass(frozen=True)
+class FatigueResult:
+    states: dict[date, dict[str, float]]  # fatiga total (agudo + residual) por día
+    impulses: dict[date, dict[str, float]]
+    doms: dict[date, dict[str, int]]
+    weights: dict[str, dict[str, float]]
+    today: date
+    compartments_today: fatigue_analytics.Compartments
+    tau2_factors: dict[str, float] | None
+
+    def projected(self, days: int) -> dict[str, float]:
+        """Fatiga total proyectada `days` adelante sin nuevas cargas."""
+        return fatigue_analytics.totals(
+            fatigue_analytics.project(self.compartments_today, days, self.tau2_factors)
+        )
+
+
 async def simulate_fatigue(
     session: AsyncSession,
     user_id: uuid.UUID,
     days_back: int = 90,
     apply_calibration: bool = True,
-) -> tuple[
-    dict[date, dict[str, float]],
-    dict[date, dict[str, float]],
-    dict[date, dict[str, int]],
-    dict[str, dict[str, float]],
-    date,
-]:
-    """Simula la fatiga del periodo: (states, impulses, doms_by_group, weights, today)."""
+) -> FatigueResult:
+    """Simula la fatiga del periodo con el modelo de dos compartimentos."""
     inp = await fatigue_inputs(session, user_id, days_back, apply_calibration)
-    states, impulses = fatigue_analytics.simulate(
+    compartments, impulses = fatigue_analytics.simulate_compartments(
         inp.events,
         inp.readiness,
         inp.weights,
@@ -118,4 +132,13 @@ async def simulate_fatigue(
         doms_by_group=inp.doms,
         tau2_factors=inp.tau2_factors,
     )
-    return states, impulses, inp.doms, inp.weights, inp.today
+    empty: fatigue_analytics.Compartments = {g: (0.0, 0.0) for g in fatigue_analytics.MUSCLE_GROUPS}
+    return FatigueResult(
+        states={d: fatigue_analytics.totals(c) for d, c in compartments.items()},
+        impulses=impulses,
+        doms=inp.doms,
+        weights=inp.weights,
+        today=inp.today,
+        compartments_today=compartments.get(inp.today, empty),
+        tau2_factors=inp.tau2_factors,
+    )

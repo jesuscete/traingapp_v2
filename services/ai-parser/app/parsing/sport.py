@@ -27,6 +27,9 @@ Escribe en español, en tono directo de entrenador:
 - "prioridades": de 3 a 5 acciones concretas, ordenadas por impacto. Cita cifras del
   análisis y, cuando haya, nombres de los ejercicios sugeridos.
 
+El análisis incluye "perfilDeporte": el perfil de referencia del deporte (cualidades,
+patrones, reglas y prevención). Úsalo para justificar las prioridades; no lo contradigas.
+
 Reglas: no inventes datos ni cifras que no estén en el análisis; no recalcules nada.
 """.strip()
 

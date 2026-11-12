@@ -23,7 +23,7 @@ from app.crud import stats as stats_crud
 from app.models import Routine, User
 from app.schemas.agent import AgentActionOut
 from app.schemas.chat import WorkoutDraftOut
-from app.services import fatigue_engine, fatigue_input, sport_analysis
+from app.services import fatigue_engine, fatigue_input, sport_analysis, sport_registry
 
 ACTION_PREFIX = "agent:action"
 ACTION_TTL_SECONDS = 3600
@@ -107,8 +107,9 @@ def _str_arg(args: dict[str, object], key: str) -> str:
 
 
 async def _get_fatigue(ctx: ToolContext, args: dict[str, object]) -> ToolResult:
-    states, _, _, _, today = await fatigue_engine.simulate_fatigue(ctx.session, ctx.user.id)
-    current = states.get(today, {})
+    fatigue = await fatigue_engine.simulate_fatigue(ctx.session, ctx.user.id)
+    today = fatigue.today
+    current = fatigue.states.get(today, {})
     ranked = sorted(current.items(), key=lambda kv: kv[1], reverse=True)
     return ToolResult(
         {
@@ -270,6 +271,11 @@ async def _alternatives(ctx: ToolContext, args: dict[str, object]) -> ToolResult
     )
 
 
+async def _sport_profile(ctx: ToolContext, args: dict[str, object]) -> ToolResult:
+    sport = sport_analysis.main_sport(ctx.user, None)
+    return ToolResult({"perfil": sport_registry.compact_summary(sport)})
+
+
 # --- Escritura (solo propuestas) ---------------------------------------------------------
 
 
@@ -411,6 +417,12 @@ TOOLS: dict[str, Tool] = {
             "Análisis de la preparación para el deporte principal: puntuación, "
             "carencias y ejercicios sugeridos (con exercise_id).",
             _sport_analysis,
+        ),
+        Tool(
+            "perfil_deporte",
+            "Qué necesita el deporte principal: cualidades, patrones, series por músculo, "
+            "zonas de reps, reglas de calendario y prevención de lesiones.",
+            _sport_profile,
         ),
         Tool(
             "ver_rutina",

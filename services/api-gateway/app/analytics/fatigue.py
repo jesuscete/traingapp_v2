@@ -35,11 +35,28 @@ MUSCLE_GROUPS = [
     "neck",
 ]
 
-# Constantes de recuperacion (dias). k1+k2 = 1.
-K1 = 0.30
-K2 = 0.70
-TAU1 = 0.5  # fatiga aguda/neural (~12 h)
-TAU2 = 3.0  # fatiga periferica/daño (DOMS)
+# Recuperación en dos compartimentos (M4.1):
+# - agudo (neural/metabólico): se va en horas, igual en todos los grupos;
+# - residual (daño muscular / DOMS): días, más lento en grupos grandes y excéntricos.
+ACUTE_SHARE = 0.35
+TAU_ACUTE = 0.5  # días (~12 h)
+TAU_RESIDUAL: dict[str, float] = {
+    "quadriceps": 3.0,
+    "hamstrings": 3.0,
+    "glutes": 2.6,
+    "back": 2.6,
+    "chest": 2.4,
+    "shoulders": 2.2,
+    "calves": 2.0,
+    "biceps": 1.9,
+    "triceps": 1.9,
+    "neck": 1.8,
+    "core": 1.7,
+    "forearms": 1.6,
+}
+# Saturación: más volumen sigue sumando con rendimiento decreciente (sin tope duro).
+SATURATION_K = 1.6  # volumen relativo 1.0 -> 80 % del impulso máximo
+GYM_REF_SETS = 6.0  # series efectivas por grupo para 1-e^-1 (63 %); 10 series -> 81 %
 
 # Umbrales de riesgo local.
 WARN_LEVEL = 70.0
@@ -75,6 +92,11 @@ class SessionData:
     details: dict[str, object] | None = None
     session_id: str | None = None
     label: str | None = None
+    # Volumen relativo por grupo ya repartido por músculos (gym: series efectivas /
+    # GYM_REF_SETS; combate: bloques con sus pesos). Si existe, manda sobre los pesos
+    # de la disciplina. `load_includes_effort` = el esfuerzo (RPE) ya va dentro.
+    group_load: dict[str, float] | None = None
+    load_includes_effort: bool = False
 
 
 @dataclass(frozen=True)
@@ -211,19 +233,15 @@ def _as_float(value: object | None, default: float = 0.0) -> float:
     return default
 
 
-def decay(mod: float) -> float:
-    """Factor de decaimiento diario para el modulador de recuperacion m."""
-    return K1 * math.exp(-mod / TAU1) + K2 * math.exp(-mod / TAU2)
+def compartment_factors(mod: float, group: str, tau2_factor: float = 1.0) -> tuple[float, float]:
+    """Factores de recuperación diarios (agudo, residual) con el modulador m."""
+    tau_residual = max(0.1, TAU_RESIDUAL.get(group, 2.2) * tau2_factor)
+    return math.exp(-mod / TAU_ACUTE), math.exp(-mod / tau_residual)
 
 
-def decay_for_group(mod: float, tau2_factor: float = 1.0) -> float:
-    """Decaimiento diario con tau2 ajustado por la calibracion del grupo.
-
-    `tau2_factor > 1` (mas dolor del predicho) hace mas lenta la recuperacion
-    periferica: el daño dura mas dias (ADR-015).
-    """
-    tau2 = max(0.1, TAU2 * tau2_factor)
-    return K1 * math.exp(-mod / TAU1) + K2 * math.exp(-mod / tau2)
+def saturate(relative: float) -> float:
+    """0-1 con rendimiento decreciente: 1 - e^(-k·v)."""
+    return 1.0 - math.exp(-SATURATION_K * max(0.0, relative))
 
 
 def mod_from_readiness(readiness: ReadinessData | None) -> float:
@@ -293,7 +311,7 @@ def estimate_strikes(data: SessionData) -> int:
 
 
 def relative_volume(data: SessionData) -> float:
-    """Volumen relativo V_rel (cap 1.0) para normalizar el impulso."""
+    """Volumen relativo sin tope (1.0 = sesión de referencia); se satura en session_load."""
     disc = data.discipline
     if disc in COMBAT_DISCIPLINES:
         strikes = estimate_strikes(data)
@@ -303,42 +321,50 @@ def relative_volume(data: SessionData) -> float:
         footwork = _as_float(details.get("footwork_minutes"))
         sparring = 1.0 if details.get("sparring") else 0.0
         vol = strikes + 25 * bag + 15 * rope + 8 * footwork + 40 * sparring
-        return min(1.0, vol / BOXING_REF_STRIKES)
+        return (vol / BOXING_REF_STRIKES)
     if disc == "running":
         km = (data.distance_meters or 0.0) / 1000.0
         if km > 0:
             gradient = _as_float((data.details or {}).get("avg_gradient"))
-            return min(1.0, km * (1 + gradient / 100) / RUNNING_REF_KM)
-        return min(1.0, (data.duration_minutes or 0) / RUNNING_REF_MIN)
+            return (km * (1 + gradient / 100) / RUNNING_REF_KM)
+        return ((data.duration_minutes or 0) / RUNNING_REF_MIN)
     if disc in ("cycling", "swimming"):
         km = (data.distance_meters or 0.0) / 1000.0
         if km > 0:
             reference = CYCLING_REF_KM if disc == "cycling" else SWIMMING_REF_KM
             gradient = _as_float((data.details or {}).get("avg_gradient"))
-            return min(1.0, km * (1 + gradient / 100) / reference)
-        return min(1.0, (data.duration_minutes or 0) / GENERIC_REF_MIN)
+            return (km * (1 + gradient / 100) / reference)
+        return ((data.duration_minutes or 0) / GENERIC_REF_MIN)
     if disc == "gym":
         if data.volume_kg > 0:
-            return min(1.0, data.volume_kg / GYM_REF_KG)
-        return min(1.0, (data.duration_minutes or 0) / GENERIC_REF_MIN)
-    return min(1.0, (data.duration_minutes or 0) / GENERIC_REF_MIN)
+            return (data.volume_kg / GYM_REF_KG)
+        return ((data.duration_minutes or 0) / GENERIC_REF_MIN)
+    return ((data.duration_minutes or 0) / GENERIC_REF_MIN)
 
 
 def session_load(
     data: SessionData, weights: dict[str, dict[str, float]]
 ) -> dict[str, float]:
-    """Impulso I_g (0-100) de una sesion para cada grupo."""
+    """Impulso I_g (0-100) de una sesión para cada grupo."""
+    intensity = 1.0 if data.load_includes_effort else (data.rpe or 5) / 10.0
+    if data.group_load is not None:
+        return {
+            g: round(100 * (1.0 - math.exp(-data.group_load.get(g, 0.0))) * intensity, 1)
+            for g in MUSCLE_GROUPS
+        }
     discipline_weights = (
         weights.get(data.discipline)
         or MUSCLE_LOAD_DEFAULT.get(data.discipline)
         or MUSCLE_LOAD_DEFAULT["other"]
     )
-    v_rel = relative_volume(data)
-    intensity = (data.rpe or 5) / 10.0
+    volume = saturate(relative_volume(data))
     return {
-        group: round(100 * discipline_weights.get(group, 0.4) * v_rel * intensity, 1)
+        group: round(100 * discipline_weights.get(group, 0.4) * volume * intensity, 1)
         for group in MUSCLE_GROUPS
     }
+
+
+Compartments = dict[str, tuple[float, float]]  # grupo -> (agudo, residual)
 
 
 def _day_factors(
@@ -346,14 +372,16 @@ def _day_factors(
     readiness: dict[date, ReadinessData],
     doms_by_group: dict[date, dict[str, int]] | None,
     tau2_factors: dict[str, float] | None,
-) -> dict[str, float]:
-    """Factor de recuperación de cada grupo al pasar del día anterior al actual."""
+) -> Compartments:
+    """Factores (agudo, residual) de cada grupo al pasar del día anterior al actual."""
     if previous_date is None:
-        return {g: 1.0 for g in MUSCLE_GROUPS}
+        return {g: (1.0, 1.0) for g in MUSCLE_GROUPS}
     prior = readiness.get(previous_date)
     day_doms = doms_by_group.get(previous_date) if doms_by_group is not None else None
     return {
-        g: decay_for_group(mod_for_group(prior, day_doms, g), (tau2_factors or {}).get(g, 1.0))
+        g: compartment_factors(
+            mod_for_group(prior, day_doms, g), g, (tau2_factors or {}).get(g, 1.0)
+        )
         for g in MUSCLE_GROUPS
     }
 
@@ -377,34 +405,69 @@ def contributions(
     doms_by_group: dict[date, dict[str, int]] | None = None,
     tau2_factors: dict[str, float] | None = None,
 ) -> list[Contribution]:
-    """Descompone la fatiga actual de `group` por sesión (misma dinámica que `simulate`).
-
-    Como el estado es lineal (estado = factor x estado_previo + impulso), la fatiga
-    de hoy es la suma de cada impulso multiplicado por los factores posteriores.
-    """
+    """Descompone la fatiga actual de `group` por sesión (misma dinámica que `simulate`)."""
     if not events:
         return []
     start = min(min(events), today)
-    tracked: list[tuple[date, SessionData, float, float]] = []
+    tracked: list[tuple[date, SessionData, float, float, float]] = []
     previous_date: date | None = None
     current = start
     while current <= today:
-        factor = _day_factors(previous_date, readiness, doms_by_group, tau2_factors)[group]
-        tracked = [(d, s, imp, rem * factor) for d, s, imp, rem in tracked]
+        fa, fr = _day_factors(previous_date, readiness, doms_by_group, tau2_factors)[group]
+        tracked = [(d, s, imp, a * fa, r * fr) for d, s, imp, a, r in tracked]
         for data in events.get(current, []):
             impulse = session_load(data, weights)[group]
             if impulse > 0:
-                tracked.append((current, data, impulse, impulse))
+                acute = ACUTE_SHARE * impulse
+                tracked.append((current, data, impulse, acute, impulse - acute))
         previous_date = current
         current += timedelta(days=1)
-    return sorted(
-        (
-            Contribution(performed_on=d, session=s, impulse=round(imp, 1), remaining=round(rem, 1))
-            for d, s, imp, rem in tracked
-        ),
-        key=lambda c: c.remaining,
-        reverse=True,
-    )
+    parts = [
+        Contribution(performed_on=d, session=s, impulse=round(imp, 1), remaining=round(a + r, 1))
+        for d, s, imp, a, r in tracked
+    ]
+    return sorted(parts, key=lambda c: c.remaining, reverse=True)
+
+
+def simulate_compartments(
+    events: dict[date, list[SessionData]],
+    readiness: dict[date, ReadinessData],
+    weights: dict[str, dict[str, float]],
+    today: date,
+    doms_by_group: dict[date, dict[str, int]] | None = None,
+    tau2_factors: dict[str, float] | None = None,
+) -> tuple[dict[date, Compartments], dict[date, dict[str, float]]]:
+    """Recorre los días: recuperación por compartimento + impulso del día."""
+    start = min(min(events), today) if events else today
+    states: dict[date, Compartments] = {}
+    impulses: dict[date, dict[str, float]] = {}
+    previous: Compartments = {g: (0.0, 0.0) for g in MUSCLE_GROUPS}
+    previous_date: date | None = None
+    current = start
+    while current <= today:
+        factors = _day_factors(previous_date, readiness, doms_by_group, tau2_factors)
+        state = {
+            g: (previous[g][0] * factors[g][0], previous[g][1] * factors[g][1])
+            for g in MUSCLE_GROUPS
+        }
+        day_impulses = {g: 0.0 for g in MUSCLE_GROUPS}
+        for data in events.get(current, []):
+            loads = session_load(data, weights)
+            for g in MUSCLE_GROUPS:
+                acute, residual = state[g]
+                added_acute = ACUTE_SHARE * loads[g]
+                state[g] = (acute + added_acute, residual + loads[g] - added_acute)
+                day_impulses[g] += loads[g]
+        states[current] = state
+        impulses[current] = day_impulses
+        previous = state
+        previous_date = current
+        current += timedelta(days=1)
+    return states, impulses
+
+
+def totals(compartments: Compartments) -> dict[str, float]:
+    return {g: a + r for g, (a, r) in compartments.items()}
 
 
 def simulate(
@@ -415,46 +478,26 @@ def simulate(
     doms_by_group: dict[date, dict[str, int]] | None = None,
     tau2_factors: dict[str, float] | None = None,
 ) -> tuple[dict[date, dict[str, float]], dict[date, dict[str, float]]]:
-    """Recorre dias aplicando decay + impulso; devuelve (estado, impulsos) por dia."""
-    if events:
-        start = min(events)
-        if start > today:
-            start = today
-    else:
-        start = today
-
-    states: dict[date, dict[str, float]] = {}
-    impulses: dict[date, dict[str, float]] = {}
-    previous: dict[str, float] = {g: 0.0 for g in MUSCLE_GROUPS}
-    previous_date: date | None = None
-    current = start
-    while current <= today:
-        factors = _day_factors(previous_date, readiness, doms_by_group, tau2_factors)
-        state = {g: factors[g] * previous[g] for g in MUSCLE_GROUPS}
-        day_impulses: dict[str, float] = {g: 0.0 for g in MUSCLE_GROUPS}
-        for data in events.get(current, []):
-            loads = session_load(data, weights)
-            for group in MUSCLE_GROUPS:
-                state[group] += loads[group]
-                day_impulses[group] += loads[group]
-        states[current] = state
-        impulses[current] = day_impulses
-        previous = state
-        previous_date = current
-        current += timedelta(days=1)
-    return states, impulses
+    """Fatiga total por día (agudo + residual) e impulsos."""
+    compartments, impulses = simulate_compartments(
+        events, readiness, weights, today, doms_by_group, tau2_factors
+    )
+    return {d: totals(c) for d, c in compartments.items()}, impulses
 
 
 def project(
-    state: dict[str, float],
+    state: Compartments,
     days: int,
-    mods: list[float] | None = None,
-) -> dict[str, float]:
-    """Fatiga residual proyectada `days` adelante sin nuevas cargas."""
+    tau2_factors: dict[str, float] | None = None,
+) -> Compartments:
+    """Compartimentos proyectados `days` adelante sin nuevas cargas (modulador neutro)."""
     result = dict(state)
-    for mod in mods or ([1.0] * days):
-        factor = decay(mod)
-        result = {g: factor * result[g] for g in MUSCLE_GROUPS}
+    for _ in range(days):
+        stepped: Compartments = {}
+        for g, (acute, residual) in result.items():
+            fa, fr = compartment_factors(1.0, g, (tau2_factors or {}).get(g, 1.0))
+            stepped[g] = (acute * fa, residual * fr)
+        result = stepped
     return result
 
 

@@ -5,7 +5,10 @@ import httpx
 from fastapi.testclient import TestClient
 
 from app.analytics.patterns import exercise_patterns, similarity
-from app.analytics.sport_analysis import BOXING, ExerciseWork, analyze
+from app.analytics.sport_analysis import ExerciseWork, analyze
+from app.services.sport_registry import sport_profile
+
+BOXING = sport_profile("boxing")
 
 
 def _work(
@@ -167,6 +170,7 @@ def test_sport_analysis_narrative(client: TestClient, seed_catalog, monkeypatch)
     async def fake(label: str, analysis: dict[str, object]) -> dict[str, object]:
         json.dumps(analysis)  # el cliente real lo envía como JSON
         assert analysis["sport"] == "boxing" and "gaps" in analysis
+        assert str(analysis["perfilDeporte"]).startswith("PERFIL DE BOXEO")
         return {
             "source": "llm",
             "resumen": f"Diagnóstico para {label}.",

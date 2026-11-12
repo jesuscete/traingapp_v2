@@ -11,7 +11,7 @@ from app.core.database import get_db
 from app.core.sport import fetch_sport_narrative
 from app.models import User
 from app.schemas.sport_analysis import SportAnalysisOut, SportNarrativeOut
-from app.services import sport_analysis
+from app.services import sport_analysis, sport_registry
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analysis", tags=["analysis"])
@@ -41,6 +41,8 @@ async def analyze_sport(
 
 async def _narrative(result: SportAnalysisOut) -> SportNarrativeOut:
     payload = result.model_dump(mode="json", by_alias=True, exclude={"narrative"})
+    # El conocimiento del deporte viaja ya resumido: Claude no tiene que deducirlo.
+    payload["perfilDeporte"] = sport_registry.compact_summary(result.sport)
     try:
         return SportNarrativeOut.model_validate(
             await fetch_sport_narrative(result.label, payload)

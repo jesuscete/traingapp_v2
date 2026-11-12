@@ -1,10 +1,7 @@
+import { estimated1rm } from "@/lib/strength";
 import { parseNum } from "@/lib/workout/ops";
 import type { ActiveWorkout, PersonalRecord } from "@/lib/workout/types";
 
-export function epley1rm(weight: number, reps: number): number {
-  if (reps <= 1) return weight;
-  return weight * (1 + reps / 30);
-}
 
 /** PR = supera el récord previo; sin historial previo no se marca. */
 export function detectPersonalRecords(w: ActiveWorkout): PersonalRecord[] {
@@ -20,7 +17,8 @@ export function detectPersonalRecords(w: ActiveWorkout): PersonalRecord[] {
       const reps = parseNum(s.reps);
       if (weight == null || weight <= 0 || reps == null || reps <= 0) continue;
       maxWeight = Math.max(maxWeight, weight);
-      best1rm = Math.max(best1rm, epley1rm(weight, reps));
+      const rpe = parseNum(s.rpe);
+      best1rm = Math.max(best1rm, estimated1rm(weight, Math.round(reps), rpe) ?? 0);
     }
     if (rec.maxWeightKg != null && maxWeight > rec.maxWeightKg) {
       out.push({ exerciseName: ex.name, kind: "peso", value: maxWeight });

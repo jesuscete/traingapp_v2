@@ -72,7 +72,7 @@ def test_history_records_and_isolation(client: TestClient, seed_catalog) -> None
     assert data["records"]["bestSessionVolumeKg"] == 800
     assert [p["topWeightKg"] for p in data["progress"]] == [80, 90]
     assert data["sessions"][1]["sets"][0]["e1rmKg"] is None
-    assert data["records"]["bestE1rmKg"] == 99.0
+    assert data["records"]["bestE1rmKg"] == 97.6
 
     last = client.get(f"/catalog/exercises/{press['id']}/history?limit=1", headers=headers)
     assert len(last.json()["sessions"]) == 1

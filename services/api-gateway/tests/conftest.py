@@ -160,6 +160,17 @@ class FakeRedis:
     async def delete(self, name: str) -> int:
         return 1 if self.lists.pop(name, None) is not None else 0
 
+    async def incr(self, name: str) -> int:
+        value = int(await self.get(name) or 0) + 1
+        self.lists[name] = [str(value)]
+        return value
+
+    async def expire(self, name: str, time: int) -> bool:
+        return name in self.lists
+
+    async def ttl(self, name: str) -> int:
+        return 900 if name in self.lists else -2
+
 
 @pytest.fixture(autouse=True)
 def _fake_redis() -> FakeRedis:

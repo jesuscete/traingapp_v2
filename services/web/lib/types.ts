@@ -258,6 +258,8 @@ export type User = {
   weightKg: number | null;
   heightCm: number | null;
   birthYear: number | null;
+  birthDate?: string | null;
+  onboardingSkipped?: string[] | null;
   sex: string | null;
   goal: string | null;
   sports: string[] | null;
@@ -278,6 +280,8 @@ export type Energy = {
 
 export type TokenResponse = {
   access_token: string;
+  refresh_token: string;
+  expires_in: number;
   token_type: string;
   user: User;
 };
@@ -1119,4 +1123,19 @@ export type GarminSyncResult = {
   healthDays: number;
   messages: string[];
   status: GarminStatus;
+};
+
+export type OnboardingStep = {
+  key: string;
+  label: string;
+  done: boolean;
+  skipped: boolean;
+  href: string | null;
+};
+
+export type Onboarding = {
+  complete: boolean;
+  required: OnboardingStep[];
+  recommended: OnboardingStep[];
+  pendingRecommended: number;
 };

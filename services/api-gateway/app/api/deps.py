@@ -24,12 +24,13 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
         )
-    subject = decode_access_token(credentials.credentials)
-    if subject is None:
+    decoded = decode_access_token(credentials.credentials)
+    if decoded is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         )
+    subject, token_version = decoded
     try:
         user_id = uuid.UUID(subject)
     except ValueError:
@@ -42,5 +43,10 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
+        )
+    if token_version != user.token_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sesión cerrada",
         )
     return user

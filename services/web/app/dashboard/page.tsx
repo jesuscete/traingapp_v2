@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, BedDouble, CheckCircle2, ChevronRight, Lightbulb, type LucideIcon } from "lucide-react";
 
 import { api } from "@/lib/api";
@@ -10,6 +10,8 @@ import { GoalKindIcon, countdownLabel } from "@/components/goals";
 import { DisciplineIcon } from "@/components/icons";
 import { MuscleBody } from "@/components/MuscleChart";
 import { PrepSummary } from "@/components/sport/PrepSummary";
+import { NextSteps } from "@/components/onboarding/NextSteps";
+import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
 import { WeekCard } from "@/components/home/WeekCard";
 import { formatDuration } from "@/lib/format";
 import { formatDistance } from "@/lib/metrics";
@@ -20,6 +22,7 @@ import type {
   HomeInsight,
   HomeSummary,
   NutritionDay,
+  Onboarding,
   SportAnalysis,
   SessionSummary,
   User,
@@ -94,6 +97,26 @@ export default function Dashboard() {
   const [recent, setRecent] = useState<SessionSummary[]>([]);
   const [prep, setPrep] = useState<SportAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [onboarding, setOnboarding] = useState<Onboarding | null>(null);
+  const [welcomeHidden, setWelcomeHidden] = useState(false);
+
+  const loadOnboarding = useCallback(() => {
+    if (!token) return;
+    api.getOnboarding(token).then(setOnboarding).catch(() => setOnboarding(null));
+    api.getProfile(token).then(setUser).catch(() => undefined);
+  }, [token]);
+
+  useEffect(() => {
+    try {
+      setWelcomeHidden(sessionStorage.getItem("traingapp_welcome_hidden") === "1");
+    } catch {
+      setWelcomeHidden(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOnboarding();
+  }, [loadOnboarding]);
 
   useEffect(() => {
     try {
@@ -150,6 +173,32 @@ export default function Dashboard() {
       </section>
 
       {error && <p className="error">{error}</p>}
+
+      {token && onboarding && !onboarding.complete && !welcomeHidden && (
+        <WelcomeModal
+          token={token}
+          user={user}
+          onboarding={onboarding}
+          onSaved={loadOnboarding}
+          onDismiss={() => {
+            try {
+              sessionStorage.setItem("traingapp_welcome_hidden", "1");
+            } catch {
+              // sin sessionStorage
+            }
+            setWelcomeHidden(true);
+          }}
+        />
+      )}
+
+      {token && onboarding && (
+        <NextSteps
+          token={token}
+          onboarding={onboarding}
+          skipped={user?.onboardingSkipped ?? []}
+          onChanged={loadOnboarding}
+        />
+      )}
 
       {home && (
         <section className="hm-card">

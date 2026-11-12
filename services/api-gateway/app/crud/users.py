@@ -36,6 +36,8 @@ _PROFILE_FIELDS = (
     "weight_kg",
     "height_cm",
     "birth_year",
+    "birth_date",
+    "onboarding_skipped",
     "sex",
     "goal",
     "primary_sport",
@@ -55,6 +57,8 @@ async def update_profile(session: AsyncSession, user: User, body: ProfileIn) -> 
         value = getattr(body, field)
         if value is not None:
             setattr(user, field, value)
+    if body.birth_date is not None:
+        user.birth_year = body.birth_date.year  # los cálculos de edad usan el año
     await session.commit()
     await session.refresh(user)
     return user

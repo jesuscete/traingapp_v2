@@ -39,6 +39,7 @@ class FakeGarmin:
         self.valid_key = API_KEY
         self.fit = running_fit(start, minutes=30, hr=150, serial=777)
         self.start = start
+        self.hrv_empty = False
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path
@@ -65,14 +66,15 @@ class FakeGarmin:
         if path == garmin.DOWNLOAD_PATH.format(activity_id=111):
             return httpx.Response(200, content=_zip("111_ACTIVITY.fit", self.fit))
         if path == garmin.DAILY_SUMMARIES_PATH:
-            return httpx.Response(
-                200, json={"data": [{"calendarDate": today, "restingHeartRate": 48}]}
-            )
+            day = {"calendarDate": today, "heartRate": {"minValue": 45, "restingValue": 48}}
+            return httpx.Response(200, json={"data": [day]})
         if path == garmin.SLEEP_PATH:
             return httpx.Response(
                 200, json=[{"dailySleepDTO": {"calendarDate": today, "sleepTimeSeconds": 27000}}]
             )
         if path.startswith("/hrv-service/hrv/daily/"):
+            if self.hrv_empty:
+                return httpx.Response(204)
             summaries = [{"calendarDate": today, "lastNightAvg": 66, "weeklyAvg": 60}]
             return httpx.Response(200, json={"hrvSummaries": summaries})
         return httpx.Response(404)
@@ -168,3 +170,11 @@ def test_helpers_are_tolerant() -> None:
     assert (name, content) == ("9.fit", b"abc")
     assert garmin.unpack_activity_file("9", b"raw") == ("9.fit", b"raw")
     assert crypto.decrypt(crypto.encrypt("secreto")) == "secreto"
+
+
+def test_no_hrv_data_is_not_an_error(client: TestClient, fake_garmin: FakeGarmin) -> None:
+    fake_garmin.hrv_empty = True  # Garmin responde 204 si el reloj no mide VFC
+    headers = _headers(client, "garmin-nohrv@example.com")
+    client.put("/integrations/garmin", json={"apiKey": API_KEY}, headers=headers)
+    sync = client.post("/integrations/garmin/sync", headers=headers).json()
+    assert sync["messages"] == [] and sync["healthDays"] == 1

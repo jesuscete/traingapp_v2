@@ -100,6 +100,8 @@ async def _get(token: str, path: str, params: dict[str, str | int] | None = None
     except httpx.HTTPError as exc:
         raise GarminError(f"No se pudo contactar con Garmin: {exc}") from exc
     _raise_for(response)
+    if response.status_code == 204 or not response.content:
+        return None  # sin datos para ese rango (p. ej. VFC si el reloj no la mide)
     try:
         return response.json()
     except ValueError as exc:

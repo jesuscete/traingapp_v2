@@ -1,4 +1,5 @@
 import type {
+  Onboarding,
   GarminStatus,
   GarminSyncResult,
   HomeSummary,
@@ -55,6 +56,8 @@ import type {
   User,
 } from "@/lib/types";
 
+import { clearSession, currentAccess, refreshAccess } from "@/lib/session";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 export class ApiError extends Error {
@@ -65,23 +68,40 @@ export class ApiError extends Error {
   }
 }
 
-/** Token caducado o inválido: se borra y se vuelve al login. */
+/** Sesión terminada (refresh caducado o revocado): se borra y se vuelve al login. */
 function expireSession(): void {
   if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem("traingapp_token");
-    localStorage.removeItem("traingapp_user");
-  } catch {
-    // almacenamiento no disponible
-  }
+  clearSession();
   if (window.location.pathname !== "/") window.location.replace("/");
 }
 
+/**
+ * fetch autenticado: si la petición lleva `Authorization`, se usa siempre el token vigente
+ * (los componentes guardan el que había al cargar) y, ante un 401, se renueva y se reintenta.
+ */
+async function authFetch(path: string, options: RequestInit): Promise<Response> {
+  const headers = new Headers(options.headers);
+  const authed = headers.has("Authorization") && !path.startsWith("/auth/");
+  if (authed) {
+    const access = await currentAccess();
+    if (access) headers.set("Authorization", `Bearer ${access}`);
+  }
+  let response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  if (authed && response.status === 401) {
+    const renewed = await refreshAccess();
+    if (renewed) {
+      headers.set("Authorization", `Bearer ${renewed}`);
+      response = await fetch(`${API_URL}${path}`, { ...options, headers });
+    }
+    if (response.status === 401) expireSession();
+  }
+  return response;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...options.headers },
-  });
+  const headers = new Headers(options.headers);
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  const response = await authFetch(path, { ...options, headers });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     let message = `Error ${response.status}`;
@@ -91,7 +111,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         ? detail.map((item: { msg?: string }) => item.msg ?? String(item)).join("; ")
         : String(detail);
     }
-    if (response.status === 401 && !path.startsWith("/auth/")) expireSession();
     throw new ApiError(message, response.status);
   }
   if (response.status === 204) {
@@ -107,7 +126,7 @@ async function uploadActivity(
   force: boolean,
 ): Promise<ImportResult> {
   const query = new URLSearchParams({ filename: file.name, force: String(force) });
-  const response = await fetch(`${API_URL}/activities/import?${query.toString()}`, {
+  const response = await authFetch(`/activities/import?${query.toString()}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -127,7 +146,7 @@ async function uploadActivity(
 }
 
 export type Credentials = { email: string; password: string; remember?: boolean };
-export type Registration = Credentials & { name: string };
+export type Registration = Credentials & { name: string; remember?: boolean };
 
 export const api = {
   login: (body: Credentials) =>
@@ -139,6 +158,10 @@ export const api = {
     request<TokenResponse>("/auth/register", {
       method: "POST",
       body: JSON.stringify(body),
+    }),
+  getOnboarding: (token: string) =>
+    request<Onboarding>("/profile/onboarding", {
+      headers: { Authorization: `Bearer ${token}` },
     }),
   getProfile: (token: string) =>
     request<User>("/profile", {
@@ -700,4 +723,17 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
     });
   },
+  logoutAll: (token: string) =>
+    request<void>("/auth/logout-all", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  exportAccount: (token: string) =>
+    request<unknown>("/profile/export", { headers: { Authorization: `Bearer ${token}` } }),
+  deleteAccount: (token: string, password: string) =>
+    request<void>("/profile/delete", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ password }),
+    }),
 };

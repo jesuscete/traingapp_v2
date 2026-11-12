@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import JSON, DateTime, Float, Integer, String, Uuid, func
+from sqlalchemy import JSON, Date, DateTime, Float, Integer, String, Uuid, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,6 +20,7 @@ class User(Base):
     weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
     height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
     birth_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     sex: Mapped[str | None] = mapped_column(String(10), nullable=True)
     goal: Mapped[str | None] = mapped_column(String(40), nullable=True)
     sports: Mapped[list[str] | None] = mapped_column(_JSONB, nullable=True)
@@ -27,10 +28,14 @@ class User(Base):
     body_fat_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     fitness_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
     max_hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Se incrementa al cerrar todas las sesiones: invalida los tokens de acceso vivos.
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     resting_hr: Mapped[int | None] = mapped_column(Integer, nullable=True)
     weekly_availability: Mapped[int | None] = mapped_column(Integer, nullable=True)
     injuries: Mapped[list[object] | None] = mapped_column(_JSONB, nullable=True)
     goals: Mapped[list[str] | None] = mapped_column(_JSONB, nullable=True)
+    # Pasos recomendados de la bienvenida que el usuario ha omitido (garmin, goal…).
+    onboarding_skipped: Mapped[list[str] | None] = mapped_column(_JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

@@ -1,4 +1,5 @@
 from app.models.activity import ActivityStream
+from app.models.auth_session import AuthSession
 from app.models.catalog import ExerciseCatalog, ExerciseMuscle, Muscle, UserFavoriteExercise
 from app.models.fatigue import (
     DailyMuscleDoms,
@@ -23,6 +24,7 @@ from app.models.user import User
 
 __all__ = [
     "ActivityStream",
+    "AuthSession",
     "BodyWeightLog",
     "Food",
     "GarminConnection",

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import type { User } from "@/lib/types";
+import { logout as endSession } from "@/lib/session";
 
 const TOKEN_KEY = "traingapp_token";
 const USER_KEY = "traingapp_user";
@@ -37,9 +38,7 @@ export function AvatarMenu() {
   if (!visible) return null;
 
   function logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    router.replace("/");
+    void endSession().finally(() => router.replace("/"));
   }
 
   const initial = user?.name?.trim().charAt(0).toUpperCase() ?? "";

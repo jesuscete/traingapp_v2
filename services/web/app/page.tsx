@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
-import { readToken, tokenIsValid } from "@/lib/useToken";
+import { hasSession, saveSession } from "@/lib/session";
 
 const REMEMBER_KEY = "traingapp_remember";
 const LAST_EMAIL_KEY = "traingapp_last_email";
@@ -17,12 +18,8 @@ function readPref(key: string): string | null {
   }
 }
 
-type Mode = "login" | "register";
-
 export default function Home() {
   const router = useRouter();
-  const [mode, setMode] = useState<Mode>("login");
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +28,7 @@ export default function Home() {
 
   useEffect(() => {
     // Sesión recordada y vigente: directo al inicio.
-    if (tokenIsValid(readToken())) {
+    if (hasSession()) {
       router.replace("/dashboard");
       return;
     }
@@ -46,12 +43,8 @@ export default function Home() {
     setError(null);
     setLoading(true);
     try {
-      const data =
-        mode === "login"
-          ? await api.login({ email, password, remember })
-          : await api.register({ email, password, name });
-      localStorage.setItem("traingapp_token", data.access_token);
-      localStorage.setItem("traingapp_user", JSON.stringify(data.user));
+      const data = await api.login({ email, password, remember });
+      saveSession(data, remember);
       localStorage.setItem(REMEMBER_KEY, remember ? "1" : "0");
       if (remember) localStorage.setItem(LAST_EMAIL_KEY, email);
       else localStorage.removeItem(LAST_EMAIL_KEY);
@@ -71,15 +64,6 @@ export default function Home() {
           Registra tus entrenamientos con el chat de IA
         </p>
         <form onSubmit={handleSubmit}>
-          {mode === "register" && (
-            <input
-              type="text"
-              placeholder="Nombre"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          )}
           <input
             type="email"
             placeholder="Email"
@@ -94,8 +78,7 @@ export default function Home() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          {mode === "login" && (
-            <label className="remember-me">
+          <label className="remember-me">
               <input
                 type="checkbox"
                 checked={remember}
@@ -103,21 +86,14 @@ export default function Home() {
               />
               Recuérdame (30 días)
             </label>
-          )}
           {error && <p className="error">{error}</p>}
           <button type="submit" disabled={loading}>
-            {loading ? "Espera..." : mode === "login" ? "Entrar" : "Registrarse"}
+            {loading ? "Espera..." : "Entrar"}
           </button>
         </form>
-        <button
-          type="button"
-          className="link"
-          onClick={() => setMode(mode === "login" ? "register" : "login")}
-        >
-          {mode === "login"
-            ? "¿No tienes cuenta? Regístrate"
-            : "¿Ya tienes cuenta? Entra"}
-        </button>
+        <Link className="link" href="/registro">
+          ¿No tienes cuenta? Crea una
+        </Link>
       </div>
     </main>
   );

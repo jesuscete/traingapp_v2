@@ -3119,3 +3119,15 @@ a.btn:hover {
 .success {
   color: var(--success, #2fd9a8);
 }
+
+/* Cuenta y seguridad (M7) */
+.danger-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger, #ef4444);
+}
+button.danger {
+  background: var(--danger, #ef4444);
+  color: #fff;
+}

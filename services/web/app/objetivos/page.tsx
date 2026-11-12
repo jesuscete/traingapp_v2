@@ -15,19 +15,8 @@ import { BottomNav } from "@/components/BottomNav";
 import { api } from "@/lib/api";
 import type { Goal, GoalIn, GoalKind } from "@/lib/types";
 import { GOAL_KIND_LABELS, GoalKindIcon, countdownLabel } from "@/components/goals";
+import { MAIN_SPORTS, OTHER_SPORTS } from "@/lib/sports";
 import { useToken } from "@/lib/useToken";
-
-const MAIN_SPORTS: { key: string; label: string }[] = [
-  { key: "boxeo", label: "Boxeo" },
-  { key: "kickboxing", label: "Kickboxing / Muay thai" },
-  { key: "triatlon", label: "Triatlón" },
-  { key: "running", label: "Running" },
-  { key: "ciclismo", label: "Ciclismo" },
-  { key: "natacion", label: "Natación" },
-  { key: "gimnasio", label: "Gimnasio / fuerza" },
-];
-
-const OTHER_SPORTS = [...MAIN_SPORTS, { key: "otro", label: "Otro" }];
 
 type FormState = {
   kind: GoalKind;

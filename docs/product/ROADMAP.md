@@ -151,14 +151,28 @@ Origen: [ANALISIS_TECNICO.md](ANALISIS_TECNICO.md) §2, §3 y §5.
 - [ ] **Health Connect** (Android) / **HealthKit** (iOS): reciben datos de casi cualquier reloj o app (Coros, Polar, Samsung, Apple…).
 - [ ] El importador de archivos de M6.1 ya cubre cualquier marca mientras tanto.
 
-### M7 · Blindaje (RNF-01, RNF-05)
-- [ ] Token de acceso corto con refresh rotatorio y revocación. Cookie httpOnly en web.
-- [ ] Rate limiting, bloqueo por intentos, verificación de email y recuperación de contraseña.
-- [ ] Revisión OWASP API Top 10, cabeceras de seguridad y auditoría de dependencias en CI.
-- [ ] RGPD: exportación y borrado de cuenta; minimizar los datos enviados al LLM.
-- [ ] Proveedor LLM de producción (API key) si hay más usuarios.
+### M6-7 · Alta de usuario y bienvenida 🟡 (previa a M7)
+Objetivo: empezar a usar la app con tu propio usuario, creado desde cero como cualquier persona nueva (alex@traingapp.dev queda solo para pruebas).
+- [x] Página de registro (`/registro`) con «Recuérdame». El login enlaza a ella.
+- [x] Bienvenida: mientras falten los datos imprescindibles (peso, altura, fecha de nacimiento, sexo y deporte principal), aparece un formulario para rellenarlos. Al completarlos, no vuelve a salir.
+- [x] «Saca más partido a la app»: conectar Garmin, definir el objetivo, otros deportes y FC máxima. Cada paso se puede omitir y desaparece al hacerlo (`GET /profile/onboarding`).
+- [ ] Crear tu usuario real y empezar a meter datos.
 
-### M8 · App móvil (RNF-02)
+### M7 · Blindaje para abrir la app fuera de casa ✅ (2026-11-12, [ADR-009](decisions/ADR-009-blindaje-sesiones.md))
+Objetivo: usar la app fuera de casa con seguridad. **Decisión (2026-11-12): Tailscale** (red privada entre el PC y el móvil, sin abrir puertos y con HTTPS válido). El servidor es tu PC encendido; más adelante se puede pasar a un VPS.
+- [x] Token de acceso de 15 min con refresh rotatorio, detección de reutilización, cierre de sesión y cierre en todos los dispositivos.
+- [x] Límite de intentos de login y de registro. Recuperar la contraseña desde el PC (`python -m app.cli reset-password`).
+- [x] Cabeceras de seguridad (API y web). Postgres y Redis solo en localhost. Secretos fuertes (`python -m app.cli init-secrets`).
+- [x] Next.js 16.4.6: corrige una vulnerabilidad crítica. `npm audit` sin vulnerabilidades.
+- [x] RGPD: descargar tus datos y borrar la cuenta (Configuración → Cuenta y seguridad).
+- [x] Copias de seguridad: `scripts/backup-db.ps1` y `restore-db.ps1`; copia diaria con `register-backup-task.ps1`.
+- [x] Validado con tu Garmin real: la FC en reposo llega (`heartRate.restingValue`) y «sin VFC» ya no da error.
+- [ ] Pendiente para cuando haya más usuarios: verificación de email y reseteo por correo (SMTP), cookie httpOnly (con HTTPS, M8), pip-audit en CI y proveedor LLM de producción.
+
+### M8 · App instalada en el móvil y uso fuera de casa (RNF-02)
+Objetivo: la app instalada en el móvil, usable en el gimnasio con conexión segura (HTTPS), para registrar entrenos en uso real.
+- [ ] HTTPS de verdad y PWA instalable a pantalla completa, pantalla encendida durante el entreno y cámara para los códigos de barras.
+- [ ] Acceso seguro desde fuera de casa (túnel o puertos, según lo decidido en M7).
 - [ ] Prefijo `/api/v1`, errores RFC 7807, paginación coherente.
 - [ ] Tipos generados desde OpenAPI para web y móvil.
 - [ ] App nativa (React Native/Expo reutilizaría TypeScript) frente a seguir con la PWA: decidir.
@@ -191,4 +205,4 @@ M1..M6 ─► M7 ─► M8
 M1 solo usa el LLM para traducir las instrucciones (un lote único). Si M2 no está listo, se hace con el CLI a mano.
 
 ## Siguiente paso
-**Uso real**: conectar Garmin, usar la app a diario y anotar ajustes (M5.1). Después, M7 (blindaje) y M8 (app móvil); M6.3 tras M8.
+**M6-7** (registro y bienvenida) → **M7** (blindaje para abrir la app fuera de casa) → **M8** (app instalada y uso en el gimnasio). Pulido y M6.3, después.

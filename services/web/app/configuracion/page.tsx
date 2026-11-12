@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { AccountCard } from "@/components/account/AccountCard";
 import { GarminCard } from "@/components/integrations/GarminCard";
 import { getTheme, setTheme, THEMES } from "@/lib/theme";
 
@@ -34,6 +35,7 @@ export default function Configuracion() {
       </section>
 
       {token && <GarminCard token={token} />}
+      {token && <AccountCard token={token} />}
 
       <section className="energy-card">
         <h3>Tema de color (beta)</h3>

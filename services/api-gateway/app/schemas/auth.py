@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -30,6 +30,7 @@ class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     name: str = Field(min_length=1, max_length=120)
+    remember: bool = False
 
 
 class LoginIn(BaseModel):
@@ -45,10 +46,12 @@ class UserOut(CamelModel):
     weight_kg: float | None = None
     height_cm: float | None = None
     birth_year: int | None = None
+    birth_date: date | None = None
     sex: Literal["male", "female"] | None = None
     goal: Goal | None = None
     sports: list[str] | None = None
     primary_sport: str | None = None
+    onboarding_skipped: list[str] | None = None
     body_fat_pct: float | None = None
     fitness_level: FitnessLevel | None = None
     weekly_availability: int | None = None
@@ -64,6 +67,8 @@ class ProfileIn(CamelModel):
     weight_kg: float | None = Field(default=None, ge=20, le=400)
     height_cm: float | None = Field(default=None, ge=80, le=250)
     birth_year: int | None = Field(default=None, ge=1900, le=2100)
+    birth_date: date | None = None
+    onboarding_skipped: list[str] | None = Field(default=None, max_length=20)
     sex: Literal["male", "female"] | None = None
     goal: Goal | None = None
     sports: list[str] | None = None
@@ -89,5 +94,11 @@ class PasswordChangeIn(CamelModel):
 
 class TokenOut(BaseModel):
     access_token: str
+    refresh_token: str
+    expires_in: int
     token_type: str = "bearer"
     user: UserOut
+
+
+class RefreshIn(CamelModel):
+    refresh_token: str = Field(min_length=20, max_length=200)

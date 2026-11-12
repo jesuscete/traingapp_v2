@@ -20,8 +20,10 @@ class Settings(BaseSettings):
     )
     jwt_secret: str = DEV_JWT_SECRET
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 60
-    remember_token_expire_days: int = 30
+    # Token de acceso corto; la sesión se mantiene con el refresh token rotatorio.
+    access_token_expire_minutes: int = 15
+    remember_token_expire_days: int = 30  # refresh con «Recuérdame»
+    session_refresh_hours: int = 12  # refresh sin «Recuérdame»
     internal_token: str = DEV_INTERNAL_TOKEN
     ai_parser_url: str = "http://localhost:8100"
     # Debe cubrir el timeout del LLM en ai-parser (90 s) más un reintento de reparación.

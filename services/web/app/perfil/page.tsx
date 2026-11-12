@@ -33,7 +33,7 @@ export default function Perfil() {
   const [name, setName] = useState("");
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
-  const [birthYear, setBirthYear] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [sex, setSex] = useState("");
   const [goal, setGoal] = useState("");
   const [maxHr, setMaxHr] = useState("");
@@ -73,7 +73,7 @@ export default function Perfil() {
       setName(p.name ?? "");
       setWeight(p.weightKg != null ? String(p.weightKg) : "");
       setHeight(p.heightCm != null ? String(p.heightCm) : "");
-      setBirthYear(p.birthYear != null ? String(p.birthYear) : "");
+      setBirthDate(p.birthDate ?? "");
       setSex(p.sex ?? "");
       setGoal(p.goal ?? "");
       setMaxHr(p.maxHr != null ? String(p.maxHr) : "");
@@ -103,7 +103,7 @@ export default function Perfil() {
         ...(name !== "" ? { name } : {}),
         weightKg: weight !== "" ? Number(weight) : null,
         heightCm: height !== "" ? Number(height) : null,
-        birthYear: birthYear !== "" ? Number(birthYear) : null,
+        ...(birthDate !== "" ? { birthDate } : {}),
         sex: sex !== "" ? sex : null,
         goal: goal !== "" ? goal : null,
         maxHr: maxHr !== "" ? Number(maxHr) : null,
@@ -237,15 +237,16 @@ export default function Perfil() {
           </label>
 
           <label>
-            Año de nacimiento
+            Fecha de nacimiento
             <input
-              type="number"
-              min="1900"
-              max="2100"
-              placeholder="Ej: 1990"
-              value={birthYear}
-              onChange={(e) => setBirthYear(e.target.value)}
+              type="date"
+              value={birthDate}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setBirthDate(e.target.value)}
             />
+            {!birthDate && profile?.birthYear != null && (
+              <small className="muted">Año: {profile.birthYear}</small>
+            )}
           </label>
 
           <label>

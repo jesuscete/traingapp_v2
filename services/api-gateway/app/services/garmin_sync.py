@@ -21,7 +21,8 @@ TOKEN_MARGIN = timedelta(hours=1)
 OVERLAP_DAYS = 2  # se repasan los últimos días por si el reloj sincronizó tarde
 HEALTH_MAX_DAYS = 28
 HRV_FULL_SWING = 0.2  # ±20 % sobre la media semanal = HRV muy baja/alta
-RESTING_HR_KEYS = ("restingHeartRate", "restingHeartRateValue", "restingHR")
+# Respuesta real de dailysummaries v2: heartRate.restingValue (validado con cuenta real).
+RESTING_HR_KEYS = ("restingValue", "restingHeartRate", "restingHeartRateValue", "restingHR")
 SLEEP_SECONDS_KEYS = ("sleepTimeSeconds", "sleepTimeInSeconds", "totalSleepSeconds")
 HRV_LAST_KEYS = ("lastNightAvg", "lastNight5MinHigh")
 HRV_WEEKLY_KEYS = ("weeklyAvg",)
@@ -188,7 +189,13 @@ async def sync_user(
     today = datetime.now(UTC).date()
     start = _window(conn, today, days)
     try:
-        token = await _token(session, conn)
+        try:
+            token = await _token(session, conn)
+        except crypto.DecryptionError as exc:
+            # La clave de cifrado cambió: la clave guardada ya no sirve, hay que reconectar.
+            raise garmin.GarminAuthError(
+                "Vuelve a conectar Garmin (clave guardada ilegible)"
+            ) from exc
         await _sync_activities(session, user, token, start, today, result)
         await _sync_health(session, user, token, start, today, result)
     except garmin.GarminAuthError as exc:

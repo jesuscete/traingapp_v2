@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api } from "@/lib/api";
 import { BottomNav } from "@/components/BottomNav";
 import { HelpTip } from "@/components/HelpTip";
-import { RadarChart } from "@/components/RadarChart";
+import { MuscleChart } from "@/components/MuscleChart";
+import { MuscleFatigueMini } from "@/components/gym/MuscleFatigueMini";
 import { translateMuscleGroup, translateZone } from "@/lib/labels";
 import type { Fatigue, Readiness } from "@/lib/types";
 
@@ -103,6 +104,25 @@ export default function Fatiga() {
     }))
     .filter((point) => point.value > 0);
 
+  const bodyPoints = useMemo(
+    () =>
+      (fatigue?.muscles ?? []).map((m) => ({
+        muscleGroup: m.muscleGroup,
+        value: Math.max(0, Math.min(1, m.fatigue / 100)),
+      })),
+    [fatigue?.muscles],
+  );
+
+  const fatigueImpacts = useMemo(
+    () =>
+      (fatigue?.muscles ?? []).map((m) => ({
+        muscleGroup: m.muscleGroup,
+        activation: Math.max(0, Math.min(1, m.fatigue / 100)),
+        zone: m.zone,
+      })),
+    [fatigue?.muscles],
+  );
+
   return (
     <main className="dashboard">
       <BottomNav />
@@ -150,10 +170,20 @@ export default function Fatiga() {
             <div className="block">
               <h2>
                 <HelpTip tip="Fatiga estimada por grupo (0-100). Verde ≤ 40, ámbar 41-70, rojo > 70. Modelo impulso-respuesta con doble exponencial (ver docs/architecture/fatigue-spec.md).">
-                  Radar de fatiga
+                  Mapa de fatiga
                 </HelpTip>
               </h2>
-              <RadarChart data={radarData} size={420} showLabels />
+              <div className="muscle-grid">
+                <div className="muscle-radar">
+                  <MuscleChart
+                    size={360}
+                    showRadarLabels
+                    radarData={radarData}
+                    bodyPoints={bodyPoints}
+                  />
+                </div>
+                <MuscleFatigueMini impacts={fatigueImpacts} />
+              </div>
               <div className="fatigue-scale">
                 <span className="scale-ok">≤ 40</span>
                 <span className="scale-warn">41–70</span>

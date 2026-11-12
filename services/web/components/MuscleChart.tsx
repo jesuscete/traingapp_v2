@@ -160,7 +160,7 @@ export function MuscleChart({
 }) {
   const hasRadar = radarData.length > 0;
   const hasBody = bodyPoints.length > 0;
-  const [view, setView] = useState<View>("radar");
+  const [view, setView] = useState<View>("body");
 
   if (!hasRadar && !hasBody) return null;
 

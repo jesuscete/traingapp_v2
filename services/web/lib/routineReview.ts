@@ -176,11 +176,24 @@ export function computeZoneTotals(
 }
 
 export function buildZoneReviews(totals: ZoneTotals): ReviewZone[] {
-  const entries = Object.entries(totals.byZone).filter(([, value]) => value > 0);
-  if (entries.length === 0) return [];
-  const max = Math.max(...entries.map(([, value]) => value));
-  return entries
-    .map(([zone, value]) => ({
+  const zoneGroups: Record<string, number[]> = {};
+  for (const [group, value] of Object.entries(totals.byGroup)) {
+    if (value <= 0) continue;
+    const zone = zoneOfGroup(group);
+    if (!zoneGroups[zone]) zoneGroups[zone] = [];
+    zoneGroups[zone].push(value);
+  }
+
+  const zoneAvg: { zone: string; value: number }[] = [];
+  for (const [zone, values] of Object.entries(zoneGroups)) {
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    if (avg > 0) zoneAvg.push({ zone, value: avg });
+  }
+
+  if (zoneAvg.length === 0) return [];
+  const max = Math.max(...zoneAvg.map((e) => e.value));
+  return zoneAvg
+    .map(({ zone, value }) => ({
       zone,
       label: translateZone(zone),
       value: round3(value / max),

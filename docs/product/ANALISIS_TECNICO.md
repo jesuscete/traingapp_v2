@@ -1,5 +1,7 @@
 # Análisis técnico: modelos de cálculo, conocimiento por deporte e integraciones
 
+> ✅ §2 (fatiga), §3 (1RM) y §5 (registro de deporte) aplicados en M4.1: ver [ADR-005](decisions/ADR-005-fatiga-1rm-registro-deporte.md).
+
 > 2026-11-12 · Revisión de los cálculos que heredamos de OpenCode (fatiga, 1RM, kcal), de cómo se gestiona cada deporte, y estudio de nutrición y Strava/Garmin. Sirve de base para el hito **M4.1 · Mejoras encontradas** del [ROADMAP](ROADMAP.md).
 
 ## 1. Resumen

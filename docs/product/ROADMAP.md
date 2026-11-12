@@ -11,8 +11,8 @@
 | M2 IA con Claude | ✅ |
 | M3 Multideporte y fatiga | ✅ |
 | M4 Deporte principal y agente | ✅ |
-| **M4.1 Mejoras encontradas** | ⏳ **En curso**: fatiga, 1RM y registro de deporte ([análisis](ANALISIS_TECNICO.md)) |
-| M5 Nutrición | ⏳ después de M4.1 |
+| M4.1 Mejoras encontradas | ✅ fatiga, 1RM y registro de deporte |
+| **M5 Nutrición** | ⏳ **Siguiente** |
 | M5.1 Prueba en el móvil en local y depuración | ⏳ |
 | M6 Garmin (antes "Strava/Garmin") | ⏳ |
 | M7 Blindaje | 🟡 parcial |
@@ -79,17 +79,17 @@
 - [x] Motor de fatiga movido a `services/fatigue_engine.py` (lo comparten las estadísticas y el agente).
 - [ ] *Aplazado:* mover `web/lib/routineReview.ts` al backend (es un fichero con cambios locales del Arquitecto); planes multisemana generados por el agente.
 
-### M4.1 · Mejoras encontradas ⏳ (en curso)
+### M4.1 · Mejoras encontradas ✅ (2026-11-12, [ADR-005](decisions/ADR-005-fatiga-1rm-registro-deporte.md))
 Origen: [ANALISIS_TECNICO.md](ANALISIS_TECNICO.md) §2, §3 y §5.
 1. **Fatiga realista**
-   - [ ] Cada ejercicio y cada deporte carga sus músculos con su nivel de implicación (p. ej. dominadas: espalda > bíceps > antebrazo). La carga de gym sale de las **series reales** (activación × esfuerzo por serie).
-   - [ ] Recuperación en **dos compartimentos reales** (agudo y residual) con τ por grupo muscular, más prolongada en grupos grandes y excéntricos.
-   - [ ] Deportes: pesos musculares por tipo de bloque (comba, saco, sparring…).
+   - [x] Cada ejercicio y cada deporte carga sus músculos con su nivel de implicación (p. ej. dominadas: espalda > bíceps > antebrazo). La carga de gym sale de las **series reales** (activación × esfuerzo por serie).
+   - [x] Recuperación en **dos compartimentos reales** (agudo y residual) con τ por grupo muscular, más prolongada en grupos grandes y excéntricos.
+   - [x] Deportes: pesos musculares por tipo de bloque (comba, saco, sparring…).
 2. **1RM único y fiable**
-   - [ ] Una sola fórmula en toda la app (Epley/Brzycki en rango válido; con RPE, tabla RPE/RIR). Eliminar el cálculo sin límite de `computations.est_1rm`.
+   - [x] Una sola fórmula en toda la app: tabla RPE→%1RM (RTS); sin RPE asume RPE 10; 1-12 reps. Backend `analytics/strength.py` y web `lib/strength.ts`, con los mismos vectores de prueba.
 3. **Registro de conocimiento por deporte**
-   - [ ] Perfil estructurado por deporte (boxeo el primero): cualidades, patrones, ejercicios clave, series por músculo, zonas de reps por fase, lesiones y prehab, reglas de calendario y carga por bloque.
-   - [ ] La IA lo consulta (prompt compacto + herramienta `perfil_deporte`) en vez de deducirlo.
+   - [x] Perfil estructurado por deporte (boxeo el primero): cualidades, patrones, ejercicios clave, series por músculo, zonas de reps por fase, lesiones y prehab, reglas de calendario y carga por bloque.
+   - [x] La IA lo consulta (prompt compacto + herramienta `perfil_deporte`) en vez de deducirlo.
 
 **Backlog de mejoras** (después de M5): progresión sugerida (doble progresión), kcal por FC (Keytel), retirar `chat/plan_session.py`, imágenes sin conexión, sesiones mixtas.
 
@@ -121,6 +121,16 @@ Origen: [ANALISIS_TECNICO.md](ANALISIS_TECNICO.md) §2, §3 y §5.
 - [ ] Tipos generados desde OpenAPI para web y móvil.
 - [ ] App nativa (React Native/Expo reutilizaría TypeScript) frente a seguir con la PWA: decidir.
 
+## 🗂️ Backlog (ideas para cuando la app esté en uso, después de M8)
+Tu objetivo: que la IA te organice y te guíe sin tener que ser experto. Las mejoras saldrán de usar la app.
+
+- **Completar los perfiles de deporte** (`data/sport_profiles/`): revisar el de boxeo con el uso real y añadir los deportes que practiques (running, escalada…). Proceso: Claude genera un borrador estructurado, se revisa y se valida automáticamente.
+- **Feedback diario de recuperación para refinar la fatiga:**
+  - "Hoy me noto descansado / sigo cansado" y las agujetas por músculo al día siguiente de entrenar.
+  - Ya existe la base: readiness diaria, mapa corporal de agujetas (`daily_muscle_doms`) y calibración personal (`user_muscle_calibration`). Falta preguntarte de forma proactiva (por ejemplo, el agente o una notificación tras cada entreno) y usar tus respuestas para ajustar automáticamente las constantes de recuperación por músculo.
+- **Fatiga que aprende:** comparar lo que predice el modelo con lo que reportas y corregir τ y pesos con el tiempo (ADR-005, consecuencias).
+- **Fase de temporada y calendario de combate** en tu perfil, para que los objetivos cambien solos (precompetición, descarga).
+
 ## Dependencias
 
 ```
@@ -132,4 +142,4 @@ M1..M6 ─► M7 ─► M8
 M1 solo usa el LLM para traducir las instrucciones (un lote único). Si M2 no está listo, se hace con el CLI a mano.
 
 ## Siguiente paso
-**M4.1** (fatiga, 1RM, registro de deporte) → **M5** comidas → **M5.1** prueba en el móvil en local → M6, M7, M8.
+**M5** comidas → **M5.1** prueba en el móvil en local → M6, M7, M8.

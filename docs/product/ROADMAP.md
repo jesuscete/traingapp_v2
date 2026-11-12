@@ -2,6 +2,28 @@
 
 > Plan propio, derivado del análisis del código ([GAP_ANALYSIS.md](GAP_ANALYSIS.md)). **No** se basa en los planes ni ADRs previos de OpenCode (`docs/architecture/*`). Cada hito se divide en micro-iteraciones que se aprueban antes de ejecutarlas (AGENTS.md §4). Al cerrar un hito, actualizar [requirements.yaml](requirements.yaml).
 
+## 📍 Estado actual (2026-11-12)
+
+| Hito | Estado |
+| :-- | :-- |
+| M0 Saneamiento | ✅ |
+| M1 Gimnasio | ✅ (falta probarlo en el móvil) |
+| M2 IA con Claude | ✅ |
+| M3 Multideporte y fatiga | ✅ |
+| M4 Deporte principal y agente | ✅ |
+| **M4.1 Mejoras encontradas** | ⏳ **En curso**: fatiga, 1RM y registro de deporte ([análisis](ANALISIS_TECNICO.md)) |
+| M5 Nutrición | ⏳ después de M4.1 |
+| M5.1 Prueba en el móvil en local y depuración | ⏳ |
+| M6 Garmin (antes "Strava/Garmin") | ⏳ |
+| M7 Blindaje | 🟡 parcial |
+| M8 App móvil | 🟡 parcial (PWA, `-Lan`, `-Https`) |
+
+- **Código:** todo en `feature/refactor` (último commit `eefde7f`). Pasan los tests del gateway (254) y de ai-parser (64); `ruff`, `mypy` y `tsc` sin errores.
+- **Pendiente tuyo:**
+  - Probar M1-M4 en el móvil.
+  - Instalar mkcert para `-Https`.
+  - Hacer merge de tus cambios locales en `fatiga/page.tsx`, `MuscleChart.tsx` y `routineReview.ts`.
+
 ## Principios de orden
 1. **Usable cuanto antes en la vida real:** la experiencia de gimnasio (RF-06) va primero, porque el Arquitecto la usará a diario y eso genera datos reales para todo lo demás.
 2. **IA fiable antes que funciones de IA:** el adaptador de Claude va antes del agente y del recomendador.
@@ -57,15 +79,35 @@
 - [x] Motor de fatiga movido a `services/fatigue_engine.py` (lo comparten las estadísticas y el agente).
 - [ ] *Aplazado:* mover `web/lib/routineReview.ts` al backend (es un fichero con cambios locales del Arquitecto); planes multisemana generados por el agente.
 
-### M5 · Nutrición (RF-05)
-- [ ] Decisión sobre la API de alimentos (FatSecret, Open Food Facts o Edamam: coste, cobertura en España, licencia).
-- [ ] Modelo de ingesta, cliente con caché, búsqueda y entrada por texto libre vía el agente.
-- [ ] Balance de ingesta frente a gasto (`kcal.py`) en el dashboard.
+### M4.1 · Mejoras encontradas ⏳ (en curso)
+Origen: [ANALISIS_TECNICO.md](ANALISIS_TECNICO.md) §2, §3 y §5.
+1. **Fatiga realista**
+   - [ ] Cada ejercicio y cada deporte carga sus músculos con su nivel de implicación (p. ej. dominadas: espalda > bíceps > antebrazo). La carga de gym sale de las **series reales** (activación × esfuerzo por serie).
+   - [ ] Recuperación en **dos compartimentos reales** (agudo y residual) con τ por grupo muscular, más prolongada en grupos grandes y excéntricos.
+   - [ ] Deportes: pesos musculares por tipo de bloque (comba, saco, sparring…).
+2. **1RM único y fiable**
+   - [ ] Una sola fórmula en toda la app (Epley/Brzycki en rango válido; con RPE, tabla RPE/RIR). Eliminar el cálculo sin límite de `computations.est_1rm`.
+3. **Registro de conocimiento por deporte**
+   - [ ] Perfil estructurado por deporte (boxeo el primero): cualidades, patrones, ejercicios clave, series por músculo, zonas de reps por fase, lesiones y prehab, reglas de calendario y carga por bloque.
+   - [ ] La IA lo consulta (prompt compacto + herramienta `perfil_deporte`) en vez de deducirlo.
 
-### M6 · Strava / Garmin (RF-07)
-- [ ] OAuth con Strava y tokens cifrados con refresh.
-- [ ] Webhook, importación y mapeo a los esquemas de M3, deduplicación e histórico.
-- [ ] Garmin: evaluar la Health API (requiere ser partner) o usar el puente vía Strava.
+**Backlog de mejoras** (después de M5): progresión sugerida (doble progresión), kcal por FC (Keytel), retirar `chat/plan_session.py`, imágenes sin conexión, sesiones mixtas.
+
+### M5 · Nutrición (RF-05)
+- [x] Decisión de la API (análisis §6): **Open Food Facts** (código de barras y marcas de España) + **USDA** (genéricos) + **Claude** para el lenguaje natural. FatSecret Premier o BEDCA solo si hay app pública.
+- [ ] Modelo `food` (caché), `meal_entry` (copia de macros), `nutrition_target` (Mifflin-St Jeor + gasto de entrenos + objetivo).
+- [ ] Búsqueda, código de barras desde el móvil y texto libre con el agente (propone, el usuario confirma).
+- [ ] Balance diario en el dashboard y control de peso hacia la categoría.
+
+### M5.1 · Prueba en el móvil en local y depuración ⏳
+- [ ] `dev-up.ps1 -Lan` / `-Https` en el móvil: registrar comidas y entrenos, chat, preparación, fatiga.
+- [ ] Lista de errores y ajustes de UX; corregirlos antes de seguir.
+
+### M6 · Garmin (RF-07)
+- [x] Decisión (análisis §7): **Strava descartado de momento**, porque su acuerdo de API prohíbe usar sus datos en aplicaciones de IA y desde 2026 exige suscripción. **Garmin con clave personal + importación FIT.**
+- [ ] `external_account` (tokens cifrados), `external_source` + `external_id` para deduplicar, ingesta por la cola Redis.
+- [ ] Parser FIT (`fitdecode`) → disciplina + métricas de resistencia (FC, desnivel) → kcal y fatiga.
+- [ ] Health Connect / HealthKit en la app nativa (M8).
 
 ### M7 · Blindaje (RNF-01, RNF-05)
 - [ ] Token de acceso corto con refresh rotatorio y revocación. Cookie httpOnly en web.
@@ -84,9 +126,10 @@
 ```
 M0 ─► M1 (gym) ─► M3 ─► M6
   └─► M2 (IA) ─► M4 ─► M5
+M4 ─► M4.1 (mejoras) ─► M5 (comidas) ─► M5.1 (prueba en el móvil) ─► M6 ─► M7 ─► M8
 M1..M6 ─► M7 ─► M8
 ```
 M1 solo usa el LLM para traducir las instrucciones (un lote único). Si M2 no está listo, se hace con el CLI a mano.
 
 ## Siguiente paso
-Prueba real de M1–M4 en el móvil. Después, M5 (nutrición) o M6 (Strava), que son independientes.
+**M4.1** (fatiga, 1RM, registro de deporte) → **M5** comidas → **M5.1** prueba en el móvil en local → M6, M7, M8.

@@ -169,13 +169,43 @@ Objetivo: usar la app fuera de casa con seguridad. **Decisión (2026-11-12): Tai
 - [x] Validado con tu Garmin real: la FC en reposo llega (`heartRate.restingValue`) y «sin VFC» ya no da error.
 - [ ] Pendiente para cuando haya más usuarios: verificación de email y reseteo por correo (SMTP), cookie httpOnly (con HTTPS, M8), pip-audit en CI y proveedor LLM de producción.
 
-### M8 · App instalada en el móvil y uso fuera de casa (RNF-02)
+### M8 · App instalada en el móvil y uso fuera de casa ✅ (2026-11-12; falta la prueba en el gimnasio)
 Objetivo: la app instalada en el móvil, usable en el gimnasio con conexión segura (HTTPS), para registrar entrenos en uso real.
-- [ ] HTTPS de verdad y PWA instalable a pantalla completa, pantalla encendida durante el entreno y cámara para los códigos de barras.
-- [ ] Acceso seguro desde fuera de casa (túnel o puertos, según lo decidido en M7).
+- [x] `dev-up.ps1 -Tailscale`: servicios solo en localhost y `tailscale serve` con HTTPS válido en `https://traingapp.tail965cc3.ts.net`. La web va en `/` y la API en `/api` (mismo origen); `dev-down` retira la publicación.
+- [x] PWA instalable: manifest con iconos PNG (incluido maskable), atajos y botón «Instalar la app» en Configuración.
+- [x] Service worker: la app abre sin conexión (páginas y estáticos guardados; API con red primero y caché del móvil, nunca `/api/auth`). Al cerrar sesión se borra la caché.
+- [x] Ya existían y ahora funcionan con HTTPS: pantalla encendida durante el entreno (Wake Lock), escáner con la cámara (BarcodeDetector) y cola de entrenos sin conexión.
+- [ ] Prueba real: instalar en el móvil y registrar un entreno con datos móviles (Wi-Fi apagado), también sin cobertura.
 - [ ] Prefijo `/api/v1`, errores RFC 7807, paginación coherente.
 - [ ] Tipos generados desde OpenAPI para web y móvil.
 - [ ] App nativa (React Native/Expo reutilizaría TypeScript) frente a seguir con la PWA: decidir.
+
+### M9 · Pulido con el uso real ⏳ (siguiente)
+Lo encontrado al usar la app instalada en el móvil (2026-11-12). Orden propuesto: 1 → 2 → 3.
+
+**1. Comidas: que aparezca lo normal de alguien que entrena**
+- **Problema:** «leche» devuelve 1 resultado (un chocolate con leche), «proteína en polvo» y «whey» devuelven 0, y «cereales integrales» devuelve pan de molde.
+- **Causas:**
+  - Open Food Facts devuelve productos de marca ordenados por popularidad, no alimentos genéricos.
+  - USDA está en inglés.
+  - No hay sinónimos.
+- **Propuesta:**
+  - **Base propia de alimentos genéricos** (unos 300-500: lácteos, cereales y copos, legumbres, carnes, pescados, huevos, frutas, verduras, frutos secos, aceites, suplementos como proteína whey/caseína/vegana, creatina, ganadores…). Valores de una tabla oficial (BEDCA/AESAN o USDA) y nombres en español con sinónimos («leche semidesnatada», «copos de avena», «whey»). Se busca primero y responde al momento, sin internet.
+  - **Mejor búsqueda en Open Food Facts:** la API de búsqueda nueva, filtrar por España y ordenar por coincidencia. Traducción ES→EN para USDA.
+  - **Tus alimentos frecuentes y recientes** arriba del todo. Crear alimentos propios (ya existe) desde la etiqueta, o con la foto de la etiqueta más adelante.
+
+**2. Navegación y densidad de información**
+- **El chat choca con el círculo del perfil** en la app instalada: hay que recolocar el botón del chat y el avatar.
+- **Demasiados datos por pantalla:** priorizar, plegar los detalles («ver más») y dejar menos texto y más visual. Revisar pantalla a pantalla: Inicio, Entrenar, Comidas y Progreso.
+- **Recorridos cortos para lo frecuente:** empezar entreno, añadir comida y ver hoy, a uno o dos toques desde Inicio.
+
+**3. Estética: un sistema visual y adaptación móvil/escritorio** → análisis completo y propuesta en [DISENO_UI.md](DISENO_UI.md). ✅ F1-F5 hechas (2026-11-12); falta la revisión visual y elegir el color por defecto
+- **Sistema de diseño:** colores, tipografías, tamaños, espaciados, tarjetas y botones comunes para que todas las pantallas se vean de la misma familia.
+- **Móvil frente a escritorio**, con el mismo código:
+  - En el móvil (y la app instalada): barra inferior, tarjetas a todo el ancho, botones grandes para el pulgar y respeto de las zonas del sistema (notch, barra de gestos).
+  - En el ordenador: menú lateral, contenido en columnas y más datos a la vista.
+  - Se detecta por el tamaño de pantalla y si la app está instalada.
+- **Indicador «N» de Next.js** abajo a la izquierda: solo sale en modo desarrollo. Se oculta (`devIndicators: false`) y desaparecería del todo con una compilación de producción.
 
 ## 🗂️ Backlog (ideas para cuando la app esté en uso, después de M8)
 Tu objetivo: que la IA te organice y te guíe sin tener que ser experto. Las mejoras saldrán de usar la app.
@@ -205,4 +235,4 @@ M1..M6 ─► M7 ─► M8
 M1 solo usa el LLM para traducir las instrucciones (un lote único). Si M2 no está listo, se hace con el CLI a mano.
 
 ## Siguiente paso
-**M6-7** (registro y bienvenida) → **M7** (blindaje para abrir la app fuera de casa) → **M8** (app instalada y uso en el gimnasio). Pulido y M6.3, después.
+**Uso real**: crear tu usuario, instalar la app en el móvil (sección 10 de tu guía) y entrenar con ella. Después, pulido con lo que salga del uso, el backlog y M6.3.

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Activity, HeartPulse, Target, Watch, type LucideIcon } from "lucide-react";
+import { Activity, HeartPulse, Target, Watch, X, type LucideIcon } from "lucide-react";
 
 import { api } from "@/lib/api";
 import type { Onboarding } from "@/lib/types";
@@ -19,9 +19,10 @@ type Props = {
   onboarding: Onboarding;
   skipped: string[];
   onChanged: () => void;
+  onDismiss?: () => void;
 };
 
-export function NextSteps({ token, onboarding, skipped, onChanged }: Props) {
+export function NextSteps({ token, onboarding, skipped, onChanged, onDismiss }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const total = onboarding.recommended.length;
@@ -46,10 +47,19 @@ export function NextSteps({ token, onboarding, skipped, onChanged }: Props) {
 
   return (
     <section className="hm-card">
-      <h3>Saca más partido a la app</h3>
-      <p className="muted">
-        {done} de {total} completados
-      </p>
+      <div className="hoy-banner">
+        <div className="hoy-banner-body">
+          <h3>Saca más partido a la app</h3>
+          <p className="muted">
+            {done} de {total} completados
+          </p>
+        </div>
+        {onDismiss && (
+          <button type="button" className="hoy-banner-close" aria-label="Cerrar" onClick={onDismiss}>
+            <X size={20} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+        )}
+      </div>
       {pending.map((s) => {
         const meta = META[s.key] ?? { icon: Target, why: "" };
         const Icon = meta.icon;

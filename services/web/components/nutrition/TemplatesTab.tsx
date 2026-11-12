@@ -1,5 +1,6 @@
 "use client";
 
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
@@ -52,7 +53,7 @@ export function TemplatesTab({ token, day, meal, onApplied }: Props) {
     }
   }
 
-  if (templates === null) return <p className="muted">Cargando…</p>;
+  if (templates === null) return <Skeleton height={120} />;
 
   return (
     <div className="nu-form">

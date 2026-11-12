@@ -1,3 +1,5 @@
+import { ClipboardList } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
 import Link from "next/link";
 
 import { formatDuration } from "@/lib/format";
@@ -7,7 +9,11 @@ import type { SessionSummary } from "@/lib/types";
 export function RecentSessions({
   sessions,
   totalInPeriod,
+  onSelect,
+  selectedId,
 }: {
+  onSelect?: (id: string) => void;
+  selectedId?: string | null;
   sessions: SessionSummary[];
   totalInPeriod: number;
 }) {
@@ -15,12 +21,16 @@ export function RecentSessions({
     <section className="block">
       <h2>Entrenos recientes</h2>
       {sessions.length === 0 ? (
-        <p className="muted">Sin entrenos en este periodo.</p>
+        <EmptyState icon={<ClipboardList size={28} strokeWidth={1.75} />} title="Sin entrenos en este periodo" text="Cambia el periodo o registra uno nuevo." action={{ label: "Empezar entreno", href: "/entrenar" }} />
       ) : (
         <ul className="recent-list">
           {sessions.map((session) => (
             <li key={session.id}>
-              <Link className="recent-link" href={`/entrenos/${session.id}`}>
+              <Link
+            className={`recent-link${selectedId === session.id ? " selected" : ""}`}
+            href={`/entrenos/${session.id}`}
+            onClick={onSelect ? (e) => { e.preventDefault(); onSelect(session.id); } : undefined}
+          >
                 <span className="recent-date">
                   {new Date(session.performedAt).toLocaleDateString()}
                 </span>
@@ -44,7 +54,7 @@ export function RecentSessions({
         </p>
       )}
       <p className="block">
-        <Link className="btn-secondary" href="/entrenos?view=todos">
+        <Link className="btn-secondary" href="/entrenar?tab=historial&view=todos">
           Ver todos los entrenos
         </Link>
       </p>

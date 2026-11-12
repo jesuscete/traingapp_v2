@@ -15,7 +15,7 @@ function lastSevenDays(): string[] {
   return out;
 }
 
-export function WeekCard({ home, showDays = true }: { home: HomeSummary; showDays?: boolean }) {
+export function WeekCard({ home, showDays = true, showTotals = true }: { home: HomeSummary; showDays?: boolean; showTotals?: boolean }) {
   const max = Math.max(1, ...home.weekBySport.map((s) => s.minutes));
   const delta =
     home.prevWeekMinutes > 0
@@ -25,6 +25,7 @@ export function WeekCard({ home, showDays = true }: { home: HomeSummary; showDay
 
   return (
     <>
+      {showTotals && (
       <div className="hm-totals">
         <span>
           <b>{home.weekSessions}</b> {home.weekSessions === 1 ? "sesión" : "sesiones"}
@@ -38,6 +39,7 @@ export function WeekCard({ home, showDays = true }: { home: HomeSummary; showDay
           </span>
         )}
       </div>
+      )}
       {home.weekBySport.map((s) => (
         <div key={s.discipline} className="hm-sport">
           <span>{translateDiscipline(s.discipline)}</span>

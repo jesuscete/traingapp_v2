@@ -1,5 +1,6 @@
 "use client";
 
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ExternalLink, Link2Off, RefreshCw, Watch } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -85,7 +86,7 @@ export function GarminCard({ token }: { token: string }) {
         <Watch size={20} strokeWidth={1.75} aria-hidden /> Garmin
       </h3>
       {!status ? (
-        <p className="muted">Cargando…</p>
+        <Skeleton height={48} />
       ) : status.connected ? (
         <>
           <p className="subtitle">

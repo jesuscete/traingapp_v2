@@ -21,8 +21,14 @@ const SECURITY_HEADERS = [
 const nextConfig: NextConfig = {
   ...(lanOrigin ? { allowedDevOrigins: [lanOrigin] } : {}),
   poweredByHeader: false,
+  // Oculta la «N» de Next.js en modo desarrollo.
+  devIndicators: false,
   async headers() {
-    return [{ source: "/(.*)", headers: SECURITY_HEADERS }];
+    return [
+      { source: "/(.*)", headers: SECURITY_HEADERS },
+      // El service worker se revisa siempre: así una versión nueva llega sin esperar.
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache" }] },
+    ];
   },
 };
 

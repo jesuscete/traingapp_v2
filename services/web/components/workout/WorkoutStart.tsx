@@ -1,9 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ClipboardList } from "lucide-react";
 
 import { api } from "@/lib/api";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { translateDiscipline } from "@/lib/labels";
 import { DAY_TYPE_LABELS, WEEKDAYS } from "@/lib/routines";
 import type { CatalogExercise, Routine } from "@/lib/types";
@@ -66,13 +70,11 @@ export function WorkoutStart({
     );
   }
 
+  const suggested = gymDays.find((d) => d.dayOfWeek === todayDow) ?? gymDays[0] ?? null;
+  const others = gymDays.filter((d) => d.id !== suggested?.id);
+
   return (
     <main className="dashboard">
-      <section className="welcome">
-        <h2>Entrenar</h2>
-        <p className="subtitle">Empieza un entreno vacío o sigue un día de tu rutina.</p>
-      </section>
-
       {pending > 0 && (
         <p className="wk-warn" role="status">
           {pending} entreno{pending === 1 ? "" : "s"} pendiente{pending === 1 ? "" : "s"} de
@@ -80,77 +82,75 @@ export function WorkoutStart({
         </p>
       )}
 
-      <button
-        type="button"
-        className="wk-primary wk-start-empty"
-        onClick={() => onStart(newWorkout("Entreno libre", null, []))}
-      >
-        Entreno vacío
-      </button>
-
-      <Link className="imp-start-link" href="/importar">
-        Importar actividad (.fit, .gpx, .tcx)
-      </Link>
-
-      <section className="block">
-        <h2>Día de tu rutina</h2>
-        {loading && <p className="muted">Cargando rutina…</p>}
+      <Card variant="raised" className="hoy-hero">
+        <span className="hoy-hero-kicker">Entrenar</span>
+        {loading && <Skeleton height={56} />}
+        {!loading && suggested && (
+          <>
+            <h2>{suggested.label || WEEKDAYS[suggested.dayOfWeek - 1]}</h2>
+            <p>
+              {suggested.dayOfWeek === todayDow ? "Hoy" : WEEKDAYS[suggested.dayOfWeek - 1]} ·{" "}
+              {suggested.exercises.length} ejercicios
+            </p>
+          </>
+        )}
+        {!loading && !suggested && <h2>¿Qué toca hoy?</h2>}
         {error && <p className="error">{error}</p>}
+        <div className="hoy-hero-actions">
+          {suggested ? (
+            <Button size="lg" fullWidth onClick={() => startDay(suggested.id)}>
+              Empezar entreno
+            </Button>
+          ) : (
+            <Button size="lg" fullWidth onClick={() => onStart(newWorkout("Entreno libre", null, []))}>
+              Entreno libre
+            </Button>
+          )}
+        </div>
+      </Card>
+      <div className="wk-start-more">
+        {others.length > 0 && <h3 className="wk-start-subtitle">Otros días de tu rutina</h3>}
+        {others.length > 0 && (
+          <div className="wk-days">
+            {others.map((day) => (
+              <button key={day.id} type="button" className="wk-day" onClick={() => startDay(day.id)}>
+                <span className="wk-day-top">
+                  <strong>{day.label || WEEKDAYS[day.dayOfWeek - 1]}</strong>
+                </span>
+                <span className="muted">
+                  {WEEKDAYS[day.dayOfWeek - 1]} · {day.exercises.length} ejercicios
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
         {!loading && !error && !routine && (
-          <p className="muted">
-            No tienes una rutina activa. <Link href="/rutinas">Crear una rutina</Link>
-          </p>
+          <EmptyState
+            icon={<ClipboardList size={28} strokeWidth={1.75} />}
+            title="Crea tu primera rutina"
+            text="Así verás aquí el día que toca."
+            action={{ label: "Crear rutina", href: "/entrenar?tab=rutinas" }}
+          />
         )}
         {!loading && routine && gymDays.length === 0 && (
           <p className="muted">Tu rutina activa no tiene días de gimnasio.</p>
         )}
-        <div className="wk-days">
-          {gymDays.map((day) => (
-            <button
-              key={day.id}
-              type="button"
-              className={`wk-day${day.dayOfWeek === todayDow ? " today" : ""}`}
-              onClick={() => startDay(day.id)}
-            >
-              <span className="wk-day-top">
-                <strong>{day.label || WEEKDAYS[day.dayOfWeek - 1]}</strong>
-                {day.dayOfWeek === todayDow && <span className="wk-today-tag">Hoy</span>}
-              </span>
-              <span className="muted">
-                {WEEKDAYS[day.dayOfWeek - 1]} · {day.exercises.length} ejercicios
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <p>
-        <Link className="back-link" href="/ejercicios">
-          Biblioteca de ejercicios →
-        </Link>
-      </p>
-
-      <section className="block">
-        <h2>Otros deportes</h2>
-        <p className="muted">
-          Para boxeo, running, escalada u otras disciplinas usa el registro
-          multideporte.
-        </p>
-        <p>
-          <Link className="btn-secondary m3-link-btn" href="/registrar">
-            Registrar actividad
-          </Link>
-        </p>
-        <p className="muted">
-          ¿Prefieres texto libre? Cuéntaselo al <Link href="/chat">chat</Link>.
-        </p>
         {sportDays.map((day) => (
           <p key={day.id} className="muted">
             {WEEKDAYS[day.dayOfWeek - 1]} · {DAY_TYPE_LABELS[day.dayType]}
             {day.disciplineName ? ` · ${translateDiscipline(day.disciplineName)}` : ""}
           </p>
         ))}
-      </section>
+        {suggested && (
+          <Button
+            variant="text"
+            fullWidth
+            onClick={() => onStart(newWorkout("Entreno libre", null, []))}
+          >
+            O empieza un entreno libre (sin rutina)
+          </Button>
+        )}
+      </div>
     </main>
   );
 }

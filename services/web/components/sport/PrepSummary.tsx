@@ -4,7 +4,7 @@ export function MiniRing({ score }: { score: number }) {
   const r = 30;
   const c = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, score));
-  const color = clamped >= 70 ? "var(--accent2)" : clamped >= 40 ? "#f5b942" : "#ef4444";
+  const color = clamped >= 70 ? "var(--accent2)" : clamped >= 40 ? "var(--fatigue-mid)" : "var(--fatigue-high)";
   return (
     <div className="hm-ring" role="img" aria-label={`Puntuación ${Math.round(clamped)} de 100`}>
       <svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true">

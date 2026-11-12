@@ -31,6 +31,17 @@ if (Test-Path $pidFile) {
     Write-Host "No hay procesos registrados (no se detuvo nada)." -ForegroundColor Yellow
 }
 
+$tsMarker = Join-Path $root ".dev-tailscale"
+if (Test-Path $tsMarker) {
+    $tsExe = (Get-Command tailscale -ErrorAction SilentlyContinue).Source
+    if (-not $tsExe) { $tsExe = "C:\Program Files\Tailscale\tailscale.exe" }
+    if (Test-Path $tsExe) {
+        & $tsExe serve reset | Out-Null
+        Write-Host "Publicación en Tailscale retirada." -ForegroundColor Green
+    }
+    Remove-Item $tsMarker -Force
+}
+
 if ($InfraDown) {
     docker compose -f (Join-Path $root "infra\docker-compose.yml") down
 }

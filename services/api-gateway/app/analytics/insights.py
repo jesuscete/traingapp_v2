@@ -89,7 +89,7 @@ def _fatigue(facts: InsightFacts) -> list[Insight]:
                 "rest",
                 f"Descansa {_names(facts.tired_groups)}",
                 "Fatiga alta: mejor trabajo suave u otra zona del cuerpo hoy.",
-                "/fatiga",
+                "/progreso?tab=fatiga",
             )
         )
     if facts.overloaded_groups:
@@ -99,7 +99,7 @@ def _fatigue(facts: InsightFacts) -> list[Insight]:
                 "Te estás cargando mucho",
                 f"{_names(facts.overloaded_groups).capitalize()}: carga semanal muy por encima "
                 "de tu media del mes.",
-                "/fatiga",
+                "/progreso?tab=fatiga",
             )
         )
     elif (
@@ -155,7 +155,7 @@ def _weight(facts: InsightFacts) -> list[Insight]:
                 "tip",
                 f"Peso +{change:.1f} kg esta semana",
                 "Tu objetivo es bajar: revisa las calorías de los últimos días.",
-                "/comidas",
+                "/comidas?tab=peso",
             )
         ]
     if facts.goal == "ganar" and change < -WEIGHT_TREND_KG:
@@ -164,7 +164,7 @@ def _weight(facts: InsightFacts) -> list[Insight]:
                 "tip",
                 f"Peso {change:.1f} kg esta semana",
                 "Para ganar masa necesitas comer algo más.",
-                "/comidas",
+                "/comidas?tab=peso",
             )
         ]
     return []

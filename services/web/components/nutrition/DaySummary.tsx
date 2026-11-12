@@ -83,7 +83,7 @@ export function DaySummary({ data }: { data: NutritionDay }) {
       {data.missingProfile.length > 0 && (
         <p className="nu-warn">
           Para calcular tu objetivo falta: {data.missingProfile.join(", ")}.{" "}
-          <Link href="/perfil">Completar perfil →</Link>
+          <Link href="/cuenta/perfil">Completar perfil →</Link>
         </p>
       )}
 

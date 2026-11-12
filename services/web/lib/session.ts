@@ -73,7 +73,18 @@ function updateTokens(tokens: SessionTokens): void {
   }, undefined);
 }
 
+/** Borra lo guardado sin conexión (service worker): son datos del usuario. */
+function clearOfflineCache(): void {
+  safe(() => {
+    navigator.serviceWorker?.controller?.postMessage("clear-cache");
+    if ("caches" in window) {
+      void caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
+    }
+  }, undefined);
+}
+
 export function clearSession(): void {
+  clearOfflineCache();
   safe(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);

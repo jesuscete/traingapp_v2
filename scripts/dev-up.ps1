@@ -14,6 +14,8 @@
 #   .\scripts\dev-up.ps1 -Lan        # accesible desde el móvil en la red local (IP autodetectada)
 #   .\scripts\dev-up.ps1 -Lan -LanIp 192.168.1.50
 #   .\scripts\dev-up.ps1 -Https      # LAN + HTTPS (PWA instalable y pantalla siempre encendida)
+#   .\scripts\dev-up.ps1 -Tailscale  # RECOMENDADO para el móvil: HTTPS en https://<pc>.<tailnet>.ts.net,
+#                                    # desde casa o fuera, sin abrir puertos (M8). Servicios solo en localhost.
 #
 # -Lan expone api-gateway (:8000) y web (:3000) en la red local: úsalo solo en redes de confianza.
 # -Https requiere mkcert (una vez):  winget install FiloSottile.mkcert ; mkcert -install
@@ -24,7 +26,8 @@ param(
     [switch]$SkipMigrations,
     [switch]$Lan,
     [string]$LanIp,
-    [switch]$Https
+    [switch]$Https,
+    [switch]$Tailscale
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,10 +35,36 @@ $root = (Resolve-Path "$PSScriptRoot\..").Path
 $pidFile = Join-Path $root ".dev-pids"
 $nodeExe = "E:\nodejs\node.exe"
 $bindHost = "127.0.0.1"
-$webArgs = @("node_modules\next\dist\bin\next", "dev")
+$webArgs = @("node_modules\next\dist\bin\next", "dev", "-H", "127.0.0.1")
 $gatewayArgs = @("-m", "uvicorn", "app.main:app", "--host", $bindHost, "--port", "8000")
 $scheme = "http"
 if ($Https) { $Lan = $true }
+if ($Tailscale -and $Lan) { throw "Usa -Tailscale o -Lan, no los dos (con Tailscale el móvil entra también desde casa)." }
+
+# --- Modo Tailscale (M8): HTTPS válido en tu red privada, sin abrir puertos ---
+# Los servicios escuchan solo en 127.0.0.1 y `tailscale serve` los publica en
+# https://<máquina>.<tailnet>.ts.net: la web en "/" y la API en "/api" (mismo origen).
+$tsExe = $null
+$tsHost = $null
+if ($Tailscale) {
+    $tsExe = (Get-Command tailscale -ErrorAction SilentlyContinue).Source
+    if (-not $tsExe) { $tsExe = "C:\Program Files\Tailscale\tailscale.exe" }
+    if (-not (Test-Path $tsExe)) { throw "No se encuentra Tailscale. Instálalo desde https://tailscale.com/download" }
+    $tsStatus = & $tsExe status --json | ConvertFrom-Json
+    if ($tsStatus.BackendState -ne "Running") { throw "Tailscale no está conectado. Ábrelo e inicia sesión." }
+    $tsHost = "$($tsStatus.Self.DNSName)".TrimEnd(".")
+    if (-not $tsHost) { throw "Tailscale no tiene nombre DNS (activa MagicDNS en la consola de Tailscale)." }
+    if (-not ($tsStatus.CertDomains -contains $tsHost)) {
+        throw "Activa 'HTTPS Certificates' en https://login.tailscale.com/admin/dns"
+    }
+    if (Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue) {
+        Write-Host "  Aviso: la web ya está arrancada; para que use la dirección de Tailscale, para todo antes con .\scripts\dev-down.ps1" -ForegroundColor Yellow
+    }
+    $env:NEXT_PUBLIC_API_URL = "https://$tsHost/api"
+    $env:APP_CORS_ORIGINS = "https://${tsHost},http://localhost:3000,http://127.0.0.1:3000"
+    $env:LAN_DEV_ORIGIN = $tsHost
+    Write-Host "Modo Tailscale: la app estará en https://$tsHost (móvil con Tailscale activo)." -ForegroundColor Cyan
+}
 
 if ($Lan) {
     if (-not $LanIp) {
@@ -82,7 +111,7 @@ $services = @(
     @{ Name = "api-gateway"; Port = 8000; File = "$root\services\api-gateway\.venv\Scripts\python.exe"; Args = $gatewayArgs; WorkDir = "$root\services\api-gateway"; Log = "uvicorn"; Health = "${scheme}://127.0.0.1:8000/health"; Tries = 30 },
     @{ Name = "ai-parser";   Port = 8100; File = "$root\services\ai-parser\.venv\Scripts\python.exe";     Args = @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8100"); WorkDir = "$root\services\ai-parser";     Log = "ai-parser"; Health = "http://127.0.0.1:8100/health"; Tries = 30 },
     @{ Name = "worker";      Port = $null; File = "$root\services\ai-parser\.venv\Scripts\python.exe";     Args = @("-m", "app.worker");                                                 WorkDir = "$root\services\ai-parser";     Log = "worker";      Health = $null; Tries = 0 },
-    @{ Name = "web";         Port = 3000; File = $nodeExe;                                                Args = $webArgs;                                                                 WorkDir = "$root\services\web";           Log = "next";       Health = "${scheme}://localhost:3000";      Tries = 90 }
+    @{ Name = "web";         Port = 3000; File = $nodeExe;                                                Args = $webArgs;                                                                 WorkDir = "$root\services\web";           Log = "next";       Health = "${scheme}://127.0.0.1:3000";      Tries = 90 }
 )
 
 function Test-PortInUse {
@@ -182,4 +211,16 @@ foreach ($service in $services) {
     if ($service.Health) { Wait-Health -Url $service.Health -Tries $service.Tries }
 }
 
-Write-Host "`nListo. Web: http://localhost:3000 — Para detener: .\scripts\dev-down.ps1" -ForegroundColor Green
+if ($Tailscale) {
+    Write-Host "Publicando en Tailscale..." -ForegroundColor Cyan
+    & $tsExe serve reset | Out-Null
+    & $tsExe serve --bg --set-path /api http://127.0.0.1:8000 | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "tailscale serve (API) falló" }
+    & $tsExe serve --bg http://127.0.0.1:3000 | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "tailscale serve (web) falló" }
+    Set-Content -Path (Join-Path $root ".dev-tailscale") -Value $tsHost
+    Wait-Health -Url "https://$tsHost/api/health" -Tries 20
+    Write-Host "`nListo. En el móvil (con Tailscale activo): https://$tsHost — Para detener: .\scripts\dev-down.ps1" -ForegroundColor Green
+} else {
+    Write-Host "`nListo. Web: http://localhost:3000 — Para detener: .\scripts\dev-down.ps1" -ForegroundColor Green
+}

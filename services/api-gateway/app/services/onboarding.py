@@ -40,12 +40,19 @@ async def recommended_steps(session: AsyncSession, user: User) -> list[Step]:
     goals = await goals_crud.list_goals(session, user.id)
     secondary = [s for s in (user.sports or []) if s != user.primary_sport]
     steps = [
-        Step("garmin", "Conecta tu Garmin", garmin is not None, href="/configuracion"),
-        Step("goal", "Define tu objetivo", any(not g.done for g in goals), href="/objetivos"),
+        Step("garmin", "Conecta tu Garmin", garmin is not None, href="/cuenta/conexiones"),
         Step(
-            "secondary_sports", "Otros deportes que practicas", bool(secondary), href="/objetivos"
+            "goal", "Define tu objetivo", any(not g.done for g in goals), href="/cuenta/objetivos"
         ),
-        Step("max_hr", "FC máxima (zonas precisas)", user.max_hr is not None, href="/perfil"),
+        Step(
+            "secondary_sports",
+            "Otros deportes que practicas",
+            bool(secondary),
+            href="/cuenta/objetivos",
+        ),
+        Step(
+            "max_hr", "FC máxima (zonas precisas)", user.max_hr is not None, href="/cuenta/perfil"
+        ),
     ]
     return [
         Step(s.key, s.label, s.done, skipped=s.key in skipped and not s.done, href=s.href)

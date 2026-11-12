@@ -52,7 +52,7 @@ export default function Chat() {
       <header className="chat-page-header">
         <button
           type="button"
-          className="chat-widget-icon-btn"
+          className="chat-widget-icon-btn chat-page-back"
           aria-label="Volver"
           onClick={goBack}
         >

@@ -1,3 +1,8 @@
+"use client";
+
+import { useState } from "react";
+
+import { Button } from "@/components/ui/Button";
 import type { SportTarget, TargetStatus } from "@/lib/types";
 
 const STATUS_LABEL: Record<TargetStatus, string> = {
@@ -19,14 +24,18 @@ function pct(value: number, max: number): number {
 export function TargetBars({
   items,
   percent = false,
+  limit,
 }: {
   items: SportTarget[];
   percent?: boolean;
+  limit?: number;
 }) {
+  const [all, setAll] = useState(false);
   if (items.length === 0) return <p className="muted">Sin datos.</p>;
+  const shown = limit && !all ? items.slice(0, limit) : items;
   return (
     <div className="m4-targets">
-      {items.map((t) => {
+      {shown.map((t) => {
         const top = t.high ?? t.low;
         const max = Math.max(t.value, top, t.low) * 1.25 || 1;
         const target =
@@ -70,6 +79,11 @@ export function TargetBars({
           </div>
         );
       })}
+      {limit && items.length > limit && (
+        <Button variant="text" onClick={() => setAll((v) => !v)}>
+          {all ? "Ver menos" : `Ver todos (${items.length})`}
+        </Button>
+      )}
     </div>
   );
 }

@@ -1,0 +1,135 @@
+/*
+ * Tokens de diseño (M9 · F1). Dos ejes independientes:
+ *   - Modo:   html[data-mode="dark" | "light"]   (lo decide lib/theme.ts; "auto" sigue al sistema)
+ *   - Color:  html[data-accent="azul" | "naranja" | …]   color de marca para acciones y selección
+ * Los nombres de variable antiguos (--bg-base, --surface, --accent…) se mantienen para que
+ * todo el CSS existente adopte el tema sin cambios.
+ */
+
+:root {
+  /* --- Escala tipográfica --- */
+  --font-size-display: 32px;
+  --font-size-headline: 24px;
+  --font-size-title: 20px;
+  --font-size-body: 16px;
+  --font-size-small: 14px;
+  --font-size-label: 12px;
+
+  /* --- Espaciado (múltiplos de 4) --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --page-gutter: 16px;
+
+  /* --- Forma y elevación --- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --touch-min: 48px;
+
+  /* --- Navegación (alturas para reservar espacio) --- */
+  --topbar-height: 56px;
+  --bottomnav-height: 64px;
+  --rail-width: 80px;
+  --sidebar-width: 240px;
+
+  /* --- Fatiga y deportes: iguales en toda la app --- */
+  --fatigue-low: #22c55e;
+  --fatigue-mid: #f5b942;
+  --fatigue-high: #ef4444;
+  --sport-gym: #6366f1;
+  --sport-run: #f97316;
+  --sport-bike: #14b8a6;
+  --sport-swim: #0ea5e9;
+  --sport-combat: #e11d48;
+  --sport-other: #a1a1aa;
+
+  /* --- Modo oscuro (por defecto) --- */
+  color-scheme: dark;
+  --bg-base: #121317;
+  --surface: #1b1d22;
+  --surface-alt: #24262c;
+  --surface-raised: #2a2d34;
+  --border: #2c2f37;
+  --text-primary: #f4f4f2;
+  --text-secondary: #a1a3ab;
+  --error: #ef4444;
+  --warning: #f5b942;
+  --success-color: #22c55e;
+  --shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.45);
+
+  /* --- Color de marca por defecto: azul --- */
+  --accent: #3b82f6;
+  --accent-rgb: 59, 130, 246;
+  --on-accent: #ffffff;
+  --accent2: #2fd9a8;
+  --accent2-rgb: 47, 217, 168;
+
+  /* Alias heredados (migración incremental) */
+  --bg: var(--bg-base);
+  --card: var(--surface);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+  --ok: var(--accent2);
+  --success: var(--accent2);
+  --danger: var(--error);
+}
+
+/* --- Modo claro --- */
+html[data-mode="light"] {
+  color-scheme: light;
+  --bg-base: #f5f6f8;
+  --surface: #ffffff;
+  --surface-alt: #eef0f3;
+  --surface-raised: #ffffff;
+  --border: #dfe2e7;
+  --text-primary: #15171c;
+  --text-secondary: #5b6170;
+  --error: #dc2626;
+  --warning: #b45309;
+  --success-color: #15803d;
+  --accent2: #0d9488;
+  --accent2-rgb: 13, 148, 136;
+  --shadow-raised: 0 8px 24px rgba(17, 24, 39, 0.12);
+}
+
+/* --- Colores de marca (oscuro / claro: el claro es algo más intenso para el contraste) --- */
+html[data-accent="azul"] { --accent: #3b82f6; --accent-rgb: 59, 130, 246; --on-accent: #ffffff; }
+html[data-mode="light"][data-accent="azul"] { --accent: #2563eb; --accent-rgb: 37, 99, 235; }
+
+html[data-accent="naranja"] { --accent: #ff6b3d; --accent-rgb: 255, 107, 61; --on-accent: #ffffff; }
+html[data-mode="light"][data-accent="naranja"] { --accent: #e4572e; --accent-rgb: 228, 87, 46; }
+
+html[data-accent="rojo"] { --accent: #f43f5e; --accent-rgb: 244, 63, 94; --on-accent: #ffffff; }
+html[data-mode="light"][data-accent="rojo"] { --accent: #e11d48; --accent-rgb: 225, 29, 72; }
+
+html[data-accent="verde"] {
+  --accent: #22c55e; --accent-rgb: 34, 197, 94; --on-accent: #06210f;
+  --accent2: #38bdf8; --accent2-rgb: 56, 189, 248;
+}
+html[data-mode="light"][data-accent="verde"] {
+  --accent: #16a34a; --accent-rgb: 22, 163, 74; --on-accent: #ffffff;
+  --accent2: #0284c7; --accent2-rgb: 2, 132, 199;
+}
+
+html[data-accent="violeta"] { --accent: #8b5cf6; --accent-rgb: 139, 92, 246; --on-accent: #ffffff; }
+html[data-mode="light"][data-accent="violeta"] { --accent: #7c3aed; --accent-rgb: 124, 58, 237; }
+
+html[data-accent="cian"] { --accent: #22d3ee; --accent-rgb: 34, 211, 238; --on-accent: #062a30; }
+html[data-mode="light"][data-accent="cian"] { --accent: #0891b2; --accent-rgb: 8, 145, 178; --on-accent: #ffffff; }
+
+html[data-accent="ambar"] { --accent: #f59e0b; --accent-rgb: 245, 158, 11; --on-accent: #241500; }
+html[data-mode="light"][data-accent="ambar"] { --accent: #b45309; --accent-rgb: 180, 83, 9; --on-accent: #ffffff; }
+
+html[data-accent="lima"] {
+  --accent: #a3e635; --accent-rgb: 163, 230, 53; --on-accent: #1a2e05;
+  --accent2: #2fd9a8; --accent2-rgb: 47, 217, 168;
+}
+html[data-mode="light"][data-accent="lima"] { --accent: #4d7c0f; --accent-rgb: 77, 124, 15; --on-accent: #ffffff; }
+
+html[data-accent="grafito"] { --accent: #e5e7eb; --accent-rgb: 229, 231, 235; --on-accent: #111827; }
+html[data-mode="light"][data-accent="grafito"] { --accent: #1f2937; --accent-rgb: 31, 41, 55; --on-accent: #ffffff; }

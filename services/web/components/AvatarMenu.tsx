@@ -10,7 +10,7 @@ import { logout as endSession } from "@/lib/session";
 const TOKEN_KEY = "traingapp_token";
 const USER_KEY = "traingapp_user";
 
-export function AvatarMenu() {
+export function AvatarMenu({ variant = "top" }: { variant?: "top" | "side" }) {
   const router = useRouter();
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
@@ -44,15 +44,16 @@ export function AvatarMenu() {
   const initial = user?.name?.trim().charAt(0).toUpperCase() ?? "";
 
   return (
-    <div className="avatar-menu">
+    <div className={`avatar-menu${variant === "side" ? " side" : ""}`}>
       <button
         type="button"
-        className="avatar-circle"
+        className={`avatar-circle${variant === "side" ? " side" : ""}`}
         aria-label="Menú de usuario"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
       >
         {initial}
+        {variant === "side" && <span className="avatar-menu-label">{user?.name ?? "Cuenta"}</span>}
       </button>
       {open && (
         <>
@@ -68,26 +69,8 @@ export function AvatarMenu() {
                 <span className="avatar-menu-email">{user.email}</span>
               )}
             </div>
-            <Link className="avatar-menu-link" href="/comidas">
-              Comidas
-            </Link>
-            <Link className="avatar-menu-link" href="/registrar">
-              Registrar actividad
-            </Link>
-            <Link className="avatar-menu-link" href="/importar">
-              Importar actividad
-            </Link>
-            <Link className="avatar-menu-link" href="/ejercicios">
-              Ejercicios
-            </Link>
-            <Link className="avatar-menu-link" href="/objetivos">
-              Objetivos y deporte
-            </Link>
-            <Link className="avatar-menu-link" href="/perfil">
-              Perfil
-            </Link>
-            <Link className="avatar-menu-link" href="/configuracion">
-              Configuración
+            <Link className="avatar-menu-link" href="/cuenta">
+              Cuenta
             </Link>
             <button
               type="button"

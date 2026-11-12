@@ -9,14 +9,16 @@ import { BottomNav } from "@/components/BottomNav";
 import { GoalKindIcon, countdownLabel } from "@/components/goals";
 import { DisciplineIcon } from "@/components/icons";
 import { MuscleBody } from "@/components/MuscleChart";
-import { PrepSummary } from "@/components/sport/PrepSummary";
+import { MiniRing } from "@/components/sport/PrepSummary";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { NextSteps } from "@/components/onboarding/NextSteps";
 import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
-import { WeekCard } from "@/components/home/WeekCard";
 import { formatDuration } from "@/lib/format";
 import { formatDistance } from "@/lib/metrics";
 import { translateDiscipline } from "@/lib/labels";
-import { kcal as fmtKcal, shortDate, todayISO } from "@/lib/nutrition";
+import { kcal as fmtKcal, shortDate, toISODate, todayISO } from "@/lib/nutrition";
 import type {
   Fatigue,
   HomeInsight,
@@ -99,6 +101,9 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [onboarding, setOnboarding] = useState<Onboarding | null>(null);
   const [welcomeHidden, setWelcomeHidden] = useState(false);
+  const [stepsHidden, setStepsHidden] = useState(false);
+  const [showAllInsights, setShowAllInsights] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const loadOnboarding = useCallback(() => {
     if (!token) return;
@@ -109,6 +114,7 @@ export default function Dashboard() {
   useEffect(() => {
     try {
       setWelcomeHidden(sessionStorage.getItem("traingapp_welcome_hidden") === "1");
+      setStepsHidden(sessionStorage.getItem("traingapp_steps_hidden") === "1");
     } catch {
       setWelcomeHidden(false);
     }
@@ -129,6 +135,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!token) return;
+    setError(null);
     const load = () => {
       api
         .getHome(token, new Date().getHours(), todayISO())
@@ -151,7 +158,7 @@ export default function Dashboard() {
         if (r && (r.imported > 0 || r.healthDays > 0)) load();
       })
       .catch(() => undefined);
-  }, [token]);
+  }, [token, reloadKey]);
 
   const bodyPoints = useMemo(
     () =>
@@ -164,15 +171,65 @@ export default function Dashboard() {
 
   const target = mealsToday?.target ?? null;
 
+  const insights = home?.insights ?? [];
+  const restItem = insights.find((i) => i.kind === "rest");
+  const warnItem = insights.find((i) => i.kind === "warning");
+  const hero = restItem
+    ? { title: "Día de descanso o suave", text: restItem.title }
+    : warnItem
+      ? { title: "Entreno suave", text: warnItem.title }
+      : { title: "Toca entrenar", text: home?.sportLabel ?? "" };
+  const shownInsights = showAllInsights ? insights : insights.slice(0, 3);
+  const goal = home?.primaryGoal ?? null;
+  const goalCountdown = goal ? countdownLabel(goal.daysLeft) : null;
+  const active = new Set(home?.activeDays ?? []);
+  const lastDays = Array.from({ length: 7 }, (_, k) => {
+    const now = new Date();
+    return toISODate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (6 - k)));
+  });
+  const last = recent[0] ?? null;
+
+  function dismissSteps() {
+    try {
+      sessionStorage.setItem("traingapp_steps_hidden", "1");
+    } catch {
+      // sin sessionStorage
+    }
+    setStepsHidden(true);
+  }
+
   return (
     <main className="dashboard">
       <BottomNav />
 
-      <section className="welcome">
+      <div className="hoy-head">
         <h2>Hola{user?.name ? `, ${user.name}` : ""}</h2>
-      </section>
+        {home && (
+          <Link className="hoy-goal" href="/cuenta/objetivos">
+            {goal ? (
+              <>
+                <GoalKindIcon kind={goal.kind} />
+                <span>
+                  {goal.title}
+                  {goalCountdown ? ` · ${goalCountdown}` : ""}
+                </span>
+              </>
+            ) : (
+              <span>Define tu objetivo</span>
+            )}
+            <ChevronRight size={16} strokeWidth={1.75} aria-hidden="true" />
+          </Link>
+        )}
+      </div>
 
-      {error && <p className="error">{error}</p>}
+      {error && (
+        <p className="hoy-error">
+          <span>{error}</span>
+          <Button variant="text" onClick={() => setReloadKey((k) => k + 1)}>
+            Reintentar
+          </Button>
+        </p>
+      )}
 
       {token && onboarding && !onboarding.complete && !welcomeHidden && (
         <WelcomeModal
@@ -191,147 +248,151 @@ export default function Dashboard() {
         />
       )}
 
-      {token && onboarding && (
-        <NextSteps
-          token={token}
-          onboarding={onboarding}
-          skipped={user?.onboardingSkipped ?? []}
-          onChanged={loadOnboarding}
-        />
+      {!home && !error && (
+        <>
+          <Skeleton height={190} />
+          <div className="hoy-grid">
+            <Skeleton height={170} />
+            <Skeleton height={170} />
+            <Skeleton height={120} />
+            <Skeleton height={120} />
+          </div>
+        </>
       )}
 
+      <div className="hoy-layout">
       {home && (
-        <section className="hm-card">
-          {home.primaryGoal ? (
-            <Link className="hm-goal" href="/objetivos">
-              <span className="hub-icon">
-                <GoalKindIcon kind={home.primaryGoal.kind} />
-              </span>
-              <span className="hub-text">
-                <span className="hub-sub">Tu objetivo</span>
-                <span className="hub-label">{home.primaryGoal.title}</span>
-                {countdownLabel(home.primaryGoal.daysLeft) && (
-                  <span className="hub-sub">{countdownLabel(home.primaryGoal.daysLeft)}</span>
-                )}
-              </span>
-              <ChevronRight className="hub-chev" size={18} strokeWidth={1.75} aria-hidden="true" />
-            </Link>
-          ) : (
-            <Link className="hm-goal" href="/objetivos">
-              <span className="hub-icon">
-                <GoalKindIcon kind="other" />
-              </span>
-              <span className="hub-text">
-                <span className="hub-label">Define tu objetivo</span>
-                <span className="hub-sub">Elige tu deporte principal y una meta</span>
-              </span>
-              <ChevronRight className="hub-chev" size={18} strokeWidth={1.75} aria-hidden="true" />
-            </Link>
-          )}
-        </section>
-      )}
-
-      {home && prep && (
-        <section className="hm-card">
-          <h2>
-            Preparación para {home.sportLabel ?? prep.label} <Link href="/preparacion">Ver análisis</Link>
-          </h2>
-          {prep.basis === "sin_datos" ? (
-            <Link className="muted" href="/preparacion">
-              Registra entrenos o crea una rutina para ver qué te falta →
-            </Link>
-          ) : (
-            <PrepSummary data={prep} />
-          )}
-        </section>
-      )}
-
-      {home && home.insights.length > 0 && (
-        <section className="hm-card">
-          <h2>Avisos</h2>
-          {home.insights.map((item, i) => (
-            <InsightRow key={`${item.title}-${i}`} item={item} />
-          ))}
-        </section>
-      )}
-
-      {bodyPoints.length > 0 && (
-        <section className="hm-card">
-          <h2>
-            Fatiga muscular <Link href="/fatiga">Ver detalle</Link>
-          </h2>
-          <MuscleBody points={bodyPoints} />
-        </section>
-      )}
-
-      {home && (
-        <section className="hm-card">
-          <h2>Esta semana</h2>
-          <WeekCard home={home} />
-        </section>
-      )}
-
-      <section className="hm-card">
-        <h2>
-          Comida de hoy <Link href="/comidas">Abrir</Link>
-        </h2>
-        {mealsToday ? (
-          <Link className="hm-food" href="/comidas">
-            {target ? (
-              <KcalRing value={mealsToday.totals.kcal} target={target.targetKcal} />
-            ) : (
-              <b>{fmtKcal(mealsToday.totals.kcal)} kcal</b>
-            )}
-            <div className="hm-food-bars">
-              {target && (
-                <p className="muted">
-                  {target.targetKcal - mealsToday.totals.kcal >= 0 ? "Quedan" : "Te pasas"}{" "}
-                  {fmtKcal(Math.abs(target.targetKcal - mealsToday.totals.kcal))} de{" "}
-                  {fmtKcal(target.targetKcal)} kcal
-                </p>
-              )}
-              <p>
-                Proteína {Math.round(mealsToday.totals.proteinG)}
-                {target ? ` / ${Math.round(target.proteinG)}` : ""} g
-              </p>
-              {target && (
-                <div className="bar-track">
-                  <div
-                    className="bar-fill"
-                    style={{
-                      width: `${Math.min(100, (mealsToday.totals.proteinG / Math.max(1, target.proteinG)) * 100)}%`,
-                    }}
-                  />
-                </div>
+        <Card variant="raised" className="hoy-hero">
+          <span className="hoy-hero-kicker">Hoy</span>
+          <h2>{hero.title}</h2>
+          {hero.text && <p>{hero.text}</p>}
+          <div className="hoy-hero-actions">
+            <Button href="/entrenar" size="lg" fullWidth>
+              Empezar entreno
+            </Button>
+            <Button href="/registrar" variant="text">
+              Registrar otra actividad
+            </Button>
+          </div>
+          {insights.length > 0 && (
+            <div className="hoy-insights">
+              {shownInsights.map((item, i) => (
+                <InsightRow key={`${item.title}-${i}`} item={item} />
+              ))}
+              {insights.length > 3 && (
+                <Button variant="text" className="ui-more" onClick={() => setShowAllInsights((v) => !v)}>
+                  {showAllInsights ? "Ver menos" : `Ver todos (${insights.length})`}
+                </Button>
               )}
             </div>
-          </Link>
-        ) : (
-          <Link className="muted" href="/comidas">
-            Registra tus comidas y controla tus kcal →
-          </Link>
-        )}
-      </section>
+          )}
+        </Card>
+      )}
 
-      {recent.length > 0 && (
-        <section className="hm-card">
-          <h2>
-            Actividad reciente <Link href="/entrenos">Ver todo</Link>
-          </h2>
-          {recent.map((s) => (
-            <Link key={s.id} className="hm-recent" href={`/entrenos/${s.id}`}>
-              <span>
-                <DisciplineIcon discipline={s.discipline} /> {translateDiscipline(s.discipline)}
-                {s.externalSource === "garmin" && <span className="hm-badge">Garmin</span>}
-              </span>
-              <span className="muted">
-                {shortDate(s.performedAt.slice(0, 10))}
-                {s.distanceMeters ? ` · ${formatDistance(s.distanceMeters)}` : ""} · {formatDuration(s.durationMinutes)}
+      {token && onboarding && !stepsHidden && (
+        <div className="hoy-steps">
+          <NextSteps
+            token={token}
+            onboarding={onboarding}
+            skipped={user?.onboardingSkipped ?? []}
+            onChanged={loadOnboarding}
+            onDismiss={dismissSteps}
+          />
+        </div>
+      )}
+
+      {home && (
+        <div className="hoy-grid">
+          <Card>
+            <Link className="hoy-tile" href="/progreso?tab=fatiga">
+              <span className="hoy-tile-title">Fatiga</span>
+              {bodyPoints.length > 0 ? (
+                <div className="hoy-tile-body">
+                  <MuscleBody points={bodyPoints} />
+                </div>
+              ) : (
+                <span className="hoy-tile-sub">Sin datos aún</span>
+              )}
+            </Link>
+          </Card>
+
+          <Card>
+            <Link className="hoy-tile" href="/comidas">
+              <span className="hoy-tile-title">Comida</span>
+              {mealsToday ? (
+                <>
+                  {target ? (
+                    <KcalRing value={mealsToday.totals.kcal} target={target.targetKcal} />
+                  ) : (
+                    <b>{fmtKcal(mealsToday.totals.kcal)} kcal</b>
+                  )}
+                  <span className="hoy-tile-sub">
+                    Proteína {Math.round(mealsToday.totals.proteinG)}
+                    {target ? ` / ${Math.round(target.proteinG)}` : ""} g
+                  </span>
+                  {target && (
+                    <div className="bar-track">
+                      <div
+                        className="bar-fill"
+                        style={{
+                          width: `${Math.min(100, (mealsToday.totals.proteinG / Math.max(1, target.proteinG)) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <span className="hoy-tile-sub">Registra tus comidas</span>
+              )}
+            </Link>
+          </Card>
+
+          <Card>
+            <Link className="hoy-tile" href="/progreso">
+              <span className="hoy-tile-title">Semana</span>
+              <div className="hm-days">
+                {lastDays.map((iso) => (
+                  <span key={iso} className={`hm-dot${active.has(iso) ? " on" : ""}`} />
+                ))}
+              </div>
+              <span className="hoy-tile-sub">
+                {home.weekSessions} {home.weekSessions === 1 ? "sesión" : "sesiones"} · {formatDuration(home.weekMinutes)}
               </span>
             </Link>
-          ))}
-        </section>
+          </Card>
+
+          <Card>
+            <Link className="hoy-tile" href="/progreso?tab=rendimiento">
+              <span className="hoy-tile-title">Preparación</span>
+              {prep && prep.basis !== "sin_datos" ? (
+                <>
+                  <MiniRing score={prep.score} />
+                  <span className="hoy-tile-sub">{home.sportLabel ?? prep.label}</span>
+                </>
+              ) : (
+                <span className="hoy-tile-sub">Registra entrenos para ver tu preparación</span>
+              )}
+            </Link>
+          </Card>
+        </div>
       )}
+
+      {last && (
+        <Card className="hoy-lastcard" title="Último entreno" action={{ label: "Ver historial", href: "/entrenar?tab=historial" }}>
+          <Link className="hoy-last" href={`/entrenos/${last.id}`}>
+            <DisciplineIcon discipline={last.discipline} />
+            <span className="hoy-last-text">
+              <strong>{translateDiscipline(last.discipline)}</strong>
+              <span>
+                {shortDate(last.performedAt.slice(0, 10))}
+                {last.distanceMeters ? ` · ${formatDistance(last.distanceMeters)}` : ""} · {formatDuration(last.durationMinutes)}
+              </span>
+            </span>
+            <ChevronRight size={18} strokeWidth={1.75} aria-hidden="true" />
+          </Link>
+        </Card>
+      )}
+      </div>
     </main>
   );
 }

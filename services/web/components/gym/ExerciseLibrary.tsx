@@ -1,5 +1,6 @@
 "use client";
 
+import { Skeleton } from "@/components/ui/Skeleton";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -41,9 +42,10 @@ type Props = {
   /** Si se pasa, tocar una fila llama a esto (selector); si no, enlaza al detalle. */
   onPick?: (exercise: CatalogExercise) => void;
   autoFocus?: boolean;
+  selectedId?: string | null;
 };
 
-export function ExerciseLibrary({ token, onPick, autoFocus }: Props) {
+export function ExerciseLibrary({ token, onPick, autoFocus, selectedId }: Props) {
   const { catalog, loading, error, retry, toggleFavorite, addExercise } = useCatalog(token);
   const [creating, setCreating] = useState(false);
   const [filters, setFilters] = useState<ExerciseFilters>(EMPTY_FILTERS);
@@ -172,7 +174,13 @@ export function ExerciseLibrary({ token, onPick, autoFocus }: Props) {
         )}
       </div>
 
-      {loading && catalog.length === 0 && <p className="muted">Cargando ejercicios…</p>}
+      {loading && catalog.length === 0 && (
+        <div className="stack">
+          <Skeleton height={56} />
+          <Skeleton height={56} />
+          <Skeleton height={56} />
+        </div>
+      )}
       {error && (
         <p className="error">
           {error}{" "}
@@ -212,6 +220,7 @@ export function ExerciseLibrary({ token, onPick, autoFocus }: Props) {
             key={ex.id}
             ex={ex}
             onPick={onPick}
+            selected={selectedId === ex.id}
             onToggleFavorite={() => void toggleFavorite(ex.id)}
           />
         ))}
@@ -236,9 +245,11 @@ export function ExerciseLibrary({ token, onPick, autoFocus }: Props) {
 function ExerciseRow({
   ex,
   onPick,
+  selected,
   onToggleFavorite,
 }: {
   ex: CatalogExercise;
+  selected?: boolean;
   onPick?: (exercise: CatalogExercise) => void;
   onToggleFavorite: () => void;
 }) {
@@ -262,7 +273,7 @@ function ExerciseRow({
     </>
   );
   return (
-    <li className="ex-row">
+    <li className={`ex-row${selected ? " selected" : ""}`}>
       {onPick ? (
         <button type="button" className="ex-row-main" onClick={() => onPick(ex)}>
           {body}

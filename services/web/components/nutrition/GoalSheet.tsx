@@ -1,5 +1,6 @@
 "use client";
 
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
@@ -95,7 +96,7 @@ export function GoalSheet({ token, onClose, onSaved }: Props) {
   return (
     <Sheet title="Objetivo" onClose={onClose}>
       {!loaded ? (
-        <p className="muted">Cargando…</p>
+        <Skeleton height={120} />
       ) : (
         <form className="nu-form" onSubmit={save}>
           <label className="nu-field">

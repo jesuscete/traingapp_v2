@@ -1,36 +1,45 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ChevronRight, ClipboardList, Dumbbell, FilePenLine, Watch } from "lucide-react";
+import { Suspense, useState } from "react";
+import { FilePenLine, Watch } from "lucide-react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { ExercisesTab } from "@/components/train/ExercisesTab";
+import { HistoryTab } from "@/components/train/HistoryTab";
+import { RoutinesTab } from "@/components/train/RoutinesTab";
+import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Segmented, type SegmentItem } from "@/components/ui/Segmented";
 import { WorkoutScreen } from "@/components/workout/WorkoutScreen";
 import { WorkoutStart } from "@/components/workout/WorkoutStart";
 import { WorkoutSummary } from "@/components/workout/WorkoutSummary";
+import { useTabParam } from "@/lib/useTabParam";
 import { useActiveWorkout } from "@/lib/useActiveWorkout";
 import { useToken } from "@/lib/useToken";
 import type { WorkoutResult } from "@/lib/workout/types";
 
-const HUB = [
-  { href: "/registrar", Icon: FilePenLine, label: "Registrar actividad", desc: "Anota un entreno ya hecho" },
-  { href: "/importar", Icon: Watch, label: "Importar del reloj", desc: "Archivos FIT, GPX o TCX" },
-  { href: "/rutinas", Icon: ClipboardList, label: "Rutinas", desc: "Crea, evalúa y activa rutinas" },
-  { href: "/ejercicios", Icon: Dumbbell, label: "Ejercicios", desc: "Biblioteca y favoritos" },
+const TABS = ["rutinas", "ejercicios", "historial"] as const;
+type Tab = (typeof TABS)[number];
+
+const ITEMS: SegmentItem<Tab>[] = [
+  { id: "rutinas", label: "Rutinas" },
+  { id: "ejercicios", label: "Ejercicios" },
+  { id: "historial", label: "Historial" },
 ];
 
-export default function Entrenar() {
+function EntrenarInner() {
   const router = useRouter();
   const token = useToken();
   const { workout, ready, update, start, clear } = useActiveWorkout(token);
+  const [tab, setTab] = useTabParam<Tab>(TABS, "rutinas");
   const [result, setResult] = useState<WorkoutResult | null>(null);
 
   if (!token || !ready) {
     return (
       <main className="dashboard">
         <BottomNav />
-        <p className="muted">Cargando...</p>
+        <Skeleton height={190} />
       </main>
     );
   }
@@ -43,7 +52,7 @@ export default function Entrenar() {
           result={result}
           onClose={() => {
             setResult(null);
-            router.push("/entrenos");
+            router.push("/entrenar?tab=historial");
           }}
         />
       </>
@@ -53,7 +62,7 @@ export default function Entrenar() {
   if (workout) {
     return (
       <>
-        <BottomNav />
+        <BottomNav hidden />
         <WorkoutScreen
           token={token}
           workout={workout}
@@ -75,19 +84,27 @@ export default function Entrenar() {
       <BottomNav />
       <WorkoutStart token={token} onStart={start} />
       <div className="dashboard hub-wrap">
-        <div className="hub-grid hub-list">
-          {HUB.map((t) => (
-            <Link key={t.href} className="hub-tile" href={t.href}>
-              <span className="hub-icon"><t.Icon size={22} strokeWidth={1.75} aria-hidden="true" /></span>
-              <span className="hub-text">
-                <span className="hub-label">{t.label}</span>
-                <span className="hub-sub">{t.desc}</span>
-              </span>
-              <ChevronRight className="hub-chev" size={18} strokeWidth={1.75} aria-hidden="true" />
-            </Link>
-          ))}
+        <div className="actions-row">
+          <Button variant="secondary" href="/registrar" icon={<FilePenLine size={20} strokeWidth={1.75} aria-hidden="true" />}>
+            Registrar otra actividad
+          </Button>
+          <Button variant="secondary" href="/importar" icon={<Watch size={20} strokeWidth={1.75} aria-hidden="true" />}>
+            Importar archivo
+          </Button>
         </div>
+        <Segmented items={ITEMS} value={tab} onChange={setTab} label="Secciones de entrenar" />
+        {tab === "rutinas" && <RoutinesTab />}
+        {tab === "ejercicios" && <ExercisesTab />}
+        {tab === "historial" && <HistoryTab />}
       </div>
     </>
+  );
+}
+
+export default function Entrenar() {
+  return (
+    <Suspense fallback={<Skeleton height={160} />}>
+      <EntrenarInner />
+    </Suspense>
   );
 }

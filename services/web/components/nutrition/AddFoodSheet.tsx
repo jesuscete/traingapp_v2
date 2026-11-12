@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 
+import { Segmented } from "@/components/ui/Segmented";
 import { api } from "@/lib/api";
 import { BarcodeTab } from "@/components/nutrition/BarcodeTab";
 import { AmountPicker, type Amount } from "@/components/nutrition/AmountPicker";
@@ -134,25 +135,17 @@ export function AddFoodSheet({ token, day, meal: initialMeal, onClose, onChanged
             ))}
           </select>
         </label>
-        <div className="nu-tabs" role="tablist">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.key}
-              className={`nu-tab${tab === t.key ? " active" : ""}`}
-              onClick={() => {
-                setTab(t.key);
-                setFood(null);
-                setCreate(null);
-                setError(null);
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          items={TABS.map((t) => ({ id: t.key, label: t.label }))}
+          value={tab}
+          label="Cómo añadir"
+          onChange={(id) => {
+            setTab(id);
+            setFood(null);
+            setCreate(null);
+            setError(null);
+          }}
+        />
       </div>
       {notice && <p className="ok nu-notice">{notice}</p>}
       {body}

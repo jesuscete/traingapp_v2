@@ -1,0 +1,52 @@
+/* F4 · Disposiciones por tamaño: medio 600-1023 px, expandido >= 1024 px. */
+
+/* Hoy */
+.hoy-layout { display: block; }
+.hoy-layout > .hoy-grid { margin: var(--space-3) 0; }
+@media (min-width: 1024px) {
+  .hoy-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--space-5); align-items: start; }
+  .hoy-layout > * { grid-column: 1; }
+  .hoy-layout > .hoy-grid { grid-column: 2; grid-row: 1 / span 3; margin: var(--space-3) 0; align-content: start; }
+  .hoy-layout > .hoy-hero { margin-top: var(--space-3); }
+}
+
+/* Progreso */
+@media (min-width: 1024px) {
+  .progress-wrap .tab-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-3) var(--space-4); align-items: start; }
+  .progress-wrap .tab-body > * { grid-column: 1 / -1; margin-top: 0; margin-bottom: 0; }
+  .progress-wrap .tab-body > :is(section.block, div.block, .ui-card):not(.m4-hero):not(.m4-empty) { grid-column: auto; }
+  .progress-wrap > .ui-card { max-width: 720px; }
+  .progress-wrap .home-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+
+/* Lista-detalle (Historial, Ejercicios) */
+.detail-skeleton { display: flex; flex-direction: column; gap: var(--space-3); }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+@media (min-width: 1024px) {
+  .split { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+  .split-list { min-width: 0; max-height: calc(100dvh - 160px); overflow-y: auto; padding-right: var(--space-1); }
+  .split-detail { min-width: 0; position: sticky; top: var(--space-4); max-height: calc(100dvh - 120px); overflow-y: auto; }
+  .split-detail .welcome { margin-top: 0; }
+  .recent-link.selected, .ex-row.selected { background: rgba(var(--accent-rgb), 0.14); border-radius: var(--radius-md); }
+}
+
+/* Comidas · Día */
+.nu-dia { display: block; }
+@media (min-width: 1024px) {
+  .nu-dia { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+  .nu-dia-side { position: sticky; top: var(--space-4); }
+  body .nu-page { padding-bottom: 96px; }
+}
+@media (min-width: 600px) { body .nu-page { padding-bottom: 96px; } }
+
+/* Hojas: diálogo centrado desde 600 px */
+@media (min-width: 600px) {
+  .sheet-backdrop { align-items: center; padding: var(--space-5); }
+  .sheet { max-width: 560px; height: min(88vh, 720px); border-radius: var(--radius-md); box-shadow: var(--shadow-raised); border: 1px solid var(--border); }
+  .sheet.m3-sheet { height: auto; max-height: 88vh; }
+}
+
+/* Ancho máximo legible en pantallas muy anchas */
+@media (min-width: 1024px) {
+  body .dashboard > * { max-width: 1200px; }
+}

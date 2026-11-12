@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/Button";
 import { useElapsed } from "@/lib/useRestTimer";
 import { workoutStats } from "@/lib/workout/ops";
 import type { ActiveWorkout } from "@/lib/workout/types";
@@ -26,9 +27,9 @@ export function WorkoutHeader({
     <header className="wk-header">
       <div className="wk-header-title">
         <h2>{workout.title || "Entreno libre"}</h2>
-        <button type="button" className="wk-finish" onClick={onFinish}>
+        <Button className="wk-finish" onClick={onFinish}>
           Terminar
-        </button>
+        </Button>
       </div>
       <div className="wk-stats">
         <div>

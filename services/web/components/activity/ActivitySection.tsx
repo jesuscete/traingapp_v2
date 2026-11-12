@@ -109,7 +109,7 @@ function Zones({ summary }: { summary: ActivitySummary }) {
           <>
             {" "}
             {maxEstimated ? "FC máxima estimada" : "FC en reposo estimada"}: añádela en tu{" "}
-            <Link href="/perfil">perfil</Link> para zonas precisas.
+            <Link href="/cuenta/perfil">perfil</Link> para zonas precisas.
           </>
         )}
       </p>

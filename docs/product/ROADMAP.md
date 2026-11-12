@@ -93,11 +93,19 @@ Origen: [ANALISIS_TECNICO.md](ANALISIS_TECNICO.md) §2, §3 y §5.
 
 **Backlog de mejoras** (después de M5): progresión sugerida (doble progresión), kcal por FC (Keytel), retirar `chat/plan_session.py`, imágenes sin conexión, sesiones mixtas.
 
-### M5 · Nutrición (RF-05)
-- [x] Decisión de la API (análisis §6): **Open Food Facts** (código de barras y marcas de España) + **USDA** (genéricos) + **Claude** para el lenguaje natural. FatSecret Premier o BEDCA solo si hay app pública.
-- [ ] Modelo `food` (caché), `meal_entry` (copia de macros), `nutrition_target` (Mifflin-St Jeor + gasto de entrenos + objetivo).
-- [ ] Búsqueda, código de barras desde el móvil y texto libre con el agente (propone, el usuario confirma).
-- [ ] Balance diario en el dashboard y control de peso hacia la categoría.
+### M5 · Nutrición (RF-05) ⏳ siguiente
+- [x] Decisión de la API (análisis §6): **Open Food Facts** (código de barras y marcas de España) + **USDA** (genéricos) + **Claude** para el texto libre. Caché local de lo consultado.
+- [ ] **Modelo:** `food` (por 100 g + raciones típicas), `meal_entry` (copia de los macros y **método de registro**: pesada / etiqueta / rápida / estimada por IA), `meal_template` (mis platos), `body_weight_log`, `nutrition_goal`.
+- [ ] **Cálculos:** Mifflin-St Jeor + actividad + kcal de los entrenos reales → objetivo diario. Macros: proteína 1,6-2,2 g/kg, grasa mínima ~0,8 g/kg, resto en hidratos. Balance diario y semanal.
+- [ ] **Objetivos:** perder, mantener, ganar y **corte hacia una categoría de peso** (peso objetivo y fecha).
+- [ ] **Dos formas de registrar:**
+  - **Precisa (manual):** gramos exactos de báscula sobre un alimento; alimento propio con los valores de la etiqueta; añadido rápido de kcal y macros.
+  - **Rápida (IA):** texto libre ("2 tostadas con crema de cacahuete") → propuesta de alimentos y gramos que el usuario ajusta y confirma.
+  - Se muestra qué parte de las kcal del día es exacta y cuál estimada.
+- [ ] Búsqueda (recientes y favoritos primero), **código de barras** (la cámara necesita `-Https`/mkcert en el móvil; si no, el código se teclea), mis platos.
+- [ ] Agente: `registrar_comida` (propone, el usuario confirma) y `ver_nutricion`.
+- [ ] Web: pantalla Comidas (anillos de kcal y macros por comida), añadir comida (4 vías), peso con tendencia, tarjeta de balance en el dashboard, objetivos en el perfil.
+- Valores por defecto acordados: kcal + proteína + hidratos + grasa + fibra (azúcar si viene en el producto); comidas: desayuno, comida, merienda, cena y snack.
 
 ### M5.1 · Prueba en el móvil en local y depuración ⏳
 - [ ] `dev-up.ps1 -Lan` / `-Https` en el móvil: registrar comidas y entrenos, chat, preparación, fatiga.

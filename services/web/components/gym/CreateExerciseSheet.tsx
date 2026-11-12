@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import { translateMuscleGroup } from "@/lib/labels";
 import type { CatalogExercise, MuscleGroupKey } from "@/lib/types";
+import { X } from "lucide-react";
 
 const MUSCLE_KEYS: MuscleGroupKey[] = [
   "chest",
@@ -131,7 +132,7 @@ export function CreateExerciseSheet({ token, initialName = "", onClose, onCreate
         <div className="sheet-head">
           <h3>Crear ejercicio</h3>
           <button type="button" className="sheet-close" onClick={onClose} aria-label="Cerrar">
-            ✕
+            <X size={18} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
         <div className="sheet-body ce-body">

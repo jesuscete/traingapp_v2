@@ -11,8 +11,9 @@ import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import agent as agent_client
+from app.crud import goals as goals_crud
 from app.crud import routine as routine_crud
-from app.models import User
+from app.models import User, UserGoal
 from app.schemas.agent import AgentActionOut, AgentReplyOut
 from app.schemas.nutrition import MealBatchIn
 from app.services import nutrition, sport_analysis
@@ -27,7 +28,7 @@ CONTEXT_MESSAGES = 16
 MAX_TOOL_STEPS = 4
 MAX_TOOL_CONTENT = 3500
 UNAVAILABLE = "El asistente no está disponible ahora mismo. Inténtalo en un rato."
-SPORT_LABELS = {"boxing": "boxeo", "martial_arts": "artes marciales"}
+SPORT_LABELS = {"boxing": "boxeo", "martial_arts": "artes marciales", "triathlon": "triatlón"}
 
 
 def _key(user_id: uuid.UUID) -> str:
@@ -51,14 +52,28 @@ async def reset(redis: aioredis.Redis, user_id: uuid.UUID) -> None:
     await redis.delete(_key(user_id))
 
 
-def _context(user: User) -> dict[str, object]:
+def _context(user: User, goals: list[UserGoal]) -> dict[str, object]:
     sport = sport_analysis.main_sport(user, None)
+    today = datetime.now(UTC).date()
     return {
-        "hoy": datetime.now(UTC).date().isoformat(),
+        "hoy": today.isoformat(),
         "usuario": user.name,
         "deporte_principal": SPORT_LABELS.get(sport, sport),
+        "otros_deportes": user.sports or [],
         "peso_kg": user.weight_kg,
         "objetivo": user.goal,
+        # Metas activas (la principal primero) para orientar planes y consejos.
+        "metas": [
+            {
+                "titulo": g.title,
+                "tipo": g.kind,
+                "principal": g.is_primary,
+                "fecha": g.target_date.isoformat() if g.target_date else None,
+                "dias_restantes": (g.target_date - today).days if g.target_date else None,
+            }
+            for g in goals
+            if not g.done
+        ][:3],
     }
 
 
@@ -86,12 +101,13 @@ async def run_turn(
     actions: list[AgentActionOut] = []
     tools_used: list[str] = []
     specs = [t.spec() for t in TOOLS.values()]
+    goals = await goals_crud.list_goals(session, user.id)
 
     reply = UNAVAILABLE
     source: Literal["llm", "fallback"] = "fallback"
     for step in range(MAX_TOOL_STEPS + 1):
         payload: dict[str, object] = {
-            "context": _context(user),
+            "context": _context(user, goals),
             "tools": specs,
             "messages": history[-CONTEXT_MESSAGES:],
             "forceAnswer": step == MAX_TOOL_STEPS,

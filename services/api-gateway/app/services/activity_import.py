@@ -129,12 +129,12 @@ STREAM_KEYS = ("t", "hr", "speed", "altitude", "cadence", "power", "distance", "
 
 
 async def _existing(
-    session: AsyncSession, user_id: uuid.UUID, fingerprint: str
+    session: AsyncSession, user_id: uuid.UUID, fingerprint: str, source: str = EXTERNAL_SOURCE
 ) -> TrainingSession | None:
     found: TrainingSession | None = await session.scalar(
         select(TrainingSession).where(
             TrainingSession.user_id == user_id,
-            TrainingSession.external_source == EXTERNAL_SOURCE,
+            TrainingSession.external_source == source,
             TrainingSession.external_id == fingerprint,
         )
     )
@@ -218,7 +218,14 @@ def _session_input(act: ParsedActivity, discipline: str, summary: dict[str, obje
 
 
 async def import_file(
-    session: AsyncSession, user: User, filename: str, data: bytes, *, force: bool = False
+    session: AsyncSession,
+    user: User,
+    filename: str,
+    data: bytes,
+    *,
+    force: bool = False,
+    source: str = EXTERNAL_SOURCE,
+    external_id: str | None = None,
 ) -> ImportResult:
     if len(data) > MAX_FILE_BYTES:
         return ImportResult(filename, "error", "Archivo demasiado grande (máx. 15 MB)")
@@ -229,6 +236,8 @@ async def import_file(
 
     discipline = discipline_for(act)
     duplicate = await _existing(session, user.id, act.fingerprint)
+    if duplicate is None and external_id is not None:
+        duplicate = await _existing(session, user.id, external_id, source)
     if duplicate is not None:
         return ImportResult(filename, "duplicate", "Ya estaba importada", duplicate.id, discipline)
     if not force:
@@ -242,7 +251,7 @@ async def import_file(
                 discipline,
             )
 
-    summary = activity_summary(act, user)
+    summary = {**activity_summary(act, user), "source": source}
     if discipline == "gym":
         record = await gym_crud.create_gym(
             session, user.id, _gym_input(act), weight_kg=user.weight_kg
@@ -252,8 +261,8 @@ async def import_file(
             session, user.id, _session_input(act, discipline, summary), weight_kg=user.weight_kg
         )
         record.details = {**(record.details or {}), "activity": summary, "trimp": summary["trimp"]}
-    record.external_source = EXTERNAL_SOURCE
-    record.external_id = act.fingerprint
+    record.external_source = source
+    record.external_id = external_id or act.fingerprint
     kcal = _kcal(act, user)
     if kcal is not None:
         record.estimated_kcal = round(kcal, 1)

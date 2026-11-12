@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     usda_base_url: str = "https://api.nal.usda.gov/fdc/v1"
     usda_api_key: str = "DEMO_KEY"
     food_api_timeout_seconds: float = 8
+    # Garmin (M6.2): API personal oficial; sondeo periódico (0 = desactivado).
+    garmin_base_url: str = "https://personal.connectapi.garmin.com"
+    garmin_timeout_seconds: float = 30
+    garmin_poll_minutes: int = 30
+    garmin_history_days: int = 30
+    # Clave Fernet para secretos en BD; vacía = derivada de jwt_secret.
+    encryption_key: str = ""
     # Base de las imágenes de free-exercise-db (rutas relativas del catálogo).
     exercise_image_base_url: str = (
         "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/"

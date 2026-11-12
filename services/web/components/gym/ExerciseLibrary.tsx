@@ -17,6 +17,7 @@ import {
 import { translateMuscleGroup } from "@/lib/labels";
 import { useCatalog } from "@/lib/useCatalog";
 import type { CatalogExercise } from "@/lib/types";
+import { Star } from "lucide-react";
 
 const PAGE_SIZE = 40;
 
@@ -106,7 +107,7 @@ export function ExerciseLibrary({ token, onPick, autoFocus }: Props) {
             aria-pressed={filters.favoritesOnly}
             onClick={() => patch({ favoritesOnly: !filters.favoritesOnly })}
           >
-            ★ Favoritos
+            <Star size={14} strokeWidth={1.75} aria-hidden="true" /> Favoritos
           </button>
           <button
             type="button"

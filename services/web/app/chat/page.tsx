@@ -22,6 +22,17 @@ export default function Chat() {
     }
   }, [router]);
 
+  const prefillSent = useRef(false);
+  useEffect(() => {
+    // Prefill: /chat?q=<texto> se envía automáticamente una sola vez, cuando el chat está listo.
+    if (prefillSent.current || messages.length === 0 || busy) return;
+    const q = new URLSearchParams(window.location.search).get("q")?.trim();
+    prefillSent.current = true;
+    if (!q) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    void handleSend(q);
+  }, [messages.length, busy, handleSend]);
+
   useEffect(() => {
     const el = messagesRef.current;
     if (el) el.scrollTop = el.scrollHeight;

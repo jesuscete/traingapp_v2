@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { X } from "lucide-react";
 
 type Props = {
   title: string;
@@ -37,7 +38,7 @@ export function Sheet({ title, onClose, children, footer, compact }: Props) {
         <div className="sheet-head">
           <h3>{title}</h3>
           <button type="button" className="sheet-close" onClick={onClose} aria-label="Cerrar">
-            ✕
+            <X size={18} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
         <div className="sheet-body nu-sheet-body">{children}</div>

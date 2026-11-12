@@ -23,6 +23,7 @@ class User(Base):
     sex: Mapped[str | None] = mapped_column(String(10), nullable=True)
     goal: Mapped[str | None] = mapped_column(String(40), nullable=True)
     sports: Mapped[list[str] | None] = mapped_column(_JSONB, nullable=True)
+    primary_sport: Mapped[str | None] = mapped_column(String(40), nullable=True)
     body_fat_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     fitness_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
     max_hr: Mapped[int | None] = mapped_column(Integer, nullable=True)

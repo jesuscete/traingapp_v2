@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { translateDiscipline, translateMuscleGroup } from "@/lib/labels";
 import type { FatigueExplain } from "@/lib/types";
+import { X } from "lucide-react";
 
 type Props = {
   token: string;
@@ -47,7 +48,7 @@ export function FatigueExplainSheet({ token, group, onClose }: Props) {
         <div className="sheet-head">
           <h3>¿Por qué tengo fatiga en {name.toLowerCase()}?</h3>
           <button type="button" className="sheet-close" aria-label="Cerrar" onClick={onClose}>
-            ✕
+            <X size={18} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
         <div className="sheet-body">

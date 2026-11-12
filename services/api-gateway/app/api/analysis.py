@@ -1,4 +1,5 @@
 import logging
+import uuid
 from typing import Annotated, Literal
 
 import httpx
@@ -25,6 +26,7 @@ async def analyze_sport(
     weeks: Annotated[int, Query(ge=1, le=12)] = 4,
     basis: Literal["auto", "historial", "rutina"] = "auto",
     narrative: bool = False,
+    routine_id: Annotated[uuid.UUID | None, Query(alias="routineId")] = None,
 ) -> SportAnalysisOut:
     """Carencias y desequilibrios frente al deporte principal (determinista).
 
@@ -32,7 +34,7 @@ async def analyze_sport(
     análisis ya calculado; si la IA no está disponible se devuelve un resumen básico.
     """
     result = await sport_analysis.analyze_user(
-        session, current_user, sport=sport, weeks=weeks, basis=basis
+        session, current_user, sport=sport, weeks=weeks, basis=basis, routine_id=routine_id
     )
     if narrative and result.basis != "sin_datos":
         result.narrative = await _narrative(result)

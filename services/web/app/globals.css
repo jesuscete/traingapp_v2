@@ -3000,7 +3000,33 @@ a.btn:hover {
   color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
 }
 .hub-tile:hover { border-color: var(--accent); }
-.hub-icon { font-size: 2rem; line-height: 1; }
+.hub-list { grid-template-columns: 1fr; gap: 0.6rem; }
+.hub-list .hub-tile { flex-direction: row; justify-content: flex-start; align-items: center; gap: 0.8rem; min-height: 0; padding: 0.8rem 0.9rem; text-align: left; }
+.hub-icon { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 42px; height: 42px; border-radius: 12px; background: rgba(var(--accent-rgb), 0.14); color: var(--accent); }
+.hub-text { display: flex; flex-direction: column; gap: 0.1rem; flex: 1; min-width: 0; }
+.hub-chev { color: var(--muted); flex: none; }
+.tabbar-link { flex-direction: column; gap: 0.15rem; }
+.tabbar-link span { font-size: 0.68rem; letter-spacing: 0.02em; }
+.tabbar-link.active::after { bottom: -0.25rem; }
+.hm-insight svg { flex: none; margin-top: 0.1rem; }
+.hm-insight.good svg { color: #22c55e; } .hm-insight.warning svg { color: #f5b942; } .hm-insight.rest svg { color: #8b7cf6; }
+.ob-section { margin-top: 1rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
+.ob-section h2 { font-size: 1.05rem; margin: 0 0 0.6rem; }
+.ob-goal { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.7rem 0; border-top: 1px solid var(--border); }
+.ob-goal.done { opacity: 0.55; }
+.ob-goal.primary .hub-icon { background: rgba(245,185,66,0.2); color: #f5b942; }
+.ob-goal-body { flex: 1; min-width: 0; }
+.ob-goal-body strong { display: block; }
+.ob-form { display: grid; gap: 0.6rem; margin-top: 0.8rem; }
+.ob-form label { display: grid; gap: 0.25rem; font-size: 0.85rem; color: var(--muted); }
+.ob-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.hm-goal { display: flex; gap: 0.8rem; align-items: center; color: var(--text); text-decoration: none; }
+.hm-prep { display: flex; gap: 0.9rem; align-items: center; }
+.hm-prep-gaps { flex: 1; min-width: 0; font-size: 0.85rem; }
+.hm-prep-gaps p { margin: 0 0 0.3rem; }
+.hm-badge { font-size: 0.65rem; padding: 0.05rem 0.4rem; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); margin-left: 0.4rem; }
+.hm-recent > span:first-child { display: inline-flex; align-items: center; gap: 0.5rem; }
+.ra-box { margin-top: 0.6rem; padding: 0.7rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-alt); }
 .hub-label { font-weight: 600; font-size: 0.95rem; }
 .hub-sub { font-size: 0.75rem; color: var(--muted); }
 .hm-card { margin-top: 1rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; }
@@ -3053,4 +3079,43 @@ a.btn:hover {
 .remember-me input {
   width: auto;
   margin: 0;
+}
+
+/* Garmin (M6.2) */
+.garmin-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.garmin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.garmin-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.garmin-steps {
+  margin: 8px 0 12px;
+  padding-left: 20px;
+  line-height: 1.6;
+}
+.garmin-steps a {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.garmin-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.garmin-form input {
+  flex: 1 1 220px;
+}
+.success {
+  color: var(--success, #2fd9a8);
 }

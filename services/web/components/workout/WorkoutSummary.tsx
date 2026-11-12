@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatDuration } from "@/lib/format";
 import { translateMuscleGroup } from "@/lib/labels";
 import type { WorkoutResult } from "@/lib/workout/types";
+import { Trophy } from "lucide-react";
 
 export function WorkoutSummary({
   result,
@@ -52,7 +53,7 @@ export function WorkoutSummary({
           <ul className="wk-prs">
             {result.prs.map((pr, i) => (
               <li key={i}>
-                <span aria-hidden="true">🏆</span> PR · {pr.exerciseName}:{" "}
+                <Trophy size={16} strokeWidth={1.75} aria-hidden="true" /> PR · {pr.exerciseName}:{" "}
                 {pr.kind === "peso" ? "peso máx." : "1RM est."} <strong>{pr.value} kg</strong>
               </li>
             ))}

@@ -137,6 +137,11 @@ export default function EntrenoDetalle() {
                 ? `${session.durationMinutes} min`
                 : "duración no registrada"}
             </p>
+            {session.discipline === "gym" && !editing && (
+              <p>
+                <Link href="/preparacion">Analizar mi preparación</Link>
+              </p>
+            )}
             {!editing && (
               <button
                 type="button"

@@ -2,6 +2,7 @@ from datetime import date
 
 from pydantic import Field
 
+from app.schemas.goal import GoalOut
 from app.schemas.session import CamelModel
 
 
@@ -266,3 +267,6 @@ class HomeOut(CamelModel):
     prev_week_minutes: int
     week_by_sport: list[WeekSportOut]
     active_days: list[date]  # días con entreno en los últimos 7
+    sport: str
+    sport_label: str
+    primary_goal: GoalOut | None = None

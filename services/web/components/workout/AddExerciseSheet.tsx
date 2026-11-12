@@ -6,6 +6,7 @@ import { AlternativesList } from "@/components/gym/AlternativesList";
 import { ExerciseLibrary } from "@/components/gym/ExerciseLibrary";
 import { exerciseDisplayName } from "@/lib/exerciseSearch";
 import type { CatalogExercise } from "@/lib/types";
+import { X } from "lucide-react";
 
 type Props = {
   token: string | null;
@@ -58,7 +59,7 @@ export function AddExerciseSheet({ token, title, multiple, alternativesFor, onCl
         <div className="sheet-head">
           <h3>{title}</h3>
           <button type="button" className="sheet-close" onClick={onClose} aria-label="Cerrar">
-            ✕
+            <X size={18} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
         <div className="sheet-body">

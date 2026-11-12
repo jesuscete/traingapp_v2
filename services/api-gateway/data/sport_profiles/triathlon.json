@@ -1,0 +1,72 @@
+{
+  "sport": "triathlon",
+  "label": "Triatlón",
+  "aliases": ["running", "cycling", "swimming", "duathlon"],
+  "version": 1,
+  "summary": "Deporte de resistencia aeróbica que encadena natación, ciclismo y carrera (de sprint a Ironman). El rendimiento depende de la base aeróbica y la economía de movimiento; el gimnasio sirve para hacer más resistentes los tejidos, prevenir lesiones por sobreuso y mejorar la economía, no para ganar masa. El volumen de gimnasio debe ceder ante el volumen de los tres deportes.",
+  "qualities": [
+    {"key": "aerobica", "label": "Base aeróbica y umbral", "priority": 5},
+    {"key": "economia", "label": "Economía de carrera y pedaleo (rigidez de tobillo, fuerza de cadera)", "priority": 5},
+    {"key": "fuerza_maxima", "label": "Fuerza máxima de pierna con poco volumen", "priority": 4},
+    {"key": "resistencia_tejidos", "label": "Resistencia de tendones (Aquiles, rotuliano) y gemelo/sóleo", "priority": 4},
+    {"key": "core", "label": "Core anti-rotación y estabilidad pélvica", "priority": 4},
+    {"key": "hombro_natacion", "label": "Tirón y salud del hombro para nadar", "priority": 3},
+    {"key": "movilidad", "label": "Movilidad de cadera, torácica y tobillo", "priority": 3}
+  ],
+  "energy_systems": {
+    "formato": "esfuerzos continuos de 1 h (sprint) a 8-17 h (Ironman)",
+    "aerobico": "muy alto",
+    "glucolitico": "medio (cambios de ritmo, cuestas, sprint)",
+    "fosfagenos": "bajo"
+  },
+  "pattern_targets": {
+    "unilateral": 6,
+    "bisagra": 4,
+    "sentadilla": 3,
+    "anti_rotacion": 4,
+    "tiron_vertical": 4,
+    "tiron_horizontal": 4,
+    "pliometria": 3
+  },
+  "key_exercises": {
+    "unilateral": ["sentadilla búlgara", "step-up", "peso muerto rumano a una pierna", "zancadas"],
+    "bisagra": ["peso muerto rumano", "hip thrust"],
+    "sentadilla": ["sentadilla", "prensa"],
+    "anti_rotacion": ["press Pallof", "plancha lateral", "dead bug"],
+    "tiron_vertical": ["dominadas", "jalón al pecho"],
+    "tiron_horizontal": ["remo con mancuerna", "face pull"],
+    "pliometria": ["saltos a la comba", "saltos al cajón bajos", "skipping"]
+  },
+  "muscle_targets": {
+    "quadriceps": [6, 12],
+    "hamstrings": [6, 10],
+    "glutes": [8, 14],
+    "calves": [8, 14],
+    "core": [8, 14],
+    "back": [6, 12],
+    "shoulders": [4, 8],
+    "chest": [2, 6]
+  },
+  "rep_zones_by_phase": {
+    "general": {"fuerza": [0.25, 0.50], "hipertrofia": [0.15, 0.40], "resistencia": [0.20, 0.45]},
+    "especifica": {"fuerza": [0.40, 0.65], "hipertrofia": [0.05, 0.25], "resistencia": [0.15, 0.40]},
+    "precompeticion": {"fuerza": [0.45, 0.75], "hipertrofia": [0.0, 0.15], "resistencia": [0.10, 0.35]},
+    "descarga": {"fuerza": [0.20, 0.50], "hipertrofia": [0.0, 0.30], "resistencia": [0.20, 0.50]}
+  },
+  "min_pull_push_ratio": 1.2,
+  "conflict_groups": ["quadriceps", "hamstrings", "glutes", "calves"],
+  "load_rules": [
+    "Pierna pesada lejos de las series de calidad de carrera o bici (al menos 48 h antes).",
+    "Mejor gimnasio el mismo día que una sesión intensa (por la tarde) que el día de descanso.",
+    "2 sesiones de fuerza por semana en base, 1 en la fase específica, ninguna pesada la semana de la prueba.",
+    "Pocas series cerca del fallo: fuerza sin agujetas que estropeen los entrenos de resistencia."
+  ],
+  "injury_risks": [
+    {"zona": "tendón de Aquiles y gemelo", "riesgo": "sobreuso por volumen de carrera", "prehab": ["elevación de talones excéntrica", "elevación de talones con rodilla flexionada (sóleo)"]},
+    {"zona": "rodilla", "riesgo": "síndrome de la cintilla y dolor rotuliano", "prehab": ["step-up", "trabajo de glúteo medio con banda", "sentadilla búlgara"]},
+    {"zona": "hombro", "riesgo": "hombro del nadador", "prehab": ["rotación externa con banda", "face pull", "Y-T-W"]},
+    {"zona": "zona lumbar", "riesgo": "postura de acople en la bici", "prehab": ["dead bug", "puente de glúteo", "movilidad de cadera"]}
+  ],
+  "block_muscle_weights": {},
+  "coach_notes": "La fuerza va en rangos de 3-6 reps con pocas series y técnica limpia, y algo de pliometría suave para la economía de carrera. Evita la hipertrofia en piernas que añada peso. Gemelo/sóleo y glúteo medio siempre, por prevención. Si el volumen de resistencia sube, el gimnasio baja."
+}

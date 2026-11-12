@@ -2,29 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Dumbbell, House, MessageCircle, TrendingUp, Utensils, type LucideIcon } from "lucide-react";
 
 import { AvatarMenu } from "@/components/AvatarMenu";
 
 type Tab = {
   href: string;
   label: string;
+  Icon: LucideIcon;
   match: string[];
 };
 
 const TABS: Tab[] = [
-  { href: "/dashboard", label: "Inicio", match: ["/dashboard"] },
+  { href: "/dashboard", label: "Inicio", Icon: House, match: ["/dashboard"] },
   {
     href: "/entrenar",
-    label: "Entrenar",
+    label: "Entrenar", Icon: Dumbbell,
     match: ["/entrenar", "/registrar", "/importar", "/rutinas", "/ejercicios"],
   },
-  { href: "/comidas", label: "Comidas", match: ["/comidas"] },
+  { href: "/comidas", label: "Comidas", Icon: Utensils, match: ["/comidas"] },
   {
     href: "/progreso",
-    label: "Progreso",
+    label: "Progreso", Icon: TrendingUp,
     match: ["/progreso", "/entrenos", "/analisis", "/fatiga", "/preparacion"],
   },
-  { href: "/chat", label: "Coach", match: ["/chat"] },
+  { href: "/chat", label: "Coach", Icon: MessageCircle, match: ["/chat"] },
 ];
 
 function isMatch(pathname: string, match: string[]): boolean {
@@ -44,7 +46,8 @@ export function BottomNav() {
             className={`tabbar-link${active ? " active" : ""}`}
             href={tab.href}
           >
-            {tab.label}
+            <tab.Icon size={20} strokeWidth={1.75} aria-hidden="true" />
+            <span>{tab.label}</span>
           </Link>
         );
       })}

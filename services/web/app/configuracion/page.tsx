@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { BottomNav } from "@/components/BottomNav";
+import { GarminCard } from "@/components/integrations/GarminCard";
 import { getTheme, setTheme, THEMES } from "@/lib/theme";
 
 const TOKEN_KEY = "traingapp_token";
@@ -11,6 +12,7 @@ const TOKEN_KEY = "traingapp_token";
 export default function Configuracion() {
   const router = useRouter();
   const [theme, setThemeId] = useState("");
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem(TOKEN_KEY);
@@ -18,6 +20,7 @@ export default function Configuracion() {
       router.replace("/");
       return;
     }
+    setToken(stored);
     setThemeId(getTheme());
   }, [router]);
 
@@ -29,6 +32,8 @@ export default function Configuracion() {
         <h2>Configuración</h2>
         <p className="subtitle">Preferencias de la aplicación</p>
       </section>
+
+      {token && <GarminCard token={token} />}
 
       <section className="energy-card">
         <h3>Tema de color (beta)</h3>

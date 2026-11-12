@@ -48,6 +48,7 @@ class UserOut(CamelModel):
     sex: Literal["male", "female"] | None = None
     goal: Goal | None = None
     sports: list[str] | None = None
+    primary_sport: str | None = None
     body_fat_pct: float | None = None
     fitness_level: FitnessLevel | None = None
     weekly_availability: int | None = None
@@ -66,6 +67,7 @@ class ProfileIn(CamelModel):
     sex: Literal["male", "female"] | None = None
     goal: Goal | None = None
     sports: list[str] | None = None
+    primary_sport: str | None = Field(default=None, max_length=40)
     body_fat_pct: float | None = Field(default=None, ge=5, le=60)
     fitness_level: FitnessLevel | None = None
     weekly_availability: int | None = Field(default=None, ge=0, le=7)

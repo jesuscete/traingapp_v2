@@ -261,6 +261,7 @@ export type User = {
   sex: string | null;
   goal: string | null;
   sports: string[] | null;
+  primarySport?: string | null;
   maxHr?: number | null;
   restingHr?: number | null;
 };
@@ -443,6 +444,8 @@ export type SessionSummary = {
   durationMinutes: number | null;
   volumeKg: number;
   estimatedKcal: number | null;
+  distanceMeters?: number | null;
+  externalSource?: string | null;
 };
 
 export type SessionPage = {
@@ -1078,4 +1081,42 @@ export type HomeSummary = {
   prevWeekMinutes: number;
   weekBySport: HomeSportWeek[];
   activeDays: string[];
+  sport?: string;
+  sportLabel?: string;
+  primaryGoal?: Goal | null;
+};
+
+/* ===== Objetivos ===== */
+export type GoalKind = "weight" | "event" | "competition" | "performance" | "other";
+
+export type GoalIn = {
+  kind: GoalKind;
+  title: string;
+  sport?: string | null;
+  targetDate?: string | null;
+  targetValue?: number | null;
+  unit?: string | null;
+  notes?: string | null;
+  isPrimary?: boolean;
+  done?: boolean;
+};
+
+export type Goal = GoalIn & { id: string; daysLeft: number | null };
+
+export type GarminStatus = {
+  connected: boolean;
+  status: string | null;
+  lastSyncAt: string | null;
+  lastError: string | null;
+  lastResult: { imported?: number; skipped?: number; errors?: number; healthDays?: number } | null;
+  tokenExpiresAt: string | null;
+};
+
+export type GarminSyncResult = {
+  imported: number;
+  skipped: number;
+  errors: number;
+  healthDays: number;
+  messages: string[];
+  status: GarminStatus;
 };

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
 import type { Routine, SportSuggestion } from "@/lib/types";
+import { X } from "lucide-react";
 
 const WEEKDAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
@@ -80,7 +81,7 @@ export function AddToRoutineSheet({ token, suggestion, onClose, onAdded }: Props
         <div className="sheet-head">
           <h3>Añadir a la rutina</h3>
           <button type="button" className="sheet-close" aria-label="Cerrar" onClick={onClose}>
-            ✕
+            <X size={18} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
         <div className="sheet-body">

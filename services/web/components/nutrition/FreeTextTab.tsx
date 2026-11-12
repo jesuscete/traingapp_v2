@@ -5,6 +5,7 @@ import { useState } from "react";
 import { api } from "@/lib/api";
 import { errMsg, g1, itemMacros, kcal, parseNum, sourceLabel } from "@/lib/nutrition";
 import type { MealName, ProposedItem } from "@/lib/types";
+import { X } from "lucide-react";
 
 type Props = { token: string; day: string; meal: MealName; onSaved: () => void };
 
@@ -134,7 +135,7 @@ export function FreeTextTab({ token, day, meal, onSaved }: Props) {
                   aria-label={`Quitar ${row.item.name}`}
                   onClick={() => setRows((list) => (list ?? []).filter((_, idx) => idx !== i))}
                 >
-                  ✕
+                  <X size={18} strokeWidth={1.75} aria-hidden="true" />
                 </button>
               </div>
             </li>

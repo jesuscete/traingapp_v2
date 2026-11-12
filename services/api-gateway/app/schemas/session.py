@@ -148,3 +148,5 @@ class SessionListItem(CamelModel):
     estimated_kcal: float | None = None
     intensity: int | None = None
     fatigue: int | None = None
+    distance_meters: float | None = None
+    external_source: str | None = None  # "file" / "garmin": origen de la actividad

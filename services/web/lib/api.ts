@@ -1,5 +1,9 @@
 import type {
+  GarminStatus,
+  GarminSyncResult,
   HomeSummary,
+  Goal,
+  GoalIn,
   ActivityDetail,
   AgentReply,
   ImportResult,
@@ -465,6 +469,7 @@ export const api = {
       weeks?: number;
       basis?: "auto" | "historial" | "rutina";
       narrative?: boolean;
+      routineId?: string;
     },
   ) => {
     // Sin sport, el backend usa el deporte principal del perfil.
@@ -473,6 +478,7 @@ export const api = {
     query.set("weeks", String(params.weeks ?? 4));
     query.set("basis", params.basis ?? "auto");
     query.set("narrative", String(params.narrative ?? false));
+    if (params.routineId) query.set("routineId", params.routineId);
     return request<SportAnalysis>(`/analysis/sport?${query.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -597,6 +603,25 @@ export const api = {
     request<NutritionWeek>(`/nutrition/week?end=${end}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
+  listGoals: (token: string) =>
+    request<Goal[]>("/goals", { headers: { Authorization: `Bearer ${token}` } }),
+  createGoal: (token: string, body: GoalIn) =>
+    request<Goal>("/goals", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  updateGoal: (token: string, id: string, body: GoalIn) =>
+    request<Goal>(`/goals/${id}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  deleteGoal: (token: string, id: string) =>
+    request<void>(`/goals/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
   getNutritionGoal: (token: string) =>
     request<NutritionGoal>("/nutrition/goal", {
       headers: { Authorization: `Bearer ${token}` },
@@ -650,4 +675,29 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
     }),
+  garminStatus: (token: string) =>
+    request<GarminStatus>("/integrations/garmin", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  garminConnect: (token: string, apiKey: string) =>
+    request<GarminStatus>("/integrations/garmin", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ apiKey }),
+    }),
+  garminDisconnect: (token: string) =>
+    request<void>("/integrations/garmin", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  garminSync: (token: string, options: { days?: number; ifStale?: boolean } = {}) => {
+    const query = new URLSearchParams();
+    if (options.days) query.set("days", String(options.days));
+    if (options.ifStale) query.set("ifStale", "true");
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return request<GarminSyncResult>(`/integrations/garmin/sync${suffix}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
 };

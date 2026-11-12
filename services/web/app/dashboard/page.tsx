@@ -2,12 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, BedDouble, CheckCircle2, ChevronRight, Lightbulb, type LucideIcon } from "lucide-react";
 
 import { api } from "@/lib/api";
 import { BodyMap } from "@/components/BodyMap";
 import { BottomNav } from "@/components/BottomNav";
+import { GoalKindIcon, countdownLabel } from "@/components/goals";
+import { DisciplineIcon } from "@/components/icons";
+import { PrepSummary } from "@/components/sport/PrepSummary";
 import { WeekCard } from "@/components/home/WeekCard";
 import { formatDuration } from "@/lib/format";
+import { formatDistance } from "@/lib/metrics";
 import { translateDiscipline } from "@/lib/labels";
 import { kcal as fmtKcal, shortDate, todayISO } from "@/lib/nutrition";
 import type {
@@ -15,6 +20,7 @@ import type {
   HomeInsight,
   HomeSummary,
   NutritionDay,
+  SportAnalysis,
   SessionSummary,
   User,
 } from "@/lib/types";
@@ -22,25 +28,20 @@ import { useToken } from "@/lib/useToken";
 
 const USER_KEY = "traingapp_user";
 
-const KIND_ICON: Record<HomeInsight["kind"], string> = {
-  good: "✓",
-  warning: "⚠",
-  rest: "💤",
-  tip: "💡",
-};
-
-const DISCIPLINE_ICON: Record<string, string> = {
-  gym: "🏋️",
-  boxing: "🥊",
-  running: "🏃",
-  cycling: "🚴",
-  swimming: "🏊",
+const KIND_ICON: Record<HomeInsight["kind"], LucideIcon> = {
+  good: CheckCircle2,
+  warning: AlertTriangle,
+  rest: BedDouble,
+  tip: Lightbulb,
 };
 
 function InsightRow({ item }: { item: HomeInsight }) {
   const body = (
     <>
-      <span aria-hidden="true">{KIND_ICON[item.kind]}</span>
+      {(() => {
+        const Icon = KIND_ICON[item.kind];
+        return <Icon size={20} strokeWidth={1.75} aria-hidden="true" />;
+      })()}
       <span>
         <strong>{item.title}</strong>
         <span className="d">{item.detail}</span>
@@ -91,6 +92,7 @@ export default function Dashboard() {
   const [fatigue, setFatigue] = useState<Fatigue | null>(null);
   const [mealsToday, setMealsToday] = useState<NutritionDay | null>(null);
   const [recent, setRecent] = useState<SessionSummary[]>([]);
+  const [prep, setPrep] = useState<SportAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -104,16 +106,28 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!token) return;
+    const load = () => {
+      api
+        .getHome(token, new Date().getHours(), todayISO())
+        .then(setHome)
+        .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar datos"));
+      api.getSportAnalysis(token, { weeks: 4 }).then(setPrep).catch(() => setPrep(null));
+      api.statsFatigue(token).then(setFatigue).catch(() => setFatigue(null));
+      api.getNutritionDay(token, todayISO()).then(setMealsToday).catch(() => setMealsToday(null));
+      api
+        .listSessions(token, { page: 1, pageSize: 5 })
+        .then((p) => setRecent(p.items))
+        .catch(() => setRecent([]));
+    };
+    load();
+    // Garmin: al abrir la app se sincroniza si hace >15 min; si llega algo nuevo, se recarga.
     api
-      .getHome(token, new Date().getHours(), todayISO())
-      .then(setHome)
-      .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar datos"));
-    api.statsFatigue(token).then(setFatigue).catch(() => setFatigue(null));
-    api.getNutritionDay(token, todayISO()).then(setMealsToday).catch(() => setMealsToday(null));
-    api
-      .listSessions(token, { page: 1, pageSize: 5 })
-      .then((p) => setRecent(p.items))
-      .catch(() => setRecent([]));
+      .garminStatus(token)
+      .then((s) => (s.connected ? api.garminSync(token, { ifStale: true }) : null))
+      .then((r) => {
+        if (r && (r.imported > 0 || r.healthDays > 0)) load();
+      })
+      .catch(() => undefined);
   }, [token]);
 
   const bodyPoints = useMemo(
@@ -132,10 +146,56 @@ export default function Dashboard() {
       <BottomNav />
 
       <section className="welcome">
-        <h2>Hola{user?.name ? `, ${user.name}` : ""} 👋</h2>
+        <h2>Hola{user?.name ? `, ${user.name}` : ""}</h2>
       </section>
 
       {error && <p className="error">{error}</p>}
+
+      {home && (
+        <section className="hm-card">
+          {home.primaryGoal ? (
+            <Link className="hm-goal" href="/objetivos">
+              <span className="hub-icon">
+                <GoalKindIcon kind={home.primaryGoal.kind} />
+              </span>
+              <span className="hub-text">
+                <span className="hub-sub">Tu objetivo</span>
+                <span className="hub-label">{home.primaryGoal.title}</span>
+                {countdownLabel(home.primaryGoal.daysLeft) && (
+                  <span className="hub-sub">{countdownLabel(home.primaryGoal.daysLeft)}</span>
+                )}
+              </span>
+              <ChevronRight className="hub-chev" size={18} strokeWidth={1.75} aria-hidden="true" />
+            </Link>
+          ) : (
+            <Link className="hm-goal" href="/objetivos">
+              <span className="hub-icon">
+                <GoalKindIcon kind="other" />
+              </span>
+              <span className="hub-text">
+                <span className="hub-label">Define tu objetivo</span>
+                <span className="hub-sub">Elige tu deporte principal y una meta</span>
+              </span>
+              <ChevronRight className="hub-chev" size={18} strokeWidth={1.75} aria-hidden="true" />
+            </Link>
+          )}
+        </section>
+      )}
+
+      {home && prep && (
+        <section className="hm-card">
+          <h2>
+            Preparación para {home.sportLabel ?? prep.label} <Link href="/preparacion">Ver análisis</Link>
+          </h2>
+          {prep.basis === "sin_datos" ? (
+            <Link className="muted" href="/preparacion">
+              Registra entrenos o crea una rutina para ver qué te falta →
+            </Link>
+          ) : (
+            <PrepSummary data={prep} />
+          )}
+        </section>
+      )}
 
       {home && home.insights.length > 0 && (
         <section className="hm-card">
@@ -212,10 +272,12 @@ export default function Dashboard() {
           {recent.map((s) => (
             <Link key={s.id} className="hm-recent" href={`/entrenos/${s.id}`}>
               <span>
-                {DISCIPLINE_ICON[s.discipline] ?? "🏅"} {translateDiscipline(s.discipline)}
+                <DisciplineIcon discipline={s.discipline} /> {translateDiscipline(s.discipline)}
+                {s.externalSource === "garmin" && <span className="hm-badge">Garmin</span>}
               </span>
               <span className="muted">
-                {shortDate(s.performedAt.slice(0, 10))} · {formatDuration(s.durationMinutes)}
+                {shortDate(s.performedAt.slice(0, 10))}
+                {s.distanceMeters ? ` · ${formatDistance(s.distanceMeters)}` : ""} · {formatDuration(s.durationMinutes)}
               </span>
             </Link>
           ))}

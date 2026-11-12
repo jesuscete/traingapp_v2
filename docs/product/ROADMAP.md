@@ -13,8 +13,8 @@
 | M4 Deporte principal y agente | ✅ |
 | M4.1 Mejoras encontradas | ✅ fatiga, 1RM y registro de deporte |
 | M5 Nutrición | ✅ |
-| **M5.1 Prueba en el móvil y pulido** | 🟡 primera ronda de pulido hecha; falta validarla en el móvil |
-| M6 Actividades de reloj | 🟡 M6.1 (archivos) ✅ · M6.2 Garmin ⏳ · M6.3 global ⏳ |
+| **M5.1 Prueba en el móvil y pulido** | 🟡 rondas 1 y 2 hechas; seguir probando en uso real |
+| M6 Actividades de reloj | ✅ M6.1 archivos · ✅ M6.2 Garmin · M6.3 global → después de M8 |
 | M7 Blindaje | 🟡 parcial |
 | M8 App móvil | 🟡 parcial (PWA, `-Lan`, `-Https`) |
 
@@ -116,7 +116,14 @@ Origen: [ANALISIS_TECNICO.md](ANALISIS_TECNICO.md) §2, §3 y §5.
   - **Fatiga en el detalle de la sesión:** se arregló que todo saliera como "otros" (zona deducida del grupo). Además, mapa corporal con alternativa de radar.
   - **Búsqueda de ejercicios bilingüe:** "bench press" encuentra "Press banca" (alias en inglés de los ejercicios canónicos).
   - **Chat:** se explica el límite de uso de Claude en lugar de "no disponible" sin motivo. El error se lee del JSON de stdout del CLI.
-- [ ] Probar la ronda 1 en el móvil y anotar la siguiente lista de ajustes.
+- [x] Ronda 2 (2026-11-12):
+  - **Iconos de línea** (lucide) en lugar de emojis y tarjetas homogéneas en los hubs.
+  - **Mis objetivos** (`/objetivos`): deporte principal, otros deportes y metas con fecha (peso, prueba, competición, marca). La meta principal sale en Inicio con cuenta atrás.
+  - El **deporte principal** manda en la preparación, en el análisis y en el Coach. Nuevo perfil de **triatlón**, que también cubre running, ciclismo y natación.
+  - **Preparación para tu deporte** de vuelta en Inicio.
+  - **Analizar** cada rutina → «Preparar rutina con estos cambios» abre el Coach con la petición; tú confirmas los cambios que proponga.
+  - Distancia e insignia «Garmin» en la actividad reciente. El Coach conoce tus metas.
+- [ ] Seguir probando en uso real y anotar ajustes.
 
 ### M6 · Actividades de reloj: archivos → Garmin → global (RF-07)
 **Decisión:** fuente = **el reloj** (archivo FIT/GPX/TCX y API de Garmin), no Strava. El acuerdo oficial de la API de Strava (2026) prohíbe usar sus datos en aplicaciones de IA (incluido el contexto de un LLM) y guardarlos más de 7 días, lo que choca con el historial y con el agente. Los datos que vienen directamente del reloj son del usuario y no tienen esas restricciones.
@@ -133,13 +140,14 @@ Origen: [ANALISIS_TECNICO.md](ANALISIS_TECNICO.md) §2, §3 y §5.
 - [x] La actividad alimenta: **fatiga** (carga por TRIMP/FC en lugar de solo duración), **kcal** (ecuación por FC, Keytel), balance de comidas, análisis del deporte y agente.
 - [x] Web: botón "Importar actividad" y detalle con **gráficas de FC y ritmo, parciales, tiempo en zonas** y mapa de desnivel.
 
-#### M6.2 · Conexión automática con Garmin (después)
-- [ ] Clave personal de la API oficial de Garmin (solo lectura de tus datos): conectar la cuenta, **tokens cifrados**, revocar.
-- [ ] Sincronización: aviso de Garmin si lo permite, si no sondeo periódico por la cola Redis (el worker ya existe). La actividad aparece sola unos minutos después de sincronizar el reloj.
+#### M6.2 · Conexión automática con Garmin ✅ (2026-11-12, [ADR-008](decisions/ADR-008-garmin-api-personal.md))
+- [x] Clave personal de la API oficial de Garmin (gratuita, solo lectura): conectar en **Configuración → Garmin**, clave y token **cifrados**, desconectar.
+- [x] Sincronización: la API personal no envía avisos, así que hay sondeo cada 30 min, sincronización al abrir Inicio (si hace más de 15 min) y botón «Sincronizar ahora». Las actividades entran por el importador de M6.1, sin duplicar lo subido a mano.
+- [ ] Validar con tu cuenta real: que lleguen actividades, FC en reposo, sueño y VFC. Los nombres de campo de salud son deducidos (ver ADR-008).
 - [ ] Datos de salud diarios: **FC en reposo**, sueño, estrés/Body Battery o HRV si están disponibles → readiness de la fatiga (hoy se rellena a mano).
-- [ ] Importar el historial pasado. Atribución "Garmin" donde se muestren sus datos.
+- [x] Historial: 30 días al conectar y botón «Traer últimos 90 días». Insignia «Garmin» en las actividades sincronizadas.
 
-#### M6.3 · Global (más adelante, con la app nativa de M8)
+#### M6.3 · Global (después de M8, con la app nativa)
 - [ ] **Health Connect** (Android) / **HealthKit** (iOS): reciben datos de casi cualquier reloj o app (Coros, Polar, Samsung, Apple…).
 - [ ] El importador de archivos de M6.1 ya cubre cualquier marca mientras tanto.
 
@@ -177,10 +185,10 @@ Tu objetivo: que la IA te organice y te guíe sin tener que ser experto. Las mej
 ```
 M0 ─► M1 (gym) ─► M3 ─► M6
   └─► M2 (IA) ─► M4 ─► M5
-M4 ─► M4.1 (mejoras) ─► M5 (comidas) ─► M5.1 (prueba en el móvil) ─► M6 ─► M7 ─► M8
+M4 ─► M4.1 (mejoras) ─► M5 (comidas) ─► M5.1 (prueba en el móvil) ─► M6.1/M6.2 ─► M7 ─► M8 ─► M6.3
 M1..M6 ─► M7 ─► M8
 ```
 M1 solo usa el LLM para traducir las instrucciones (un lote único). Si M2 no está listo, se hace con el CLI a mano.
 
 ## Siguiente paso
-**M5.1**: probar todo en el móvil en local y depurar errores → después M6, M7 y M8.
+**Uso real**: conectar Garmin, usar la app a diario y anotar ajustes (M5.1). Después, M7 (blindaje) y M8 (app móvil); M6.3 tras M8.

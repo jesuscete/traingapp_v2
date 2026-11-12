@@ -131,7 +131,7 @@ export default function Preparacion() {
 
   if (!token) return null;
 
-  const title = `Preparación para ${(data?.label ?? "boxeo").toLowerCase()}`;
+  const title = `Preparación para ${(data?.label ?? "tu deporte").toLowerCase()}`;
   const basisNote =
     data?.basis === "historial"
       ? `Basado en tus últimas ${data.weeks} semanas`

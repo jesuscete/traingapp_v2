@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { errMsg, kcal } from "@/lib/nutrition";
 import type { MealName, MealTemplate } from "@/lib/types";
+import { Trash2 } from "lucide-react";
 
 type Props = { token: string; day: string; meal: MealName; onApplied: () => void };
 
@@ -85,7 +86,7 @@ export function TemplatesTab({ token, day, meal, onApplied }: Props) {
               disabled={busyId !== null}
               onClick={() => remove(t)}
             >
-              🗑
+              <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
             </button>
           </li>
         ))}

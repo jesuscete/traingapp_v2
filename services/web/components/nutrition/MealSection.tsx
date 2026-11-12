@@ -2,6 +2,7 @@
 
 import { g1, isExactMethod, kcal, methodLabel } from "@/lib/nutrition";
 import type { MealEntry } from "@/lib/types";
+import { X } from "lucide-react";
 
 type Props = {
   label: string;
@@ -52,7 +53,7 @@ export function MealSection({ label, entries, onAdd, onEdit, onDelete, onSaveTem
                   aria-label={`Borrar ${e.name}`}
                   onClick={() => onDelete(e)}
                 >
-                  ✕
+                  <X size={18} strokeWidth={1.75} aria-hidden="true" />
                 </button>
               </li>
             );

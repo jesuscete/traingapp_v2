@@ -5,6 +5,7 @@ import { useState } from "react";
 import { api } from "@/lib/api";
 import { errMsg, parseNum } from "@/lib/nutrition";
 import type { Food, Serving } from "@/lib/types";
+import { X } from "lucide-react";
 
 type Props = {
   token: string;
@@ -155,7 +156,7 @@ export function FoodForm({ token, initialBarcode, initialName, onCreated, onCanc
               aria-label="Quitar ración"
               onClick={() => setServings((rows) => rows.filter((_, idx) => idx !== i))}
             >
-              ✕
+              <X size={18} strokeWidth={1.75} aria-hidden="true" />
             </button>
           </div>
         ))}

@@ -11,14 +11,16 @@ from app.analytics import fatigue as fatigue_analytics
 from app.analytics import insights as insights_analytics
 from app.analytics import load as load_analytics
 from app.analytics.catalog_seed import zone_of
+from app.api import goals as goals_api
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.crud import fatigue as fatigue_crud
+from app.crud import goals as goals_crud
 from app.crud import stats as stats_crud
 from app.crud.disciplines import load_catalog
 from app.models import User
 from app.schemas import stats as stats_schemas
-from app.services import fatigue_engine
+from app.services import fatigue_engine, sport_analysis, sport_registry
 from app.services import nutrition as nutrition_service
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -642,6 +644,8 @@ async def stats_home(
         hour=hour,
     )
     week_dates = facts.session_dates
+    sport = sport_analysis.main_sport(current_user, None)
+    user_goals = await goals_crud.list_goals(session, current_user.id)
     return stats_schemas.HomeOut(
         insights=[
             stats_schemas.HomeInsightOut(**asdict(i))
@@ -653,4 +657,9 @@ async def stats_home(
         prev_week_minutes=prev_minutes,
         week_by_sport=sorted(by_sport.values(), key=lambda s: -s.minutes),
         active_days=sorted({d for d in week_dates if week_start <= d <= day}),
+        sport=sport,
+        sport_label=sport_registry.profile_doc(sport).label,
+        primary_goal=next(
+            (goals_api.goal_out(g) for g in user_goals if g.is_primary and not g.done), None
+        ),
     )

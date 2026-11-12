@@ -51,6 +51,10 @@ export default function Comidas() {
   }, [token, day]);
 
   useEffect(() => {
+    if (window.location.hash === "#objetivo") setGoalOpen(true);
+  }, []);
+
+  useEffect(() => {
     setLoading(true);
     void load();
   }, [load]);
@@ -78,7 +82,7 @@ export default function Comidas() {
     <main className="dashboard nu-page">
       <BottomNav />
 
-      <section className="welcome nu-head">
+      <section className="welcome nu-head" id="objetivo">
         <h2>Comidas</h2>
         <button type="button" className="secondary nu-goal-btn" onClick={() => setGoalOpen(true)}>
           Objetivo

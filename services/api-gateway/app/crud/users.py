@@ -38,6 +38,7 @@ _PROFILE_FIELDS = (
     "birth_year",
     "sex",
     "goal",
+    "primary_sport",
     "sports",
     "body_fat_pct",
     "fitness_level",

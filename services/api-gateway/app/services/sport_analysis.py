@@ -44,6 +44,16 @@ SPORT_ALIASES = {
     "muay thai": "martial_arts",
     "mma": "martial_arts",
     "artes marciales": "martial_arts",
+    "triatlon": "triathlon",
+    "triathlon": "triathlon",
+    "duatlon": "triathlon",
+    "running": "triathlon",
+    "correr": "triathlon",
+    "carrera": "triathlon",
+    "cycling": "triathlon",
+    "ciclismo": "triathlon",
+    "swimming": "triathlon",
+    "natacion": "triathlon",
 }
 
 
@@ -93,7 +103,9 @@ def _catalog_item(row: ExerciseCatalog) -> CatalogItem:
 def main_sport(user: User, requested: str | None) -> str:
     if requested:
         return requested
-    for sport in user.sports or []:
+    for sport in [user.primary_sport, *(user.sports or [])]:
+        if not sport:
+            continue
         alias = SPORT_ALIASES.get(normalize_exercise_name(str(sport)))
         if alias:
             return alias
@@ -241,6 +253,7 @@ async def analyze_user(
     sport: str | None,
     weeks: int,
     basis: str,
+    routine_id: uuid.UUID | None = None,
 ) -> SportAnalysisOut:
     profile = sport_registry.sport_profile(main_sport(user, sport))
     rows = await catalog_crud.list_visible(session, user.id)
@@ -255,7 +268,13 @@ async def analyze_user(
         session, user.id, datetime.now(UTC) - timedelta(weeks=weeks)
     )
     gym_sessions = [ts for ts in sessions if ts.workout_exercises]
-    routine = await routine_crud.get_active_routine(session, user.id)
+    routine = (
+        await routine_crud.get_routine(session, user.id, routine_id)
+        if routine_id
+        else await routine_crud.get_active_routine(session, user.id)
+    )
+    if routine_id:
+        basis = "rutina"  # se analiza esa rutina concreta, no el historial
     routine_work, sport_days = _routine_work(routine, by_id) if routine else ([], set())
 
     use_history = basis == "historial" or (

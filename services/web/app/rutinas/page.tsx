@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { BottomNav } from "@/components/BottomNav";
 import { RoutineEditor } from "@/components/rutinas/RoutineEditor";
+import { RoutineAnalysis } from "@/components/rutinas/RoutineAnalysis";
 import { RoutineReviewModal } from "@/components/rutinas/RoutineReviewModal";
 import { DAY_TYPE_LABELS } from "@/lib/routines";
 import type { Routine } from "@/lib/types";
@@ -22,6 +23,7 @@ export default function Rutinas() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [analyzing, setAnalyzing] = useState<Routine | null>(null);
   const [reviewing, setReviewing] = useState<Routine | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -208,6 +210,9 @@ export default function Rutinas() {
                   <button type="button" className="secondary" onClick={() => setReviewing(routine)}>
                     Evaluar
                   </button>
+                  <button type="button" className="secondary" onClick={() => setAnalyzing(routine)}>
+                    Analizar
+                  </button>
                   <button type="button" className="secondary" disabled={busy} onClick={() => duplicate(routine)}>
                     Duplicar
                   </button>
@@ -224,6 +229,15 @@ export default function Rutinas() {
             </div>
           </section>
         </>
+      )}
+
+      {analyzing && (
+        <RoutineAnalysis
+          token={token}
+          routineId={analyzing.id}
+          routineName={analyzing.name}
+          onClose={() => setAnalyzing(null)}
+        />
       )}
 
       {reviewing && (

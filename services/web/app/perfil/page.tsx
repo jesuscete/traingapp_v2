@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ChevronRight, Target } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
@@ -180,6 +182,19 @@ export default function Perfil() {
           {profile?.email ? ` · ${profile.email}` : ""}
         </p>
       </section>
+
+      <div className="hub-grid hub-list">
+        <Link className="hub-tile" href="/objetivos">
+          <span className="hub-icon">
+            <Target size={22} strokeWidth={1.75} aria-hidden="true" />
+          </span>
+          <span className="hub-text">
+            <span className="hub-label">Objetivos y deporte</span>
+            <span className="hub-sub">Deporte principal y metas</span>
+          </span>
+          <ChevronRight className="hub-chev" size={18} strokeWidth={1.75} aria-hidden="true" />
+        </Link>
+      </div>
 
       {loading ? (
         <p className="muted">Cargando...</p>

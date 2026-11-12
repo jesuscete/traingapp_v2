@@ -10,6 +10,7 @@ import { FatigueExplainSheet } from "@/components/gym/FatigueExplainSheet";
 import { HelpTip } from "@/components/HelpTip";
 import { RadarChart } from "@/components/RadarChart";
 import { aggregateByZone } from "@/lib/format";
+import { kcal as fmtKcal, todayISO } from "@/lib/nutrition";
 import {
   translateDiscipline,
   translateInsightMessage,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/labels";
 import type {
   Fatigue,
+  NutritionDay,
   StatsCardio,
   StatsOverview,
   StatsProgress,
@@ -39,6 +41,7 @@ export default function Dashboard() {
   const [progress, setProgress] = useState<StatsProgress | null>(null);
   const [fatigue, setFatigue] = useState<Fatigue | null>(null);
   const [explainGroup, setExplainGroup] = useState<string | null>(null);
+  const [mealsToday, setMealsToday] = useState<NutritionDay | null>(null);
   const [chatText, setChatText] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +94,14 @@ export default function Dashboard() {
       .statsFatigue(token)
       .then(setFatigue)
       .catch(() => setFatigue(null));
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    api
+      .getNutritionDay(token, todayISO())
+      .then(setMealsToday)
+      .catch(() => setMealsToday(null));
   }, [token]);
 
   async function handleChat(event: React.FormEvent) {    event.preventDefault();
@@ -165,6 +176,31 @@ export default function Dashboard() {
           </span>
         </div>
       </section>
+
+      <Link className="m4-prep-card nu-today-card" href="/comidas">
+        <strong>Hoy comido</strong>
+        {mealsToday ? (
+          <>
+            <span className="nu-today-line">
+              {fmtKcal(mealsToday.totals.kcal)}
+              {mealsToday.target ? ` / ${fmtKcal(mealsToday.target.targetKcal)}` : ""} kcal
+              {mealsToday.target && (
+                <span className="muted">
+                  {" "}
+                  · {mealsToday.target.targetKcal - mealsToday.totals.kcal >= 0 ? "quedan" : "te pasas"}{" "}
+                  {fmtKcal(Math.abs(mealsToday.target.targetKcal - mealsToday.totals.kcal))}
+                </span>
+              )}
+            </span>
+            <span className="muted">
+              Proteína {Math.round(mealsToday.totals.proteinG)}
+              {mealsToday.target ? ` / ${Math.round(mealsToday.target.proteinG)}` : ""} g →
+            </span>
+          </>
+        ) : (
+          <span className="muted">Registra tus comidas y controla tus kcal →</span>
+        )}
+      </Link>
 
       <Link className="m4-prep-card" href="/preparacion">
         <strong>Preparación para boxeo</strong>

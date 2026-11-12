@@ -816,7 +816,7 @@ export type ExerciseAlternative = {
   isCustom: boolean;
 };
 
-export type AgentActionType = "save_workout" | "swap_exercise" | "add_exercise";
+export type AgentActionType = "save_workout" | "swap_exercise" | "add_exercise" | "save_meal";
 
 export type AgentAction = {
   id: string;
@@ -830,4 +830,154 @@ export type AgentReply = {
   reply: string;
   actions: AgentAction[];
   toolsUsed: string[];
+};
+
+/* ===== M5 nutrición ===== */
+export type MealName = "desayuno" | "comida" | "merienda" | "cena" | "snack";
+export type MealMethod = "pesada" | "etiqueta" | "racion" | "rapida" | "ia";
+export type FoodSource = "off" | "usda" | "custom" | "ia";
+export type GoalType = "perder" | "mantener" | "ganar" | "corte";
+
+export type Serving = { label: string; grams: number };
+
+export type Food = {
+  id: string;
+  source: FoodSource;
+  name: string;
+  brand: string | null;
+  barcode: string | null;
+  kcal100g: number;
+  protein100g: number;
+  carbs100g: number;
+  fat100g: number;
+  fiber100g: number | null;
+  sugar100g: number | null;
+  servings: Serving[];
+  isCustom: boolean;
+};
+
+export type FoodInput = {
+  name: string;
+  brand?: string | null;
+  barcode?: string | null;
+  kcal100g: number;
+  protein100g: number;
+  carbs100g: number;
+  fat100g: number;
+  fiber100g?: number | null;
+  sugar100g?: number | null;
+  servings?: Serving[];
+};
+
+export type MealEntryInput = {
+  eatenOn: string;
+  meal: MealName;
+  foodId?: string;
+  grams?: number;
+  servings?: number;
+  servingLabel?: string;
+  name?: string;
+  kcal?: number;
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+  method?: MealMethod;
+  note?: string;
+};
+
+export type MealEntry = {
+  id: string;
+  eatenOn: string;
+  meal: string;
+  foodId: string | null;
+  name: string;
+  grams: number | null;
+  kcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  fiberG: number | null;
+  method: string;
+  note: string | null;
+};
+
+export type ProposedItem = {
+  name: string;
+  grams: number;
+  kcal100g: number;
+  protein100g: number;
+  carbs100g: number;
+  fat100g: number;
+  fiber100g: number | null;
+  source: "usda" | "ia" | "custom" | "off";
+  foodId: string | null;
+};
+
+export type ParseMealResult = {
+  items: ProposedItem[];
+  unresolved: string[];
+  source: "llm" | "fallback";
+};
+
+export type NutritionTotals = {
+  kcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  fiberG: number;
+};
+
+export type NutritionTarget = {
+  bmr: number;
+  dailyActivityKcal: number;
+  trainingKcal: number;
+  maintenanceKcal: number;
+  adjustmentKcal: number;
+  targetKcal: number;
+  proteinG: number;
+  fatG: number;
+  carbsG: number;
+  fiberG: number;
+  rateKgWeek: number;
+  notes: string[];
+};
+
+export type NutritionDay = {
+  day: string;
+  meals: Record<string, MealEntry[]>;
+  totals: NutritionTotals;
+  exactKcal: number;
+  estimatedKcal: number;
+  target: NutritionTarget | null;
+  missingProfile: string[];
+  weightKg: number | null;
+};
+
+export type NutritionWeek = {
+  days: { day: string; kcal: number; proteinG: number; targetKcal: number | null }[];
+  averageKcal: number;
+  averageTargetKcal: number | null;
+};
+
+export type NutritionGoal = {
+  goal: GoalType;
+  targetWeightKg?: number | null;
+  targetDate?: string | null;
+  rateKgWeek?: number | null;
+  proteinGPerKg: number;
+  activityFactor: number;
+};
+
+export type WeightSeries = {
+  points: { measuredOn: string; weightKg: number }[];
+  latestKg: number | null;
+  average7dKg: number | null;
+  changeWeekKg: number | null;
+};
+
+export type MealTemplate = {
+  id: string;
+  name: string;
+  items: { foodId: string; grams: number }[];
+  kcal: number;
 };

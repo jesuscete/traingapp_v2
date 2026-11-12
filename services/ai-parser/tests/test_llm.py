@@ -123,3 +123,35 @@ def test_parse_with_llm_builds_endurance_metrics_only_for_endurance() -> None:
     assert result.metrics == {"kind": "endurance", "distanceMeters": 10000.0, "avgHeartRate": 150}
     gym = '{"discipline":"gym","distanceMeters":10000}'
     assert asyncio.run(parse_with_llm(FakeProvider(gym), "x")).metrics is None
+
+
+def test_parse_meal_with_llm_and_fallback(monkeypatch) -> None:
+    from app.llm import factory
+    from app.parsing.meal import parse_meal, parse_meal_with_llm
+
+    content = (
+        '{"items":[{"name":"pan de molde","name_en":"bread, white","grams":60,'
+        '"kcal_100g":265,"protein_100g":9,"carbs_100g":49,"fat_100g":3.2},'
+        '{"name":"crema de cacahuete","name_en":"peanut butter, smooth","grams":32,'
+        '"kcal_100g":588,"protein_100g":25,"carbs_100g":20,"fat_100g":50}],'
+        '"unresolved":["tamaño de la tostada"]}'
+    )
+    result = asyncio.run(parse_meal_with_llm(FakeProvider(content), "2 tostadas con crema"))
+    assert [i.name for i in result.items] == ["pan de molde", "crema de cacahuete"]
+    assert result.items[1].grams == 32 and result.source == "llm"
+
+    monkeypatch.setattr(factory, "get_provider", lambda: FakeProvider(error=True))
+    fallback = asyncio.run(parse_meal("algo"))
+    assert (fallback.source, fallback.items) == ("fallback", [])
+
+
+def test_parse_meal_endpoint_route() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.core.config import settings
+    from app.main import app
+
+    client = TestClient(app)
+    headers = {"X-Internal-Token": settings.internal_token}
+    assert client.post("/parse/meal", json={"text": "x"}).status_code == 401
+    assert client.post("/parse/meal", json={"text": ""}, headers=headers).status_code == 422

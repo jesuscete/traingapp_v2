@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.analytics import fatigue as fatigue_analytics
 from app.analytics.catalog import normalize_exercise_name
 from app.chat.drafts import save_draft
+from app.core.meal import fetch_meal_parse
 from app.core.parser import fetch_draft
 from app.crud import catalog as catalog_crud
 from app.crud import routine as routine_crud
@@ -23,7 +24,13 @@ from app.crud import stats as stats_crud
 from app.models import Routine, User
 from app.schemas.agent import AgentActionOut
 from app.schemas.chat import WorkoutDraftOut
-from app.services import fatigue_engine, fatigue_input, sport_analysis, sport_registry
+from app.services import (
+    fatigue_engine,
+    fatigue_input,
+    nutrition,
+    sport_analysis,
+    sport_registry,
+)
 
 ACTION_PREFIX = "agent:action"
 ACTION_TTL_SECONDS = 3600
@@ -319,6 +326,46 @@ async def _log_workout(ctx: ToolContext, args: dict[str, object]) -> ToolResult:
     )
 
 
+MEALS_ES = ("desayuno", "comida", "merienda", "cena", "snack")
+
+
+async def _nutrition_today(ctx: ToolContext, args: dict[str, object]) -> ToolResult:
+    day = await nutrition.day_summary(ctx.session, ctx.user, datetime.now(UTC).date())
+    target = day.target
+    return ToolResult({
+        "fecha": day.day.isoformat(),
+        "consumido": day.totals.model_dump(),
+        "kcal_exactas": day.exact_kcal,
+        "kcal_estimadas": day.estimated_kcal,
+        "objetivo": target.model_dump() if target else None,
+        "faltan_datos_perfil": day.missing_profile,
+        "comidas": {m: [f"{e.name} {e.grams or ''}g {e.kcal:.0f} kcal" for e in items]
+                    for m, items in day.meals.items() if items},
+    })
+
+
+async def _log_meal(ctx: ToolContext, args: dict[str, object]) -> ToolResult:
+    text = _str_arg(args, "texto")
+    meal = str(args.get("comida") or "").strip().lower()
+    if meal not in MEALS_ES:
+        raise ToolArgumentError(f"'comida' debe ser una de {MEALS_ES}")
+    parsed = await fetch_meal_parse(text)
+    proposal = await nutrition.parse_meal_text(ctx.session, ctx.user.id, parsed)
+    if not proposal.items:
+        raise ToolArgumentError("No he podido interpretar la comida; pide más detalle")
+    kcal = sum(i.kcal_100g * i.grams / 100 for i in proposal.items)
+    summary = f"Añadir a {meal}: " + ", ".join(f"{i.name} {i.grams:g} g" for i in proposal.items)
+    summary += f" (~{kcal:.0f} kcal, estimado)"
+    action_id = await _store_action(ctx, {
+        "type": "save_meal", "meal": meal, "eaten_on": datetime.now(UTC).date().isoformat(),
+        "items": [i.model_dump(mode="json") for i in proposal.items], "summary": summary,
+    })
+    return ToolResult(
+        {"propuesta": summary, "sin_resolver": proposal.unresolved},
+        AgentActionOut(id=action_id, type="save_meal", summary=summary),
+    )
+
+
 async def _active_routine(ctx: ToolContext) -> Routine:
     routine = await routine_crud.get_active_routine(ctx.session, ctx.user.id)
     if routine is None:
@@ -440,6 +487,22 @@ TOOLS: dict[str, Tool] = {
             "Ejercicios parecidos para sustituir uno.",
             _alternatives,
             {"exercise_id": "id del ejercicio"},
+        ),
+        Tool(
+            "ver_nutricion",
+            "Comidas de hoy, kcal y macros consumidos frente al objetivo (incluye el gasto "
+            "de los entrenos) y qué parte es exacta o estimada.",
+            _nutrition_today,
+        ),
+        Tool(
+            "registrar_comida",
+            "Prepara el registro de una comida descrita en lenguaje natural (estimación).",
+            _log_meal,
+            {
+                "texto": "lo que ha comido, tal cual",
+                "comida": "desayuno|comida|merienda|cena|snack",
+            },
+            writes=True,
         ),
         Tool(
             "registrar_entreno",

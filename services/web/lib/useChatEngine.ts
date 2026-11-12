@@ -46,6 +46,9 @@ export const TOOL_LABELS: Record<string, string> = {
   buscar_ejercicios: "catálogo",
   alternativas_ejercicio: "alternativas",
   registrar_entreno: "registro de entreno",
+  registrar_comida: "registro de comida",
+  ver_nutricion: "tu nutrición de hoy",
+  perfil_deporte: "perfil de tu deporte",
   sustituir_en_rutina: "sustitución",
   anadir_a_rutina: "añadir a rutina",
 };

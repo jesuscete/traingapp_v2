@@ -1,5 +1,17 @@
 import type {
   AgentReply,
+  Food,
+  FoodInput,
+  MealEntry,
+  MealEntryInput,
+  MealName,
+  MealTemplate,
+  NutritionDay,
+  NutritionGoal,
+  NutritionWeek,
+  ParseMealResult,
+  ProposedItem,
+  WeightSeries,
   CatalogExercise,
   ExerciseAlternative,
   SportAnalysis,
@@ -470,5 +482,118 @@ export const api = {
     request<void>("/agent/conversation", {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  /* ===== M5 nutrición ===== */
+  searchFoods: (token: string, q: string) =>
+    request<Food[]>(`/nutrition/foods/search?q=${encodeURIComponent(q)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  getFoodByBarcode: (token: string, digits: string) =>
+    request<Food>(`/nutrition/foods/barcode/${encodeURIComponent(digits)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  createFood: (token: string, body: FoodInput) =>
+    request<Food>("/nutrition/foods", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  addMealEntry: (token: string, body: MealEntryInput) =>
+    request<MealEntry>("/nutrition/meals", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  updateMealEntry: (
+    token: string,
+    id: string,
+    body: { meal?: MealName; grams?: number; note?: string },
+  ) =>
+    request<MealEntry>(`/nutrition/meals/${id}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  deleteMealEntry: (token: string, id: string) =>
+    request<void>(`/nutrition/meals/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  parseMeal: (token: string, text: string) =>
+    request<ParseMealResult>("/nutrition/meals/parse", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ text }),
+    }),
+  saveMealBatch: (
+    token: string,
+    body: { eatenOn: string; meal: MealName; items: ProposedItem[]; method?: string },
+  ) =>
+    request<MealEntry[]>("/nutrition/meals/batch", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  getNutritionDay: (token: string, day: string) =>
+    request<NutritionDay>(`/nutrition/day?day=${day}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  getNutritionWeek: (token: string, end: string) =>
+    request<NutritionWeek>(`/nutrition/week?end=${end}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  getNutritionGoal: (token: string) =>
+    request<NutritionGoal>("/nutrition/goal", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  saveNutritionGoal: (token: string, body: NutritionGoal) =>
+    request<NutritionGoal>("/nutrition/goal", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  getWeight: (token: string, days = 90) =>
+    request<WeightSeries>(`/nutrition/weight?days=${days}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  addWeight: (token: string, body: { measuredOn: string; weightKg: number }) =>
+    request<WeightSeries>("/nutrition/weight", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  deleteWeight: (token: string, day: string) =>
+    request<void>(`/nutrition/weight/${day}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  listMealTemplates: (token: string) =>
+    request<MealTemplate[]>("/nutrition/templates", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  createMealTemplate: (
+    token: string,
+    body: { name: string; items: { foodId: string; grams: number }[] },
+  ) =>
+    request<MealTemplate>("/nutrition/templates", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  deleteMealTemplate: (token: string, id: string) =>
+    request<void>(`/nutrition/templates/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  applyMealTemplate: (
+    token: string,
+    id: string,
+    body: { eatenOn: string; meal: MealName },
+  ) =>
+    request<MealEntry[]>(`/nutrition/templates/${id}/apply`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
     }),
 };

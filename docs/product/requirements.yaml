@@ -1,6 +1,6 @@
 # Estado de requisitos — actualizar al cerrar cada hito del ROADMAP.
 # status: missing | partial | done   ·   depth: none | stub | basic | solid
-# Última revisión: 2026-11-12 (M0-M4 completados en feature/refactor)
+# Última revisión: 2026-11-12 (M0-M5 completados en feature/refactor)
 
 requirements:
   RF-01:
@@ -33,8 +33,8 @@ requirements:
     milestone: M4
   RF-05:
     title: Nutrición y calorías
-    status: missing
-    depth: none
+    status: done
+    depth: solid
     have: [gasto energético kcal.py]
     missing: [modelo de alimentos/ingesta, cliente API externa, UI, balance ingesta-gasto]
     milestone: M5

@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     chat_draft_ttl_seconds: int = 1800
     live_session_ttl_seconds: int = 14400
     plan_session_ttl_seconds: int = 3600
+    # Bases de alimentos (M5). USDA: clave gratuita en api.data.gov (DEMO_KEY = muy limitada).
+    off_base_url: str = "https://es.openfoodfacts.org"
+    usda_base_url: str = "https://api.nal.usda.gov/fdc/v1"
+    usda_api_key: str = "DEMO_KEY"
+    food_api_timeout_seconds: float = 8
     # Base de las imágenes de free-exercise-db (rutas relativas del catálogo).
     exercise_image_base_url: str = (
         "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/"

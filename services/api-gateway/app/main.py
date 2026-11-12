@@ -10,6 +10,7 @@ from app.api import (
     gym,
     internal,
     live,
+    nutrition,
     profile,
     routine,
     sessions,
@@ -42,6 +43,7 @@ app.include_router(internal.router)
 app.include_router(stats.router)
 app.include_router(analysis.router)
 app.include_router(agent.router)
+app.include_router(nutrition.router)
 
 
 @app.get("/health", tags=["system"])

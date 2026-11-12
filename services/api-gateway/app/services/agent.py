@@ -14,7 +14,8 @@ from app.core import agent as agent_client
 from app.crud import routine as routine_crud
 from app.models import User
 from app.schemas.agent import AgentActionOut, AgentReplyOut
-from app.services import sport_analysis
+from app.schemas.nutrition import MealBatchIn
+from app.services import nutrition, sport_analysis
 from app.services.agent_tools import TOOLS, ToolArgumentError, ToolContext
 
 logger = logging.getLogger(__name__)
@@ -120,6 +121,12 @@ async def run_turn(
 
 async def confirm_action(session: AsyncSession, user: User, action: dict[str, object]) -> str:
     """Ejecuta una propuesta del agente ya confirmada por el usuario."""
+    if action["type"] == "save_meal":
+        batch = MealBatchIn.model_validate(
+            {"eaten_on": action["eaten_on"], "meal": action["meal"], "items": action["items"]}
+        )
+        await nutrition.add_batch(session, user.id, batch.eaten_on, batch.meal, batch.items, "ia")
+        return f"Hecho: {action['summary']}."
     routine_id = uuid.UUID(str(action["routine_id"]))
     routine = await routine_crud.get_routine(session, user.id, routine_id)
     if routine is None:

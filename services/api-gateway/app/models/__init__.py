@@ -6,6 +6,7 @@ from app.models.fatigue import (
     UserMuscleCalibration,
 )
 from app.models.gym import SetEntry, WorkoutExercise, WorkoutSessionSummary, WorkoutSet
+from app.models.nutrition import BodyWeightLog, Food, MealEntry, MealTemplate, NutritionGoal
 from app.models.prompt import DisciplineTrainingPrompt, TrainingPrompt
 from app.models.routine import (
     Discipline,
@@ -18,6 +19,11 @@ from app.models.training import Exercise, TrainingSession
 from app.models.user import User
 
 __all__ = [
+    "BodyWeightLog",
+    "Food",
+    "MealEntry",
+    "MealTemplate",
+    "NutritionGoal",
     "UserFavoriteExercise",
     "DailyMuscleDoms",
     "DailyReadiness",

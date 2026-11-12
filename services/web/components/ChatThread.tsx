@@ -35,6 +35,7 @@ function ActionCard({
   const open = action.status === "pending" || action.status === "busy";
   return (
     <div className={`m4-action m4-action-${action.status}`}>
+      {action.type === "save_meal" && <p className="m4-action-tag">Guardar comida</p>}
       <p className="m4-action-summary">{action.summary}</p>
       {open && (
         <div className="m4-action-btns">
@@ -43,7 +44,7 @@ function ActionCard({
             disabled={action.status === "busy"}
             onClick={() => onConfirm(messageId, action.id)}
           >
-            {action.status === "busy" ? "Procesando…" : "Confirmar"}
+            {action.status === "busy" ? "Procesando…" : action.type === "save_meal" ? "Guardar comida" : "Confirmar"}
           </button>
           <button
             type="button"
@@ -58,6 +59,7 @@ function ActionCard({
       {action.status === "done" && (
         <p className="ok m4-action-note">
           {action.result ?? "Hecho."}{" "}
+          {action.type === "save_meal" && <Link href="/comidas">Ver comidas →</Link>}
           {action.sessionId && (
             <Link href={`/entrenos/${action.sessionId}`}>Ver entreno →</Link>
           )}

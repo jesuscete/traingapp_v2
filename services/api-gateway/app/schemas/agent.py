@@ -17,7 +17,7 @@ class AgentActionOut(CamelModel):
     """Propuesta pendiente de confirmar por el usuario."""
 
     id: str
-    type: Literal["save_workout", "swap_exercise", "add_exercise"]
+    type: Literal["save_workout", "swap_exercise", "add_exercise", "save_meal"]
     summary: str
     # save_workout se confirma con /chat/confirm usando este requestId.
     request_id: uuid.UUID | None = None

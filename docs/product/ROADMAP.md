@@ -12,8 +12,8 @@
 | M3 Multideporte y fatiga | ✅ |
 | M4 Deporte principal y agente | ✅ |
 | M4.1 Mejoras encontradas | ✅ fatiga, 1RM y registro de deporte |
-| **M5 Nutrición** | ⏳ **Siguiente** |
-| M5.1 Prueba en el móvil en local y depuración | ⏳ |
+| M5 Nutrición | ✅ |
+| **M5.1 Prueba en el móvil en local y depuración** | ⏳ **Siguiente** |
 | M6 Garmin (antes "Strava/Garmin") | ⏳ |
 | M7 Blindaje | 🟡 parcial |
 | M8 App móvil | 🟡 parcial (PWA, `-Lan`, `-Https`) |
@@ -21,7 +21,7 @@
 - **Código:** todo en `feature/refactor` (último commit `eefde7f`). Pasan los tests del gateway (254) y de ai-parser (64); `ruff`, `mypy` y `tsc` sin errores.
 - **Pendiente tuyo:**
   - Probar M1-M4 en el móvil.
-  - Instalar mkcert para `-Https`.
+  - mkcert (`-Https`) pasa al backlog: primero, la app funcional en uso real.
   - Hacer merge de tus cambios locales en `fatiga/page.tsx`, `MuscleChart.tsx` y `routineReview.ts`.
 
 ## Principios de orden
@@ -93,19 +93,16 @@ Origen: [ANALISIS_TECNICO.md](ANALISIS_TECNICO.md) §2, §3 y §5.
 
 **Backlog de mejoras** (después de M5): progresión sugerida (doble progresión), kcal por FC (Keytel), retirar `chat/plan_session.py`, imágenes sin conexión, sesiones mixtas.
 
-### M5 · Nutrición (RF-05) ⏳ siguiente
-- [x] Decisión de la API (análisis §6): **Open Food Facts** (código de barras y marcas de España) + **USDA** (genéricos) + **Claude** para el texto libre. Caché local de lo consultado.
-- [ ] **Modelo:** `food` (por 100 g + raciones típicas), `meal_entry` (copia de los macros y **método de registro**: pesada / etiqueta / rápida / estimada por IA), `meal_template` (mis platos), `body_weight_log`, `nutrition_goal`.
-- [ ] **Cálculos:** Mifflin-St Jeor + actividad + kcal de los entrenos reales → objetivo diario. Macros: proteína 1,6-2,2 g/kg, grasa mínima ~0,8 g/kg, resto en hidratos. Balance diario y semanal.
-- [ ] **Objetivos:** perder, mantener, ganar y **corte hacia una categoría de peso** (peso objetivo y fecha).
-- [ ] **Dos formas de registrar:**
-  - **Precisa (manual):** gramos exactos de báscula sobre un alimento; alimento propio con los valores de la etiqueta; añadido rápido de kcal y macros.
-  - **Rápida (IA):** texto libre ("2 tostadas con crema de cacahuete") → propuesta de alimentos y gramos que el usuario ajusta y confirma.
-  - Se muestra qué parte de las kcal del día es exacta y cuál estimada.
-- [ ] Búsqueda (recientes y favoritos primero), **código de barras** (la cámara necesita `-Https`/mkcert en el móvil; si no, el código se teclea), mis platos.
-- [ ] Agente: `registrar_comida` (propone, el usuario confirma) y `ver_nutricion`.
-- [ ] Web: pantalla Comidas (anillos de kcal y macros por comida), añadir comida (4 vías), peso con tendencia, tarjeta de balance en el dashboard, objetivos en el perfil.
-- Valores por defecto acordados: kcal + proteína + hidratos + grasa + fibra (azúcar si viene en el producto); comidas: desayuno, comida, merienda, cena y snack.
+### M5 · Nutrición (RF-05) ✅ (2026-11-12, [ADR-006](decisions/ADR-006-nutricion.md))
+- [x] Fuentes: Open Food Facts (código de barras y marcas de España) + USDA (genéricos) + Claude (texto libre), con caché local.
+- [x] Modelo: `food`, `meal_entry` (copia de macros + método), `meal_template`, `body_weight_log`, `nutrition_goal`. Migración `a2b3c4d5e6f7`.
+- [x] Objetivo diario: Mifflin-St Jeor × actividad + **kcal reales de los entrenos** ± objetivo (perder, mantener, ganar o **corte hacia una categoría**), con límites de seguridad; macros por g/kg.
+- [x] **Registro exacto** (gramos de báscula, etiqueta) y **estimado** (raciones, rápido, texto libre con IA); el día separa las kcal exactas de las estimadas.
+- [x] Texto libre: Claude estima → se contrasta con tus alimentos y con USDA, **solo si las kcal son plausibles** (corregido: el café con leche salía con 1.098 kcal).
+- [x] Búsqueda, código de barras, mis platos, peso con media de 7 días, agente (`registrar_comida` propone, `ver_nutricion`).
+- [x] Web: `/comidas` (anillo de kcal, macros, exacto/estimado, comidas, añadir por 5 vías, peso, objetivo) y tarjeta "Hoy comido" en el dashboard.
+- [x] Clave de USDA configurada en `.env` local.
+- [ ] Probarlo en el móvil (M5.1). El escáner con cámara (mkcert/HTTPS) queda en el backlog; mientras tanto, el código de barras se teclea.
 
 ### M5.1 · Prueba en el móvil en local y depuración ⏳
 - [ ] `dev-up.ps1 -Lan` / `-Https` en el móvil: registrar comidas y entrenos, chat, preparación, fatiga.
@@ -137,6 +134,7 @@ Tu objetivo: que la IA te organice y te guíe sin tener que ser experto. Las mej
   - "Hoy me noto descansado / sigo cansado" y las agujetas por músculo al día siguiente de entrenar.
   - Ya existe la base: readiness diaria, mapa corporal de agujetas (`daily_muscle_doms`) y calibración personal (`user_muscle_calibration`). Falta preguntarte de forma proactiva (por ejemplo, el agente o una notificación tras cada entreno) y usar tus respuestas para ajustar automáticamente las constantes de recuperación por músculo.
 - **Fatiga que aprende:** comparar lo que predice el modelo con lo que reportas y corregir τ y pesos con el tiempo (ADR-005, consecuencias).
+- **HTTPS local con mkcert** (`dev-up.ps1 -Https` ya preparado): escanear códigos de barras con la cámara, instalar la PWA a pantalla completa y mantener la pantalla encendida durante el entreno. Pasos: `winget install FiloSottile.mkcert`, `mkcert -install` y poner `rootCA.pem` en el móvil.
 - **Fase de temporada y calendario de combate** en tu perfil, para que los objetivos cambien solos (precompetición, descarga).
 
 ## Dependencias
@@ -150,4 +148,4 @@ M1..M6 ─► M7 ─► M8
 M1 solo usa el LLM para traducir las instrucciones (un lote único). Si M2 no está listo, se hace con el CLI a mano.
 
 ## Siguiente paso
-**M5** comidas → **M5.1** prueba en el móvil en local → M6, M7, M8.
+**M5.1**: probar todo en el móvil en local y depurar errores → después M6, M7 y M8.

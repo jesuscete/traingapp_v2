@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.analytics import calibration as calibration_analytics
 from app.analytics import computations, met
 from app.analytics import fatigue as fatigue_analytics
+from app.analytics import insights as insights_analytics
 from app.analytics import load as load_analytics
 from app.analytics.catalog_seed import zone_of
 from app.api.deps import get_current_user
@@ -18,6 +19,7 @@ from app.crud.disciplines import load_catalog
 from app.models import User
 from app.schemas import stats as stats_schemas
 from app.services import fatigue_engine
+from app.services import nutrition as nutrition_service
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -572,4 +574,83 @@ async def stats_progress(
     return stats_schemas.ProgressOut(
         **asdict(computations.compute_progress(current, previous)),
         period_days=days,
+    )
+
+
+@router.get("/home", response_model=stats_schemas.HomeOut)
+async def stats_home(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    hour: Annotated[int | None, Query(ge=0, le=23)] = None,
+    today: date | None = None,
+) -> stats_schemas.HomeOut:
+    """Resumen de inicio: avisos deterministas y semana por deporte (minutos, no kg)."""
+    day = today or datetime.now(UTC).date()
+    records = await stats_crud.sessions_in_range(
+        session, current_user.id, _period_start(30)
+    )
+    week_start = day - timedelta(days=6)
+    prev_start = week_start - timedelta(days=7)
+    by_sport: dict[str, stats_schemas.WeekSportOut] = {}
+    week_minutes = prev_minutes = 0
+    for record in records:
+        performed = record.performed_at.date()
+        minutes = record.duration_minutes or 0
+        if week_start <= performed <= day:
+            week_minutes += minutes
+            item = by_sport.setdefault(
+                record.discipline,
+                stats_schemas.WeekSportOut(
+                    discipline=record.discipline, sessions=0, minutes=0, distance_m=0
+                ),
+            )
+            item.sessions += 1
+            item.minutes += minutes
+            item.distance_m += record.distance_meters or 0
+        elif prev_start <= performed < week_start:
+            prev_minutes += minutes
+
+    fatigue = await fatigue_engine.simulate_fatigue(session, current_user.id)
+    state = fatigue.projected(0)
+    groups = fatigue_analytics.MUSCLE_GROUPS
+    tired = sorted(
+        (g for g in groups if state[g] >= fatigue_analytics.WARN_LEVEL),
+        key=lambda g: -state[g],
+    )
+    overloaded = [
+        g
+        for g in groups
+        if fatigue_analytics.acute_chronic_ratio(fatigue.impulses, g, fatigue.today)
+        >= fatigue_analytics.ACWR_HIGH
+    ]
+    nutrition_day = await nutrition_service.day_summary(session, current_user, day)
+    goal = await nutrition_service.get_goal(session, current_user.id)
+    weight = await nutrition_service.weight_history(session, current_user.id, 14, day)
+
+    facts = insights_analytics.InsightFacts(
+        today=day,
+        session_dates=[r.performed_at.date() for r in records],
+        week_minutes=week_minutes,
+        prev_week_minutes=prev_minutes,
+        tired_groups=tired,
+        overloaded_groups=overloaded,
+        meals_today=sum(len(m) for m in nutrition_day.meals.values()),
+        protein_g=nutrition_day.totals.protein_g,
+        protein_target_g=nutrition_day.target.protein_g if nutrition_day.target else None,
+        goal=goal.goal,
+        weight_change_week_kg=weight.change_week_kg,
+        hour=hour,
+    )
+    week_dates = facts.session_dates
+    return stats_schemas.HomeOut(
+        insights=[
+            stats_schemas.HomeInsightOut(**asdict(i))
+            for i in insights_analytics.build_insights(facts)
+        ],
+        days_since_last=insights_analytics.days_since_last(facts),
+        week_sessions=insights_analytics.sessions_last_week(facts),
+        week_minutes=week_minutes,
+        prev_week_minutes=prev_minutes,
+        week_by_sport=sorted(by_sport.values(), key=lambda s: -s.minutes),
+        active_days=sorted({d for d in week_dates if week_start <= d <= day}),
     )

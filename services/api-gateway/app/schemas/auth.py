@@ -35,6 +35,7 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
+    remember: bool = False  # «Recuérdame»: token de larga duración
 
 
 class UserOut(CamelModel):

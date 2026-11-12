@@ -82,7 +82,7 @@ export function AvatarMenu() {
               Ejercicios
             </Link>
             <Link className="avatar-menu-link" href="/perfil">
-              Perfil
+              Objetivos y perfil
             </Link>
             <Link className="avatar-menu-link" href="/configuracion">
               Configuración

@@ -1036,6 +1036,8 @@ export type ActivitySamples = {
   cadence?: (number | null)[];
   power?: (number | null)[];
   distance?: (number | null)[];
+  lat?: (number | null)[];
+  lon?: (number | null)[];
 };
 
 export type ActivityLap = {
@@ -1052,4 +1054,28 @@ export type ActivityDetail = {
   summary: ActivitySummary | null;
   samples: ActivitySamples;
   laps: ActivityLap[];
+};
+
+export type HomeInsight = {
+  kind: "good" | "warning" | "rest" | "tip";
+  title: string;
+  detail: string;
+  href: string | null;
+};
+
+export type HomeSportWeek = {
+  discipline: string;
+  sessions: number;
+  minutes: number;
+  distanceM: number;
+};
+
+export type HomeSummary = {
+  insights: HomeInsight[];
+  daysSinceLast: number | null;
+  weekSessions: number;
+  weekMinutes: number;
+  prevWeekMinutes: number;
+  weekBySport: HomeSportWeek[];
+  activeDays: string[];
 };

@@ -35,6 +35,60 @@ export function secondaryMuscles(ex: CatalogExercise): string[] {
     .map(([key]) => key);
 }
 
+/** Alias en inglés de los ejercicios canónicos (nombre solo en español) para buscar "bench press". */
+const ENGLISH_ALIASES: Record<string, string> = {
+  "press banca": "bench press barbell",
+  "press inclinado": "incline bench press",
+  "press declinado": "decline bench press",
+  aperturas: "chest fly flyes",
+  "fondos en paralelas": "dips parallel bars",
+  "press con mancuernas": "dumbbell bench press",
+  "press militar": "overhead press military press shoulder press",
+  "elevaciones laterales": "lateral raise",
+  "elevaciones frontales": "front raise",
+  "elevaciones posteriores": "rear delt raise reverse fly",
+  "remo con barra": "barbell row bent over row",
+  "remo mancuerna": "dumbbell row one arm row",
+  "remo sentado": "seated cable row",
+  dominadas: "pull up pullup chin up",
+  "jalon al pecho": "lat pulldown",
+  "face pull": "face pull",
+  "peso muerto": "deadlift",
+  "peso muerto rumano": "romanian deadlift rdl",
+  sentadilla: "squat back squat",
+  "sentadilla frontal": "front squat",
+  prensa: "leg press",
+  zancadas: "lunges lunge",
+  "extension de cuadriceps": "leg extension",
+  "curl femoral": "leg curl hamstring curl",
+  "hip thrust": "hip thrust glute bridge",
+  gemelos: "calf raise calves",
+  "elevacion de talones": "calf raise",
+  "curl biceps": "biceps curl bicep curl",
+  "curl martillo": "hammer curl",
+  "press frances": "skull crusher lying triceps extension",
+  "push down": "triceps pushdown",
+  "extensiones de triceps": "triceps extension",
+  plancha: "plank",
+  crunches: "crunch abs",
+  "russian twist": "russian twist",
+  "elevacion de piernas": "leg raise",
+  "press empujadora": "push press",
+  "landmine press": "landmine press",
+  "cargada de potencia": "power clean",
+  "balanceo con kettlebell": "kettlebell swing",
+  "saltos al cajon": "box jump",
+  "saltos verticales": "vertical jump",
+  "lanzamiento de balon medicinal": "medicine ball throw slam",
+  sprints: "sprint",
+};
+
+export function searchText(ex: CatalogExercise): string {
+  const display = exerciseDisplayName(ex);
+  const alias = ENGLISH_ALIASES[normalizeText(ex.name)] ?? "";
+  return normalizeText(`${display} ${ex.name} ${alias}`);
+}
+
 export type IndexedExercise = {
   ex: CatalogExercise;
   haystack: string;
@@ -46,7 +100,7 @@ export type IndexedExercise = {
 export function indexExercises(list: CatalogExercise[]): IndexedExercise[] {
   return list.map((ex) => ({
     ex,
-    haystack: normalizeText(`${exerciseDisplayName(ex)} ${ex.name}`),
+    haystack: searchText(ex),
     primary: primaryMuscles(ex),
     equipment: ex.details?.equipment?.trim() || null,
     category: ex.details?.category?.trim() || null,

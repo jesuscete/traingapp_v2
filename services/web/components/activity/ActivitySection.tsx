@@ -9,6 +9,7 @@ import {
   type ChartBand,
   type ChartPoint,
 } from "@/components/activity/ActivityChart";
+import { RouteMap, routePoints } from "@/components/activity/RouteMap";
 import { api } from "@/lib/api";
 import { formatDistance } from "@/lib/metrics";
 import type { ActivityDetail, ActivitySummary } from "@/lib/types";
@@ -164,6 +165,8 @@ export function ActivitySection({
     });
   }, [times, samples?.speed, kind]);
 
+  const route = useMemo(() => routePoints(samples?.lat, samples?.lon), [samples?.lat, samples?.lon]);
+
   const altPoints = useMemo<ChartPoint[]>(() => {
     if (!times || !samples?.altitude) return [];
     const alt = samples.altitude;
@@ -217,6 +220,7 @@ export function ActivitySection({
   return (
     <section className="block act-section">
       <h2>Actividad</h2>
+      {route.length > 1 && <RouteMap points={route} />}
       <div className="stats act-stats">
         {distance != null && distance > 0 && (
           <Stat label="Distancia" value={formatDistance(distance)} />

@@ -5,6 +5,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
+from app.analytics.catalog_seed import zone_of
+
 SetType = Literal[
     "normal", "calentamiento", "dropset", "al_fallo", "amrap", "isometrico"
 ]
@@ -118,6 +120,13 @@ class MuscleImpactOut(CamelModel):
     muscle_group: str
     activation: float
     zone: str = "other"
+
+    @model_validator(mode="after")
+    def _derive_zone(self) -> "MuscleImpactOut":
+        # Sin zona explícita se deduce del grupo (antes caía todo en "otros").
+        if self.zone == "other":
+            self.zone = zone_of(self.muscle_group)
+        return self
 
 
 class GymSessionOut(CamelModel):

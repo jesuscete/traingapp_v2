@@ -125,6 +125,9 @@ def _kcal(act: ParsedActivity, user: User) -> float | None:
     return None
 
 
+STREAM_KEYS = ("t", "hr", "speed", "altitude", "cadence", "power", "distance", "lat", "lon")
+
+
 async def _existing(
     session: AsyncSession, user_id: uuid.UUID, fingerprint: str
 ) -> TrainingSession | None:
@@ -264,7 +267,7 @@ async def import_file(
             session_id=record.id,
             samples={
                 key: [getattr(s, key) for s in samples]
-                for key in ("t", "hr", "speed", "altitude", "cadence", "power", "distance")
+                for key in STREAM_KEYS
                 if any(getattr(s, key) is not None for s in samples)
             },
             laps=[lap.__dict__ for lap in act.laps],

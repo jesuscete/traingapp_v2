@@ -128,8 +128,8 @@ export default function Fatiga() {
       <BottomNav />
 
       <p>
-        <Link className="back-link" href="/analisis">
-          ← Volver a Análisis
+        <Link className="back-link" href="/progreso">
+          ← Volver a Progreso
         </Link>
       </p>
 

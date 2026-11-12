@@ -242,3 +242,27 @@ class FatigueExplainOut(CamelModel):
     group: str
     fatigue: float
     sessions: list[FatigueContributionOut]
+
+
+class HomeInsightOut(CamelModel):
+    kind: str  # good | warning | rest | tip
+    title: str
+    detail: str
+    href: str | None = None
+
+
+class WeekSportOut(CamelModel):
+    discipline: str
+    sessions: int
+    minutes: int
+    distance_m: float
+
+
+class HomeOut(CamelModel):
+    insights: list[HomeInsightOut]
+    days_since_last: int | None
+    week_sessions: int
+    week_minutes: int
+    prev_week_minutes: int
+    week_by_sport: list[WeekSportOut]
+    active_days: list[date]  # días con entreno en los últimos 7

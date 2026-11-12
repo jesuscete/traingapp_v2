@@ -18,10 +18,13 @@ def verify_password(password: str, hashed: str) -> bool:
         return False
 
 
-def create_access_token(subject: str) -> str:
-    expire = datetime.now(UTC) + timedelta(
-        minutes=settings.access_token_expire_minutes
+def create_access_token(subject: str, remember: bool = False) -> str:
+    lifetime = (
+        timedelta(days=settings.remember_token_expire_days)
+        if remember
+        else timedelta(minutes=settings.access_token_expire_minutes)
     )
+    expire = datetime.now(UTC) + lifetime
     payload: dict[str, Any] = {"sub": subject, "exp": expire}
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 

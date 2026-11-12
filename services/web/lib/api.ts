@@ -1,4 +1,5 @@
 import type {
+  HomeSummary,
   ActivityDetail,
   AgentReply,
   ImportResult,
@@ -60,6 +61,18 @@ export class ApiError extends Error {
   }
 }
 
+/** Token caducado o inválido: se borra y se vuelve al login. */
+function expireSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem("traingapp_token");
+    localStorage.removeItem("traingapp_user");
+  } catch {
+    // almacenamiento no disponible
+  }
+  if (window.location.pathname !== "/") window.location.replace("/");
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
@@ -74,6 +87,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         ? detail.map((item: { msg?: string }) => item.msg ?? String(item)).join("; ")
         : String(detail);
     }
+    if (response.status === 401 && !path.startsWith("/auth/")) expireSession();
     throw new ApiError(message, response.status);
   }
   if (response.status === 204) {
@@ -108,7 +122,7 @@ async function uploadActivity(
   return (await response.json()) as ImportResult;
 }
 
-export type Credentials = { email: string; password: string };
+export type Credentials = { email: string; password: string; remember?: boolean };
 export type Registration = Credentials & { name: string };
 
 export const api = {
@@ -258,6 +272,11 @@ export const api = {
     request<Energy>("/stats/energy", {
       headers: { Authorization: `Bearer ${token}` },
     }),
+  getHome: (token: string, hour: number, today: string) =>
+    request<HomeSummary>(
+      `/stats/home?hour=${hour}&today=${encodeURIComponent(today)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    ),
   statsFatigue: (token: string, projectDays = 0) =>
     request<Fatigue>(`/stats/fatigue?projectDays=${projectDays}`, {
       headers: { Authorization: `Bearer ${token}` },

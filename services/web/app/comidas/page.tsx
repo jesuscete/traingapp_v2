@@ -139,7 +139,11 @@ export default function Comidas() {
         </>
       )}
 
-      {token && <WeightCard token={token} day={day} onChanged={load} />}
+      {token && (
+        <div id="peso">
+          <WeightCard token={token} day={day} onChanged={load} />
+        </div>
+      )}
 
       {toast && <p className="nu-toast ok">{toast}</p>}
 

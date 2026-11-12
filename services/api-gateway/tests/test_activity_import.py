@@ -161,3 +161,18 @@ def test_gpx_tcx_errors_and_max_hr_suggestion(client: TestClient) -> None:
     assert bad["status"] == "error"
     assert _import(client, headers, "vacio.fit", b"").status_code == 422
     assert _import(client, headers, "x.doc", b"abc").json()["status"] == "error"
+
+
+def test_route_coordinates_are_stored(client: TestClient) -> None:
+    assert parse_gpx(_gpx(START)).samples[1].lat == pytest.approx(40.00027)
+    headers = _headers(client, "route@example.com")
+    result = _import(client, headers, "ruta.gpx", _gpx(START)).json()
+    samples = client.get(f"/activities/{result['sessionId']}", headers=headers).json()["samples"]
+    assert len(samples["lat"]) == len(samples["t"]) and samples["lon"][0] == -3.7
+
+
+def test_fit_semicircles_to_degrees() -> None:
+    from app.analytics.activity_file import _semicircles
+
+    assert _semicircles(477218588) == pytest.approx(40.0, abs=1e-5)
+    assert _semicircles(None) is None

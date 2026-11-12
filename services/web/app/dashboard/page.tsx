@@ -1,363 +1,225 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { api } from "@/lib/api";
+import { BodyMap } from "@/components/BodyMap";
 import { BottomNav } from "@/components/BottomNav";
-import { FatigueExplainSheet } from "@/components/gym/FatigueExplainSheet";
-import { HelpTip } from "@/components/HelpTip";
-import { RadarChart } from "@/components/RadarChart";
-import { aggregateByZone } from "@/lib/format";
-import { kcal as fmtKcal, todayISO } from "@/lib/nutrition";
-import {
-  translateDiscipline,
-  translateInsightMessage,
-  translateMuscleGroup,
-  translateZone,
-} from "@/lib/labels";
+import { WeekCard } from "@/components/home/WeekCard";
+import { formatDuration } from "@/lib/format";
+import { translateDiscipline } from "@/lib/labels";
+import { kcal as fmtKcal, shortDate, todayISO } from "@/lib/nutrition";
 import type {
   Fatigue,
+  HomeInsight,
+  HomeSummary,
   NutritionDay,
-  StatsCardio,
-  StatsOverview,
-  StatsProgress,
-  StatsVolume,
+  SessionSummary,
   User,
 } from "@/lib/types";
+import { useToken } from "@/lib/useToken";
 
-const TOKEN_KEY = "traingapp_token";
 const USER_KEY = "traingapp_user";
 
+const KIND_ICON: Record<HomeInsight["kind"], string> = {
+  good: "✓",
+  warning: "⚠",
+  rest: "💤",
+  tip: "💡",
+};
+
+const DISCIPLINE_ICON: Record<string, string> = {
+  gym: "🏋️",
+  boxing: "🥊",
+  running: "🏃",
+  cycling: "🚴",
+  swimming: "🏊",
+};
+
+function InsightRow({ item }: { item: HomeInsight }) {
+  const body = (
+    <>
+      <span aria-hidden="true">{KIND_ICON[item.kind]}</span>
+      <span>
+        <strong>{item.title}</strong>
+        <span className="d">{item.detail}</span>
+      </span>
+    </>
+  );
+  return item.href ? (
+    <Link className={`hm-insight ${item.kind}`} href={item.href}>
+      {body}
+    </Link>
+  ) : (
+    <div className={`hm-insight ${item.kind}`}>{body}</div>
+  );
+}
+
+function KcalRing({ value, target }: { value: number; target: number }) {
+  const r = 34;
+  const c = 2 * Math.PI * r;
+  const pct = target > 0 ? Math.min(1, value / target) : 0;
+  return (
+    <div className="hm-ring">
+      <svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true">
+        <circle cx="42" cy="42" r={r} fill="none" stroke="var(--border)" strokeWidth="8" />
+        <circle
+          cx="42"
+          cy="42"
+          r={r}
+          fill="none"
+          stroke={value > target ? "var(--warning)" : "var(--accent)"}
+          strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={`${c * pct} ${c}`}
+          transform="rotate(-90 42 42)"
+        />
+      </svg>
+      <div className="hm-ring-label">
+        <b>{fmtKcal(value)}</b>
+        <span className="muted">kcal</span>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
-  const router = useRouter();
-  const [token, setToken] = useState<string | null>(null);
+  const token = useToken();
   const [user, setUser] = useState<User | null>(null);
-  const [overview, setOverview] = useState<StatsOverview | null>(null);
-  const [volume, setVolume] = useState<StatsVolume | null>(null);
-  const [volumeWeek, setVolumeWeek] = useState<StatsVolume | null>(null);
-  const [cardio, setCardio] = useState<StatsCardio | null>(null);
-  const [progress, setProgress] = useState<StatsProgress | null>(null);
+  const [home, setHome] = useState<HomeSummary | null>(null);
   const [fatigue, setFatigue] = useState<Fatigue | null>(null);
-  const [explainGroup, setExplainGroup] = useState<string | null>(null);
   const [mealsToday, setMealsToday] = useState<NutritionDay | null>(null);
-  const [chatText, setChatText] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
+  const [recent, setRecent] = useState<SessionSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem(TOKEN_KEY);
-    if (!stored) {
-      router.replace("/");
-      return;
-    }
-    setToken(stored);
-    const storedUser = localStorage.getItem(USER_KEY);
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        setUser(null);
-      }
-    }
-    loadAll(stored);
-  }, [router]);
-
-  const loadAll = useCallback(async (accessToken: string) => {
-    setLoading(true);
     try {
-      const [o, v, vw, c, p] = await Promise.all([
-        api.statsOverview(accessToken),
-        api.statsVolume(accessToken),
-        api.statsVolume(accessToken, 7),
-        api.statsCardio(accessToken),
-        api.statsProgress(accessToken),
-      ]);
-      setOverview(o);
-      setVolume(v);
-      setVolumeWeek(vw);
-      setCardio(c);
-      setProgress(p);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar datos");
-    } finally {
-      setLoading(false);
+      const stored = localStorage.getItem(USER_KEY);
+      if (stored) setUser(JSON.parse(stored));
+    } catch {
+      setUser(null);
     }
   }, []);
 
   useEffect(() => {
     if (!token) return;
     api
-      .statsFatigue(token)
-      .then(setFatigue)
-      .catch(() => setFatigue(null));
-  }, [token]);
-
-  useEffect(() => {
-    if (!token) return;
+      .getHome(token, new Date().getHours(), todayISO())
+      .then(setHome)
+      .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar datos"));
+    api.statsFatigue(token).then(setFatigue).catch(() => setFatigue(null));
+    api.getNutritionDay(token, todayISO()).then(setMealsToday).catch(() => setMealsToday(null));
     api
-      .getNutritionDay(token, todayISO())
-      .then(setMealsToday)
-      .catch(() => setMealsToday(null));
+      .listSessions(token, { page: 1, pageSize: 5 })
+      .then((p) => setRecent(p.items))
+      .catch(() => setRecent([]));
   }, [token]);
 
-  async function handleChat(event: React.FormEvent) {    event.preventDefault();
-    if (!token) return;
-    setMessage(null);
-    setError(null);
-    try {
-      await api.sendChat(token, chatText);
-      setChatText("");
-      setMessage("Entrenamiento enviado a la IA. Procesando...");
-      setTimeout(() => loadAll(token), 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al enviar el chat");
-    }
-  }
+  const bodyPoints = useMemo(
+    () =>
+      (fatigue?.muscles ?? []).map((m) => ({
+        muscleGroup: m.muscleGroup,
+        value: Math.max(0, Math.min(1, m.fatigue / 100)),
+      })),
+    [fatigue?.muscles],
+  );
 
-  const disciplines = overview?.byDiscipline ?? [];
-  const maxGroupVolume = volumeWeek?.byMuscleGroup[0]?.volumeKg ?? 0;
-  const radarData = aggregateByZone(
-    volumeWeek?.byMuscleGroup ?? [],
-    (g) => g.volumeKg,
-  ).map((point) => ({ ...point, label: translateZone(point.label) }));
+  const target = mealsToday?.target ?? null;
 
   return (
     <main className="dashboard">
       <BottomNav />
 
       <section className="welcome">
-        <h2>
-          Hola{user?.name ? `, ${user.name}` : ""} 👋
-        </h2>
-        <p className="subtitle">Resumen de tu semana</p>
+        <h2>Hola{user?.name ? `, ${user.name}` : ""} 👋</h2>
       </section>
 
-      <section className="stats">
-        <div className="stat-card">
-          <span className="stat-label">
-            <HelpTip tip="Suma de kilos levantados en la última semana (series × repeticiones × peso).">
-              Volumen semanal
-            </HelpTip>
-          </span>
-          <span className="stat-value">
-            {Math.round(volumeWeek?.totalVolumeKg ?? 0)} kg
-          </span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">
-            <HelpTip tip="Número de entrenamientos registrados en los últimos 30 días.">
-              Sesiones (30d)
-            </HelpTip>
-          </span>
-          <span className="stat-value">{overview?.totalSessions ?? "—"}</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">
-            <HelpTip tip="Media de sesiones registradas por semana.">
-              Adherencia
-            </HelpTip>
-          </span>
-          <span className="stat-value">
-            {overview ? `${overview.sessionsPerWeek.toFixed(1)}/sem` : "—"}
-          </span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-label">
-            <HelpTip tip="Kilos totales levantados en los últimos 90 días.">
-              Volumen (90d)
-            </HelpTip>
-          </span>
-          <span className="stat-value">
-            {Math.round(volume?.totalVolumeKg ?? 0)} kg
-          </span>
-        </div>
-      </section>
+      {error && <p className="error">{error}</p>}
 
-      <Link className="m4-prep-card nu-today-card" href="/comidas">
-        <strong>Hoy comido</strong>
-        {mealsToday ? (
-          <>
-            <span className="nu-today-line">
-              {fmtKcal(mealsToday.totals.kcal)}
-              {mealsToday.target ? ` / ${fmtKcal(mealsToday.target.targetKcal)}` : ""} kcal
-              {mealsToday.target && (
-                <span className="muted">
-                  {" "}
-                  · {mealsToday.target.targetKcal - mealsToday.totals.kcal >= 0 ? "quedan" : "te pasas"}{" "}
-                  {fmtKcal(Math.abs(mealsToday.target.targetKcal - mealsToday.totals.kcal))}
-                </span>
-              )}
-            </span>
-            <span className="muted">
-              Proteína {Math.round(mealsToday.totals.proteinG)}
-              {mealsToday.target ? ` / ${Math.round(mealsToday.target.proteinG)}` : ""} g →
-            </span>
-          </>
-        ) : (
-          <span className="muted">Registra tus comidas y controla tus kcal →</span>
-        )}
-      </Link>
-
-      <Link className="m4-prep-card" href="/preparacion">
-        <strong>Preparación para boxeo</strong>
-        <span className="muted">Diagnóstico de tu entrenamiento y qué ejercicios añadir →</span>
-      </Link>
-
-      {loading ? (
-        <p className="muted">Cargando...</p>
-      ) : (
-        <>
-          {disciplines.length > 0 && (
-            <section className="block">
-              <h2>Disciplinas practicadas</h2>
-              <div className="chips">
-                {disciplines.map((item) => (
-                  <span key={item.discipline} className="chip">
-                    {translateDiscipline(item.discipline)} · {item.sessions}{" "}
-                    {item.sessions === 1 ? "sesión" : "sesiones"}
-                  </span>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {fatigue && fatigue.muscles.length > 0 && (
-            <section className="block">
-              <h2>Fatiga por músculo</h2>
-              <p className="muted m3-hint">Toca un músculo para ver por qué está fatigado.</p>
-              <div className="bars">
-                {[...fatigue.muscles]
-                  .sort((a, b) => b.fatigue - a.fatigue)
-                  .slice(0, 8)
-                  .map((m) => (
-                    <button
-                      key={m.muscleGroup}
-                      type="button"
-                      className="m3-fatigue-row"
-                      onClick={() => setExplainGroup(m.muscleGroup)}
-                    >
-                      <span className="bar-label">{translateMuscleGroup(m.muscleGroup)}</span>
-                      <div className="bar-track">
-                        <div
-                          className={`bar-fill fatigue-${m.level}`}
-                          style={{ width: `${Math.max(0, Math.min(100, m.fatigue))}%` }}
-                        />
-                      </div>
-                      <span className="bar-value">{Math.round(m.fatigue)}</span>
-                    </button>
-                  ))}
-              </div>
-            </section>
-          )}
-
-          <section className="home-grid">
-            {radarData.length >= 3 && (
-              <div className="block">
-                <h2>Carga por grupo muscular (7d)</h2>
-                <RadarChart data={radarData} />
-              </div>
-            )}
-
-            <div className="block">
-              <h2>Registrar entreno</h2>
-              <form className="chat" onSubmit={handleChat}>
-                <input
-                  type="text"
-                  placeholder='Ej: "5x5 press banca 80kg" o "clase de boxeo de 1h30m"'
-                  value={chatText}
-                  onChange={(e) => setChatText(e.target.value)}
-                  required
-                />
-                <button type="submit">Registrar</button>
-              </form>
-              {message && <p className="ok">{message}</p>}
-              {error && <p className="error">{error}</p>}
-            </div>
-          </section>
-
-          {progress && progress.insights.length > 0 && (
-            <section className="block insights">
-              <h2>Observaciones</h2>
-              {progress.insights.map((insight) => (
-                <p
-                  key={insight.kind}
-                  className={`insight insight-${insight.severity}`}
-                >
-                  {translateInsightMessage(insight.message)}
-                </p>
-              ))}
-            </section>
-          )}
-
-          {volume && volume.byMuscleGroup.length > 0 && (
-            <section className="block">
-              <h2>Volumen por grupo muscular (90d)</h2>
-              <div className="bars">
-                {volume.byMuscleGroup.map((group) => (
-                  <div key={group.muscleGroup} className="bar-row">
-                    <span className="bar-label">
-                      {translateMuscleGroup(group.muscleGroup)}
-                    </span>
-                    <div className="bar-track">
-                      <div
-                        className="bar-fill"
-                        style={{
-                          width: `${
-                            maxGroupVolume
-                              ? (group.volumeKg / volume.byMuscleGroup[0].volumeKg) *
-                                100
-                              : 0
-                          }%`,
-                        }}
-                      />
-                    </div>
-                    <span className="bar-value">
-                      {Math.round(group.volumeKg)} kg · {group.sessions}{" "}
-                      {group.sessions === 1 ? "ses" : "ses"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {cardio && cardio.byDiscipline.length > 0 && (
-            <section className="block">
-              <h2>Cardio</h2>
-              <table className="plain">
-                <thead>
-                  <tr>
-                    <th>Disciplina</th>
-                    <th>Sesiones</th>
-                    <th>Duración total</th>
-                    <th>Media</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cardio.byDiscipline.map((item) => (
-                    <tr key={item.discipline}>
-                      <td>{translateDiscipline(item.discipline)}</td>
-                      <td>{item.sessions}</td>
-                      <td>{item.durationMinutes} min</td>
-                      <td>{item.avgDurationMinutes} min</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          )}
-        </>
+      {home && home.insights.length > 0 && (
+        <section className="hm-card">
+          <h2>Avisos</h2>
+          {home.insights.map((item, i) => (
+            <InsightRow key={`${item.title}-${i}`} item={item} />
+          ))}
+        </section>
       )}
-      {explainGroup && token && (
-        <FatigueExplainSheet
-          token={token}
-          group={explainGroup}
-          onClose={() => setExplainGroup(null)}
-        />
+
+      {bodyPoints.length > 0 && (
+        <section className="hm-card">
+          <h2>
+            Fatiga muscular <Link href="/fatiga">Ver detalle</Link>
+          </h2>
+          <BodyMap points={bodyPoints} showLegend={false} />
+        </section>
+      )}
+
+      {home && (
+        <section className="hm-card">
+          <h2>Esta semana</h2>
+          <WeekCard home={home} />
+        </section>
+      )}
+
+      <section className="hm-card">
+        <h2>
+          Comida de hoy <Link href="/comidas">Abrir</Link>
+        </h2>
+        {mealsToday ? (
+          <Link className="hm-food" href="/comidas">
+            {target ? (
+              <KcalRing value={mealsToday.totals.kcal} target={target.targetKcal} />
+            ) : (
+              <b>{fmtKcal(mealsToday.totals.kcal)} kcal</b>
+            )}
+            <div className="hm-food-bars">
+              {target && (
+                <p className="muted">
+                  {target.targetKcal - mealsToday.totals.kcal >= 0 ? "Quedan" : "Te pasas"}{" "}
+                  {fmtKcal(Math.abs(target.targetKcal - mealsToday.totals.kcal))} de{" "}
+                  {fmtKcal(target.targetKcal)} kcal
+                </p>
+              )}
+              <p>
+                Proteína {Math.round(mealsToday.totals.proteinG)}
+                {target ? ` / ${Math.round(target.proteinG)}` : ""} g
+              </p>
+              {target && (
+                <div className="bar-track">
+                  <div
+                    className="bar-fill"
+                    style={{
+                      width: `${Math.min(100, (mealsToday.totals.proteinG / Math.max(1, target.proteinG)) * 100)}%`,
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </Link>
+        ) : (
+          <Link className="muted" href="/comidas">
+            Registra tus comidas y controla tus kcal →
+          </Link>
+        )}
+      </section>
+
+      {recent.length > 0 && (
+        <section className="hm-card">
+          <h2>
+            Actividad reciente <Link href="/entrenos">Ver todo</Link>
+          </h2>
+          {recent.map((s) => (
+            <Link key={s.id} className="hm-recent" href={`/entrenos/${s.id}`}>
+              <span>
+                {DISCIPLINE_ICON[s.discipline] ?? "🏅"} {translateDiscipline(s.discipline)}
+              </span>
+              <span className="muted">
+                {shortDate(s.performedAt.slice(0, 10))} · {formatDuration(s.durationMinutes)}
+              </span>
+            </Link>
+          ))}
+        </section>
       )}
     </main>
   );

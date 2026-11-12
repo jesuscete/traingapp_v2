@@ -40,7 +40,7 @@ if ($Https) { $Lan = $true }
 if ($Lan) {
     if (-not $LanIp) {
         $LanIp = (Get-NetIPAddress -AddressFamily IPv4 |
-            Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" -and $_.PrefixOrigin -in @("Dhcp", "Manual") } |
+            Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" -and $_.PrefixOrigin -in @("Dhcp", "Manual") -and $_.InterfaceAlias -notmatch "vEthernet|WSL|Hyper-V|VirtualBox|VMware|Loopback" } |
             Select-Object -First 1).IPAddress
     }
     if (-not $LanIp) { throw "No se pudo detectar la IP local. Pásala con -LanIp." }

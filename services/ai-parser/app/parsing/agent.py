@@ -12,13 +12,21 @@ from pydantic import BaseModel, Field
 
 from app.llm import factory
 from app.llm.base import LLMProvider
-from app.llm.errors import LLMError
+from app.llm.errors import LLMError, LLMUsageLimitError
 from app.llm.structured import generate, user_data, with_user_data_rule
 from app.schemas.agent import AgentMessage, AgentStepRequest, AgentStepResponse, AgentTool
 
 logger = logging.getLogger(__name__)
 
-UNAVAILABLE = "El asistente de IA no está disponible ahora mismo. Inténtalo en un rato."
+UNAVAILABLE = (
+    "El asistente de IA no está disponible ahora mismo. Mientras tanto puedes registrar "
+    "el entreno en «Entrenar → Registrar actividad» o importar el archivo del reloj."
+)
+USAGE_LIMIT = (
+    "Se ha alcanzado el límite de uso de Claude (se renueva cada pocas horas). Mientras "
+    "tanto puedes registrar el entreno en «Entrenar → Registrar actividad», importar el "
+    "archivo del reloj o apuntar comidas en «Comidas»; todo lo demás funciona sin IA."
+)
 
 SYSTEM_PROMPT = """
 Eres el entrenador personal de la app TrainingApp: preparación física para el deporte
@@ -113,6 +121,9 @@ async def agent_step(body: AgentStepRequest) -> AgentStepResponse:
         return AgentStepResponse(source="fallback", action="responder", message=UNAVAILABLE)
     try:
         return await step_with_llm(provider, body)
+    except LLMUsageLimitError:
+        logger.warning("Agent step: límite de uso del proveedor (%s)", provider.name)
+        return AgentStepResponse(source="fallback", action="responder", message=USAGE_LIMIT)
     except LLMError:
         logger.exception("Agent step failed (%s)", provider.name)
         return AgentStepResponse(source="fallback", action="responder", message=UNAVAILABLE)

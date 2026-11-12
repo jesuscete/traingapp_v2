@@ -28,6 +28,8 @@ class Sample:
     cadence: float | None = None
     power: float | None = None
     distance: float | None = None  # m acumulados
+    lat: float | None = None  # grados (mapa del recorrido)
+    lon: float | None = None
 
 
 @dataclass(frozen=True)
@@ -113,6 +115,18 @@ def _f(value: object | None) -> float | None:
         return None
 
 
+SEMICIRCLE_TO_DEG = 180 / 2**31
+
+
+def _semicircles(value: object | None) -> float | None:
+    """FIT guarda la posición en semicírculos (int32); se pasa a grados."""
+    number = _f(value)
+    if number is None:
+        return None
+    degrees = number * SEMICIRCLE_TO_DEG if abs(number) > 180 else number
+    return round(degrees, 6)
+
+
 def _fit_lap(lap: dict[str, object], start: datetime) -> Lap:
     lap_start = lap.get("start")
     return Lap(
@@ -168,6 +182,8 @@ def parse_fit(data: bytes) -> ParsedActivity:
                                     "cadence": _f(_v(frame, "cadence")),
                                     "power": _f(_v(frame, "power")),
                                     "distance": _f(_v(frame, "distance")),
+                                    "lat": _semicircles(_v(frame, "position_lat")),
+                                    "lon": _semicircles(_v(frame, "position_long")),
                                 },
                             )
                         )
@@ -297,7 +313,15 @@ def parse_gpx(data: bytes) -> ParsedActivity:
     for i, (ts, lat, lon, vals) in enumerate(raw):
         if i:
             distance += _haversine(raw[i - 1][1], raw[i - 1][2], lat, lon)
-        samples.append(Sample(t=(ts - start).total_seconds(), distance=round(distance, 1), **vals))
+        samples.append(
+            Sample(
+                t=(ts - start).total_seconds(),
+                distance=round(distance, 1),
+                lat=lat,
+                lon=lon,
+                **vals,
+            )
+        )
     duration = samples[-1].t
     sport_text = (_child_text(root, "type") or "").lower()
     act = ParsedActivity(
@@ -341,6 +365,8 @@ def parse_tcx(data: bytes) -> ParsedActivity:
                     cadence=_f(_child_text(tp, "Cadence")),
                     speed=_f(_child_text(tp, "Speed")),
                     power=_f(_child_text(tp, "Watts")),
+                    lat=_f(_child_text(tp, "LatitudeDegrees")),
+                    lon=_f(_child_text(tp, "LongitudeDegrees")),
                 )
             )
         if lap_start is not None and start is not None:

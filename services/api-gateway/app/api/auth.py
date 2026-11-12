@@ -36,5 +36,5 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
-    token = create_access_token(str(user.id))
+    token = create_access_token(str(user.id), remember=body.remember)
     return TokenOut(access_token=token, user=UserOut.model_validate(user))

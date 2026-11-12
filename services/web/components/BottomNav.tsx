@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { AvatarMenu } from "@/components/AvatarMenu";
-import { ChatWidget } from "@/components/ChatWidget";
 
 type Tab = {
   href: string;
@@ -14,10 +13,18 @@ type Tab = {
 
 const TABS: Tab[] = [
   { href: "/dashboard", label: "Inicio", match: ["/dashboard"] },
-  { href: "/entrenar", label: "Entrenar", match: ["/entrenar", "/registro", "/registrar"] },
-  { href: "/entrenos", label: "Historial", match: ["/entrenos"] },
-  { href: "/rutinas", label: "Rutinas", match: ["/rutinas", "/ejercicios"] },
-  { href: "/analisis", label: "Progreso", match: ["/analisis", "/fatiga", "/preparacion"] },
+  {
+    href: "/entrenar",
+    label: "Entrenar",
+    match: ["/entrenar", "/registrar", "/importar", "/rutinas", "/ejercicios"],
+  },
+  { href: "/comidas", label: "Comidas", match: ["/comidas"] },
+  {
+    href: "/progreso",
+    label: "Progreso",
+    match: ["/progreso", "/entrenos", "/analisis", "/fatiga", "/preparacion"],
+  },
+  { href: "/chat", label: "Coach", match: ["/chat"] },
 ];
 
 function isMatch(pathname: string, match: string[]): boolean {
@@ -42,7 +49,6 @@ export function BottomNav() {
         );
       })}
       <AvatarMenu />
-      <ChatWidget />
     </nav>
   );
 }

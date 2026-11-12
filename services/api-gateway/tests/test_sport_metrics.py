@@ -194,3 +194,14 @@ def test_update_gym_session_header_only(client: TestClient) -> None:
     assert ok.status_code == 200, ok.text
     assert (ok.json()["durationMinutes"], ok.json()["note"]) == (65, "Buen día")
     assert client.put(url, json={"metrics": BOXING_METRICS}, headers=headers).status_code == 422
+
+
+def test_non_gym_session_impacts_have_zones(client: TestClient) -> None:
+    headers = _headers(client, "zones@example.com")
+    created = client.post(
+        "/sessions", json=_session("running", durationMinutes=40, intensity=7), headers=headers
+    ).json()
+    impacts = client.get(f"/sessions/{created['id']}", headers=headers).json()["muscleImpacts"]
+    zones = {i["muscleGroup"]: i["zone"] for i in impacts}
+    assert zones and "other" not in zones.values()
+    assert zones.get("quadriceps") == "legs"

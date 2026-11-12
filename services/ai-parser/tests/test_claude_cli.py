@@ -82,3 +82,34 @@ def test_missing_executable_raises() -> None:
     provider = ClaudeCliProvider(executable="definitely-not-claude-xyz", timeout=5)
     with pytest.raises(LLMError):
         asyncio.run(provider.complete_json("s", "u", schema=SCHEMA))
+
+
+def test_failure_reason_is_read_from_stdout_envelope() -> None:
+    from app.llm.claude_cli import cli_failure
+    from app.llm.errors import LLMUsageLimitError
+
+    limit = json.dumps({"is_error": True, "result": "Claude AI usage limit reached"}).encode()
+    assert isinstance(cli_failure(1, limit, b""), LLMUsageLimitError)
+    status = json.dumps({"is_error": True, "result": "x", "api_error_status": 429}).encode()
+    assert isinstance(cli_failure(1, status, b""), LLMUsageLimitError)
+    other = cli_failure(1, json.dumps({"result": "Invalid model"}).encode(), b"")
+    assert not isinstance(other, LLMUsageLimitError) and "Invalid model" in str(other)
+    assert "boom" in str(cli_failure(2, b"no json", b"boom"))
+
+
+def test_agent_explains_usage_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.llm import factory
+    from app.llm.errors import LLMUsageLimitError
+    from app.parsing.agent import USAGE_LIMIT, agent_step
+    from app.schemas.agent import AgentMessage, AgentStepRequest
+
+    class Limited:
+        name = "claude_cli"
+
+        async def complete_json(self, *args: object, **kwargs: object) -> dict[str, object]:
+            raise LLMUsageLimitError("limit")
+
+    monkeypatch.setattr(factory, "get_provider", lambda: Limited())
+    body = AgentStepRequest(messages=[AgentMessage(role="usuario", content="hola")])
+    step = asyncio.run(agent_step(body))
+    assert step.message == USAGE_LIMIT and step.source == "fallback"

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
+import { BottomNav } from "@/components/BottomNav";
 import { ChatComposer } from "@/components/ChatComposer";
 import { ChatChips, ChatThread } from "@/components/ChatThread";
 import { GUIDED_PROMPT, STARTER_PROMPTS, useChatEngine } from "@/lib/useChatEngine";
@@ -36,6 +37,7 @@ export default function Chat() {
 
   return (
     <div className="chat-page">
+      <BottomNav />
       <header className="chat-page-header">
         <button
           type="button"

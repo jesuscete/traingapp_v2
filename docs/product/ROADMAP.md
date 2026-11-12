@@ -13,12 +13,12 @@
 | M4 Deporte principal y agente | ✅ |
 | M4.1 Mejoras encontradas | ✅ fatiga, 1RM y registro de deporte |
 | M5 Nutrición | ✅ |
-| **M5.1 Prueba en el móvil en local y depuración** | ⏳ **Siguiente** |
+| **M5.1 Prueba en el móvil y pulido** | 🟡 primera ronda de pulido hecha; falta validarla en el móvil |
 | M6 Actividades de reloj | 🟡 M6.1 (archivos) ✅ · M6.2 Garmin ⏳ · M6.3 global ⏳ |
 | M7 Blindaje | 🟡 parcial |
 | M8 App móvil | 🟡 parcial (PWA, `-Lan`, `-Https`) |
 
-- **Código:** todo en `feature/refactor` (último commit `eefde7f`). Pasan los tests del gateway (254) y de ai-parser (64); `ruff`, `mypy` y `tsc` sin errores.
+- **Código:** todo en `feature/refactor`. Pasan los tests del gateway (315) y de ai-parser (68); `ruff`, `mypy`, `tsc` y `next build` sin errores.
 - **Pendiente tuyo:**
   - Probar M1-M4 en el móvil.
   - mkcert (`-Https`) pasa al backlog: primero, la app funcional en uso real.
@@ -104,9 +104,19 @@ Origen: [ANALISIS_TECNICO.md](ANALISIS_TECNICO.md) §2, §3 y §5.
 - [x] Clave de USDA configurada en `.env` local.
 - [ ] Probarlo en el móvil (M5.1). El escáner con cámara (mkcert/HTTPS) queda en el backlog; mientras tanto, el código de barras se teclea.
 
-### M5.1 · Prueba en el móvil en local y depuración ⏳
-- [ ] `dev-up.ps1 -Lan` / `-Https` en el móvil: registrar comidas y entrenos, chat, preparación, fatiga.
-- [ ] Lista de errores y ajustes de UX; corregirlos antes de seguir.
+### M5.1 · Prueba en el móvil y pulido 🟡
+- [x] Ronda 1 de pulido tras el uso real (2026-11-12):
+  - **Navegación nueva:** Inicio · Entrenar · Comidas · Progreso · Coach. El perfil, los objetivos y la configuración están en el avatar.
+  - **Hubs:** Entrenar (gimnasio, registrar, importar, rutinas, ejercicios) y Progreso (avance semanal, historial, fatiga, preparación, carga, peso).
+  - **Inicio rediseñado:**
+    - Avisos deterministas (`GET /stats/home`): días sin registrar, fatiga alta (descanso), sobrecarga (ACWR), subida brusca de volumen, proteína, peso frente al objetivo y "vas bien".
+    - Mapa corporal de fatiga, semana por deporte (minutos, no kg), comida de hoy y actividad reciente.
+    - Fuera el volumen en kg semanal y de 90 días.
+  - **Mapa del recorrido** con OpenStreetMap (Leaflet). Se guardan lat/lon de FIT, GPX y TCX. Las actividades importadas antes no tienen coordenadas: hay que reimportarlas.
+  - **Fatiga en el detalle de la sesión:** se arregló que todo saliera como "otros" (zona deducida del grupo). Además, mapa corporal con alternativa de radar.
+  - **Búsqueda de ejercicios bilingüe:** "bench press" encuentra "Press banca" (alias en inglés de los ejercicios canónicos).
+  - **Chat:** se explica el límite de uso de Claude en lugar de "no disponible" sin motivo. El error se lee del JSON de stdout del CLI.
+- [ ] Probar la ronda 1 en el móvil y anotar la siguiente lista de ajustes.
 
 ### M6 · Actividades de reloj: archivos → Garmin → global (RF-07)
 **Decisión:** fuente = **el reloj** (archivo FIT/GPX/TCX y API de Garmin), no Strava. El acuerdo oficial de la API de Strava (2026) prohíbe usar sus datos en aplicaciones de IA (incluido el contexto de un LLM) y guardarlos más de 7 días, lo que choca con el historial y con el agente. Los datos que vienen directamente del reloj son del usuario y no tienen esas restricciones.
@@ -154,6 +164,12 @@ Tu objetivo: que la IA te organice y te guíe sin tener que ser experto. Las mej
   - Ya existe la base: readiness diaria, mapa corporal de agujetas (`daily_muscle_doms`) y calibración personal (`user_muscle_calibration`). Falta preguntarte de forma proactiva (por ejemplo, el agente o una notificación tras cada entreno) y usar tus respuestas para ajustar automáticamente las constantes de recuperación por músculo.
 - **Fatiga que aprende:** comparar lo que predice el modelo con lo que reportas y corregir τ y pesos con el tiempo (ADR-005, consecuencias).
 - **HTTPS local con mkcert** (`dev-up.ps1 -Https` ya preparado): escanear códigos de barras con la cámara, instalar la PWA a pantalla completa y mantener la pantalla encendida durante el entreno. Pasos: `winget install FiloSottile.mkcert`, `mkcert -install` y poner `rootCA.pem` en el móvil.
+- **CrossFit / Hyrox** (propuesta de arquitectura):
+  - **Modelo de WOD:** `details.wod = {format: amrap|emom|for_time|rounds|intervals, timeCapS, rounds, result (tiempo, rondas+reps), blocks:[{station|exercise, reps|distanceM|calories, weightKg}]}`, dentro de `training_session` con `discipline = crossfit|hyrox`.
+  - **Catálogo:** añadir las estaciones (SkiErg, remo, sled push/pull, burpee broad jump, farmers carry, sandbag lunges, wall balls, carrera de 1 km) y los movimientos de CrossFit (thruster, toes-to-bar, double unders…), con su `muscleMap`.
+  - **Fatiga:** cada bloque carga sus músculos como en el gimnasio (volumen relativo × implicación), y la parte de carrera o ergómetro por TRIMP o duración, igual que el resto de deportes. Sin reglas nuevas en el motor: solo datos.
+  - **Perfil de deporte:** `data/sport_profiles/hyrox.json` y `crossfit.json` (cualidades, test de referencia, semana tipo) para el agente y la preparación.
+  - **IA:** el parser y el agente reconocen el formato del WOD a partir del texto ("AMRAP 12: 10 wall balls, 10 burpees") y proponen el registro para que lo confirmes, como hoy.
 - **Fase de temporada y calendario de combate** en tu perfil, para que los objetivos cambien solos (precompetición, descarga).
 
 ## Dependencias

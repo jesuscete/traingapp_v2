@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -10,6 +11,13 @@ import { WorkoutSummary } from "@/components/workout/WorkoutSummary";
 import { useActiveWorkout } from "@/lib/useActiveWorkout";
 import { useToken } from "@/lib/useToken";
 import type { WorkoutResult } from "@/lib/workout/types";
+
+const HUB = [
+  { href: "/registrar", icon: "📝", label: "Registrar actividad" },
+  { href: "/importar", icon: "⌚", label: "Importar del reloj" },
+  { href: "/rutinas", icon: "📋", label: "Rutinas" },
+  { href: "/ejercicios", icon: "🏋️", label: "Ejercicios" },
+];
 
 export default function Entrenar() {
   const router = useRouter();
@@ -65,6 +73,16 @@ export default function Entrenar() {
     <>
       <BottomNav />
       <WorkoutStart token={token} onStart={start} />
+      <div className="dashboard hub-wrap">
+        <div className="hub-grid">
+          {HUB.map((t) => (
+            <Link key={t.href} className="hub-tile" href={t.href}>
+              <span className="hub-icon" aria-hidden="true">{t.icon}</span>
+              <span className="hub-label">{t.label}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
     </>
   );
 }

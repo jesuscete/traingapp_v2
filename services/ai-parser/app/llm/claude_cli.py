@@ -12,7 +12,7 @@ from pathlib import Path
 
 from app.core.config import settings
 from app.llm.base import JsonSchema
-from app.llm.errors import LLMError, LLMTimeoutError
+from app.llm.errors import LLMError, LLMTimeoutError, LLMUsageLimitError
 
 STDERR_EXCERPT = 500
 
@@ -79,9 +79,27 @@ class ClaudeCliProvider:
                 await process.wait()
                 raise LLMTimeoutError(f"claude no respondió en {self._timeout}s") from exc
         if process.returncode != 0:
-            detail = stderr.decode("utf-8", errors="replace")[:STDERR_EXCERPT]
-            raise LLMError(f"claude terminó con código {process.returncode}: {detail}")
+            raise cli_failure(process.returncode, stdout, stderr)
         return _structured_output(stdout)
+
+
+USAGE_LIMIT_HINTS = ("usage limit", "limit reached", "rate limit", "5-hour", "quota")
+
+
+def cli_failure(code: int | None, stdout: bytes, stderr: bytes) -> LLMError:
+    """El CLI explica el fallo en su JSON de salida (no en stderr): se rescata el motivo."""
+    detail = stderr.decode("utf-8", errors="replace").strip()
+    try:
+        envelope = json.loads(stdout)
+    except json.JSONDecodeError:
+        envelope = None
+    if isinstance(envelope, dict):
+        detail = str(envelope.get("result") or detail)
+        if envelope.get("api_error_status") == 429:
+            return LLMUsageLimitError(f"Límite de uso de Claude: {detail[:STDERR_EXCERPT]}")
+    if any(hint in detail.lower() for hint in USAGE_LIMIT_HINTS):
+        return LLMUsageLimitError(f"Límite de uso de Claude: {detail[:STDERR_EXCERPT]}")
+    return LLMError(f"claude terminó con código {code}: {detail[:STDERR_EXCERPT]}")
 
 
 def _structured_output(stdout: bytes) -> dict[str, object]:

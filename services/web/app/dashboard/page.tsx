@@ -5,10 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, BedDouble, CheckCircle2, ChevronRight, Lightbulb, type LucideIcon } from "lucide-react";
 
 import { api } from "@/lib/api";
-import { BodyMap } from "@/components/BodyMap";
 import { BottomNav } from "@/components/BottomNav";
 import { GoalKindIcon, countdownLabel } from "@/components/goals";
 import { DisciplineIcon } from "@/components/icons";
+import { MuscleBody } from "@/components/MuscleChart";
 import { PrepSummary } from "@/components/sport/PrepSummary";
 import { WeekCard } from "@/components/home/WeekCard";
 import { formatDuration } from "@/lib/format";
@@ -211,7 +211,7 @@ export default function Dashboard() {
           <h2>
             Fatiga muscular <Link href="/fatiga">Ver detalle</Link>
           </h2>
-          <BodyMap points={bodyPoints} showLegend={false} />
+          <MuscleBody points={bodyPoints} />
         </section>
       )}
 

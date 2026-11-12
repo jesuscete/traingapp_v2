@@ -91,7 +91,7 @@ function intensityFor(value: number): number {
   );
 }
 
-function MuscleBody({ points }: { points: BodyPoint[] }) {
+export function MuscleBody({ points }: { points: BodyPoint[] }) {
   const { colors, defaultFill, border } = useThemeColors();
 
   const { parts, unmapped } = useMemo(() => {

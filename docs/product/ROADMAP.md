@@ -207,6 +207,50 @@ Lo encontrado al usar la app instalada en el móvil (2026-11-12). Orden propuest
   - Se detecta por el tamaño de pantalla y si la app está instalada.
 - **Indicador «N» de Next.js** abajo a la izquierda: solo sale en modo desarrollo. Se oculta (`devIndicators: false`) y desaparecería del todo con una compilación de producción.
 
+### M10 · Arquitectura de IA: mínimo LLM, máximo dato ⏳ (aprobado como plan; sin empezar)
+Análisis del 2026-11-13. **Objetivo:** cada función resuelta con datos y reglas; el LLM solo para lo que de verdad lo necesita (texto libre, redactar). Que la app siga funcionando si la IA se encarece, se cae o hay que cambiar de proveedor.
+
+- **Problemas detectados:**
+  - **El agente gasta muchos tokens:**
+    - Hace de 3 a 5 llamadas por pregunta y en cada una reenvía las 13 herramientas.
+    - Guarda en el historial los resultados de las herramientas en bruto (hasta 12k caracteres).
+    - Usa ids UUID.
+  - **El LLM elige los ejercicios del plan** a partir de una lista enorme de nombres, sin tener en cuenta el perfil de deporte, la fatiga, el nivel ni el material.
+  - **Los splits se piden al LLM** aunque se resuelven con plantillas.
+  - **El conocimiento por deporte está en 4 sitios:** `training_prompt`, `sport_profiles`, `plan_stub` y alias repetidos.
+  - **Los patrones se deducen por nombre en cada petición.**
+  - **No se sabe qué material tiene el usuario.**
+- **Decisiones:**
+  - **Se queda:** Postgres como único almacén (el "grafo" de conocimiento va en tablas y arrays), Redis y Pydantic.
+  - **No se adopta por ahora:** LangGraph, Neo4j, pgvector, LlamaIndex ni Pydantic AI.
+  - **Cuándo revisar LangGraph:** si llegan flujos largos con pausas (plan de varias semanas que se reajusta) junto con cadenas de varios pasos de LLM, o tras pasar a la API de Anthropic.
+  - **Los handlers serán funciones tipadas,** para poder convertirlos en nodos de un grafo sin reescribirlos.
+- **Principios:**
+  - **Coste de las consultas:** una consulta a Postgres cuesta ~1 ms y es coste fijo de servidor; una llamada al LLM cuesta segundos y dinero por uso.
+  - **El LLM se usa al construir, no al ejecutar:** Claude ayuda a crear y revisar el mapeo de conocimiento (perfiles, etiquetas de ejercicios), que se guarda y se valida; en ejecución todo es determinista.
+  - **Tareas de IA pequeñas y con salida cerrada,** para que las pueda hacer un modelo barato o local.
+  - **El crítico de un plan es código** (un validador), no otro LLM.
+
+| Fase | Entregable | Riesgo |
+|---|---|---|
+| F0 · Medir | Tokens, latencia y proveedor por tarea; tests en verde como punto de partida | Muy bajo |
+| F1 · Contrato de IA | `AiTask` declarativo (esquema, nivel de modelo small/large, alternativa sin IA, máx. tokens); proveedor elegible por tarea | Bajo |
+| F2 · Limpieza del agente | Historial sin resultados en bruto, ids cortos, herramientas por intención, router previo para consultas triviales | Bajo |
+| F3 · Datos estructurados | Migración reversible: `patterns[]`, `equipment` y `level` en el catálogo; `users.equipment`; `injuries` estructurado; `goal_map` (objetivo → cualidades → patrones → zona) en los perfiles; `key_exercises` como ids; registro de deportes único | **Medio** (datos reales: copia de la BD antes) |
+| F4 · Recomendador | Objetivo → candidatos (SQL) → filtros (material, nivel, lesiones) → ranking (carencias, prioridad, fatiga, familiaridad) → prescripción → explicación por plantilla. Incluye "no tengo este material" → alternativas con el material disponible. Endpoint, herramienta del agente y tarjeta en la UI | Bajo |
+| F5 · Plan determinista | Ver abajo. Estado y versiones del plan en Postgres. Se retiran `plan_session.py`, `training_prompt`, `plan_stub` y `/plan/splits` **solo cuando el nuevo funcione igual o mejor** | **Medio** |
+| F6 · API de Anthropic | Adaptador del SDK con tool use nativo y *prompt caching*, elegible por tarea; el CLI sigue para uso personal | Bajo (cuando haga falta) |
+
+**Generador de planes determinista (F5):**
+1. **Presupuesto de tiempo:** días de gimnasio × minutos → series por sesión (tiempo por serie = reps × ~3-4 s + descanso según la zona; + calentamiento y transiciones).
+2. **Prioridades del usuario** (p. ej. atletismo: potencia de salto 5, fuerza de piernas 4, torso 1) → reparto de las series semanales por cualidad y patrón (`goal_map` + `pattern_targets` del perfil).
+3. **Huecos por día:** potencia y pliometría al principio, sin cargar el mismo grupo en días seguidos ni la víspera del deporte (`load_rules`, `conflict_groups`).
+4. **Ejercicios por puntuación** en cada hueco: encaje con el patrón, material, nivel, fatiga y recuperación, variedad y familiaridad.
+5. **Prescripción** por zona (`rep_zones_by_phase`): potencia 3-5 reps explosivas con descansos largos, fuerza 3-6, hipertrofia 8-12…
+6. **Validador:** series por músculo, ratio tirón/empuje y reglas de calendario. El LLM solo interviene, de forma opcional, para redactar la explicación o corregir si el validador falla, eligiendo entre candidatos ya filtrados.
+
+**Antes de empezar:** commit de lo pendiente en `feature/refactor`, rama `feature/ai-architecture`, copia de la BD antes de F3, tests en verde y un commit por fase. Primer bloque propuesto: F0 + F1 + F2.
+
 ## 🗂️ Backlog (ideas para cuando la app esté en uso, después de M8)
 Tu objetivo: que la IA te organice y te guíe sin tener que ser experto. Las mejoras saldrán de usar la app.
 

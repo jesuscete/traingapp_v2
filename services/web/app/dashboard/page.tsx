@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BedDouble, CheckCircle2, ChevronRight, Lightbulb, type LucideIcon } from "lucide-react";
+import { AlertTriangle, BedDouble, CheckCircle2, ChevronRight, Flame, Lightbulb, type LucideIcon } from "lucide-react";
 
 import { api } from "@/lib/api";
 import { BottomNav } from "@/components/BottomNav";
@@ -63,6 +63,11 @@ function InsightRow({ item }: { item: HomeInsight }) {
 }
 
 const WEEK_LETTERS = ["L", "M", "X", "J", "V", "S", "D"];
+
+/** Fecha local (no UTC) de un instante ISO: un entreno a las 00:30 cuenta para ese día. */
+function localISO(instant: string): string {
+  return toISODate(new Date(instant));
+}
 
 function KcalRing({ value, target }: { value: number; target: number }) {
   const r = 34;
@@ -147,7 +152,7 @@ export default function Dashboard() {
       api.statsFatigue(token).then(setFatigue).catch(() => setFatigue(null));
       api.getNutritionDay(token, todayISO()).then(setMealsToday).catch(() => setMealsToday(null));
       api
-        .listSessions(token, { page: 1, pageSize: 5 })
+        .listSessions(token, { page: 1, pageSize: 20 })
         .then((p) => setRecent(p.items))
         .catch(() => setRecent([]));
     };
@@ -192,7 +197,12 @@ export default function Dashboard() {
     const mondayOffset = (now.getDay() + 6) % 7;
     return toISODate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - mondayOffset + k));
   });
-  const last = recent[0] ?? null;
+  const weekAgo = toISODate(new Date(Date.now() - 6 * 86_400_000));
+  const lastWeek = recent.filter((s) => localISO(s.performedAt) >= weekAgo);
+  const burnedToday = recent
+    .filter((s) => localISO(s.performedAt) === today)
+    .reduce((sum, s) => sum + (s.estimatedKcal ?? 0), 0);
+  const weekKcal = lastWeek.reduce((sum, s) => sum + (s.estimatedKcal ?? 0), 0);
 
   function dismissSteps() {
     try {
@@ -349,6 +359,10 @@ export default function Dashboard() {
               ) : (
                 <span className="hoy-tile-sub">Registra tus comidas</span>
               )}
+              <span className="hoy-burned">
+                <Flame size={14} strokeWidth={1.75} aria-hidden="true" />
+                {burnedToday > 0 ? `${fmtKcal(burnedToday)} kcal quemadas hoy` : "Sin entreno hoy"}
+              </span>
             </Link>
           </Card>
 
@@ -388,19 +402,43 @@ export default function Dashboard() {
         </div>
       )}
 
-      {last && (
-        <Card className="hoy-lastcard" title="Último entreno" action={{ label: "Ver historial", href: "/entrenar?tab=historial" }}>
-          <Link className="hoy-last" href={`/entrenos/${last.id}`}>
-            <DisciplineIcon discipline={last.discipline} />
-            <span className="hoy-last-text">
-              <strong>{translateDiscipline(last.discipline)}</strong>
-              <span>
-                {shortDate(last.performedAt.slice(0, 10))}
-                {last.distanceMeters ? ` · ${formatDistance(last.distanceMeters)}` : ""} · {formatDuration(last.durationMinutes)}
-              </span>
-            </span>
-            <ChevronRight size={18} strokeWidth={1.75} aria-hidden="true" />
-          </Link>
+      {home && (
+        <Card
+          className="hoy-lastcard"
+          title="Últimos 7 días"
+          action={{ label: "Ver historial", href: "/rutinas?tab=historial" }}
+        >
+          {lastWeek.length === 0 ? (
+            <p className="hoy-tile-sub">Sin entrenos esta semana.</p>
+          ) : (
+            <>
+              <ul className="hoy-week">
+                {lastWeek.map((s) => (
+                  <li key={s.id}>
+                    <Link className="hoy-last" href={`/entrenos/${s.id}`}>
+                      <DisciplineIcon discipline={s.discipline} />
+                      <span className="hoy-last-text">
+                        <strong>{translateDiscipline(s.discipline)}</strong>
+                        <span>
+                          {shortDate(localISO(s.performedAt))}
+                          {s.distanceMeters ? ` · ${formatDistance(s.distanceMeters)}` : ""} ·{" "}
+                          {formatDuration(s.durationMinutes)}
+                        </span>
+                      </span>
+                      <span className="hoy-kcal">
+                        {s.estimatedKcal ? `${fmtKcal(s.estimatedKcal)} kcal` : "—"}
+                      </span>
+                      <ChevronRight size={18} strokeWidth={1.75} aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <p className="hoy-week-total">
+                {lastWeek.length} {lastWeek.length === 1 ? "entreno" : "entrenos"} ·{" "}
+                <strong>{fmtKcal(weekKcal)} kcal</strong>
+              </p>
+            </>
+          )}
         </Card>
       )}
       </div>

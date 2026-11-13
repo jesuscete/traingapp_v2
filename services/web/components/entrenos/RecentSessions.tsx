@@ -54,7 +54,7 @@ export function RecentSessions({
         </p>
       )}
       <p className="block">
-        <Link className="btn-secondary" href="/entrenar?tab=historial&view=todos">
+        <Link className="btn-secondary" href="/rutinas?tab=historial&view=todos">
           Ver todos los entrenos
         </Link>
       </p>

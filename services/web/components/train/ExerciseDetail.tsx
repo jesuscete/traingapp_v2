@@ -70,7 +70,7 @@ export function ExerciseDetail({ id, embedded = false, onDeleted }: { id: string
       await api.deleteCustomExercise(token, exercise.id);
       removeExercise(exercise.id);
       if (onDeleted) onDeleted();
-      else router.replace("/entrenar?tab=ejercicios");
+      else router.replace("/rutinas?tab=ejercicios");
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "No se pudo eliminar el ejercicio");
       setDeleting(false);
@@ -85,7 +85,7 @@ export function ExerciseDetail({ id, embedded = false, onDeleted }: { id: string
     <div className="detail-pane">
       {!embedded && (
         <p>
-          <Link className="back-link" href="/entrenar?tab=ejercicios">
+          <Link className="back-link" href="/rutinas?tab=ejercicios">
             ← Ejercicios
           </Link>
         </p>

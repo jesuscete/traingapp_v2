@@ -113,6 +113,16 @@ def test_target_includes_training_and_profile(client: TestClient) -> None:
     trained = client.get("/nutrition/day", headers=headers).json()["target"]
     assert trained["trainingKcal"] > 0
     assert abs(trained["targetKcal"] - rest["targetKcal"] - trained["trainingKcal"]) <= 1
+    assert trained["activityMode"] == "registro"
+
+    # Modo estimado: el factor ya incluye el deporte y los entrenos no se suman dos veces.
+    goal = {"goal": "mantener", "activityFactor": 1.7, "activityMode": "estimado"}
+    assert client.put("/nutrition/goal", json=goal, headers=headers).status_code == 200
+    estimated = client.get("/nutrition/day", headers=headers).json()["target"]
+    assert estimated["activityMode"] == "estimado"
+    assert estimated["trainingKcal"] == 0
+    assert abs(estimated["dailyActivityKcal"] - estimated["bmr"] * 1.7) <= 2
+    assert client.get("/nutrition/goal", headers=headers).json()["activityMode"] == "estimado"
 
     incomplete = _headers(client, "no-profile@example.com", profile=False)
     day = client.get("/nutrition/day", headers=incomplete).json()

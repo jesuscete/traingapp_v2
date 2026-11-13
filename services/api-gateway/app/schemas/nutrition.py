@@ -24,6 +24,9 @@ Meal = Annotated[
 Method = Literal["pesada", "etiqueta", "racion", "rapida", "ia"]
 EXACT_METHODS: frozenset[str] = frozenset({"pesada", "etiqueta"})
 GoalType = Literal["perder", "mantener", "ganar", "corte"]
+# registro: factor = vida diaria sin deporte + kcal reales de los entrenos registrados.
+# estimado: factor que ya incluye el deporte; no se suman los entrenos (no se cuentan dos veces).
+ActivityMode = Literal["registro", "estimado"]
 
 
 def _camel(name: str) -> str:
@@ -181,6 +184,7 @@ class TargetOut(CamelModel):
     fiber_g: float
     rate_kg_week: float
     notes: list[str]
+    activity_mode: ActivityMode = "registro"
 
 
 class DayOut(CamelModel):
@@ -239,6 +243,7 @@ class GoalIn(CamelModel):
     rate_kg_week: float | None = Field(default=None, ge=0, le=2)
     protein_g_per_kg: float = Field(default=2.0, ge=0.8, le=3.5)
     activity_factor: float = Field(default=1.4, ge=1.1, le=2.0)
+    activity_mode: ActivityMode = "registro"
 
 
 class GoalOut(GoalIn):

@@ -117,7 +117,7 @@ export function SessionDetail({ id, embedded = false }: { id: string; embedded?:
     <div className="detail-pane">
       {!embedded && (
         <p>
-          <Link className="back-link" href="/entrenar?tab=historial">
+          <Link className="back-link" href="/rutinas?tab=historial">
             ← Volver a Entrenos
           </Link>
         </p>

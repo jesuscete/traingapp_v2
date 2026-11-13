@@ -198,6 +198,7 @@ Lo encontrado al usar la app instalada en el móvil (2026-11-12). Orden propuest
 - **El chat choca con el círculo del perfil** en la app instalada: hay que recolocar el botón del chat y el avatar.
 - **Demasiados datos por pantalla:** priorizar, plegar los detalles («ver más») y dejar menos texto y más visual. Revisar pantalla a pantalla: Inicio, Entrenar, Comidas y Progreso.
 - **Recorridos cortos para lo frecuente:** empezar entreno, añadir comida y ver hoy, a uno o dos toques desde Inicio.
+- [x] **Entrenar solo gestiona el entreno** (2026-11-13, `feature/corrections`): días de gimnasio de la rutina (sin «hoy toca» ni días de deporte), entreno libre y «Cargar entreno externo» (sincronizar reloj, importar archivo o registrar a mano). Rutinas, ejercicios e historial pasan a la pantalla **Rutina** (`/rutinas`).
 
 **3. Estética: un sistema visual y adaptación móvil/escritorio** → análisis completo y propuesta en [DISENO_UI.md](DISENO_UI.md). ✅ F1-F5 hechas (2026-11-12); falta la revisión visual y elegir el color por defecto
 - **Sistema de diseño:** colores, tipografías, tamaños, espaciados, tarjetas y botones comunes para que todas las pantallas se vean de la misma familia.
@@ -208,6 +209,13 @@ Lo encontrado al usar la app instalada en el móvil (2026-11-12). Orden propuest
 - **Indicador «N» de Next.js** abajo a la izquierda: solo sale en modo desarrollo. Se oculta (`devIndicators: false`) y desaparecería del todo con una compilación de producción.
 
 ### M10 · Arquitectura de IA: mínimo LLM, máximo dato ⏳ (aprobado como plan; sin empezar)
+
+> **Entrada desde `feature/corrections` (2026-11-13, [ADR-010](decisions/ADR-010-correcciones-uso-real.md))**: hay piezas que hacen de puente y que M10 debe absorber o extender:
+> - `plan_repair.complete_plan` (completa el plan del LLM hasta ~80) → lo sustituye F5, el generador determinista. Reutilizar su lógica de elección de patrón, día y repeticiones.
+> - `week_feedback` y `adherence` en `services/sport_analysis.py` → herramientas del agente y entrada del recomendador F4. El recomendador debe ponderar más lo practicado que lo planificado.
+> - Hoy las sesiones de deporte (boxeo, carrera, WOD) no cuentan para patrones ni músculos → F3, con datos estructurados por deporte (`goal_map`/`patterns`).
+> - Modo de actividad: proponer `registro`/`estimado` automáticamente según la constancia de registro, y la actividad diaria con los pasos de Garmin (hoy no se guardan).
+> - "Preparar rutina con estos cambios" sigue yendo al chat del LLM → que lo haga F4/F5 sin LLM.
 Análisis del 2026-11-13. **Objetivo:** cada función resuelta con datos y reglas; el LLM solo para lo que de verdad lo necesita (texto libre, redactar). Que la app siga funcionando si la IA se encarece, se cae o hay que cambiar de proveedor.
 
 - **Problemas detectados:**
@@ -250,6 +258,21 @@ Análisis del 2026-11-13. **Objetivo:** cada función resuelta con datos y regla
 6. **Validador:** series por músculo, ratio tirón/empuje y reglas de calendario. El LLM solo interviene, de forma opcional, para redactar la explicación o corregir si el validador falla, eligiendo entre candidatos ya filtrados.
 
 **Antes de empezar:** commit de lo pendiente en `feature/refactor`, rama `feature/ai-architecture`, copia de la BD antes de F3, tests en verde y un commit por fase. Primer bloque propuesto: F0 + F1 + F2.
+
+### M11 · Afinar recomendación y análisis de rutinas ⏳ (al final, tras M10)
+Feedback del uso real (2026-11-13). Se deja para el final porque depende de F3-F5 de M10; junta los puntos parecidos dispersos (puentes de `feature/corrections`, F4, F5).
+
+**1. Rutina recomendada: que tenga sentido, no solo nota alta**
+- La rutina que recomendó el LLM **no estaba mal**; sacaba ~58/100 porque el sistema de puntuación es demasiado exigente.
+- **No basta con añadir ejercicios** hasta llegar a 80 (es lo que hace hoy `plan_repair.complete_plan`, provisional): alarga las sesiones sin criterio. Candidato a retirarse o limitarse al presupuesto de tiempo.
+- La exigencia debe depender del **nivel del deportista** (amateur/competición/profesional) y del **tiempo que quiere o puede dedicar** (días × minutos, F5 punto 1). Un amateur con 3 días de 45 min no tiene los mismos objetivos de series que un profesional.
+- Aflojar la puntuación: objetivos de patrones y músculos escalados por nivel y tiempo, de forma que una rutina razonable para ese presupuesto puntúe ~80.
+
+**2. Analizar rutina: dos análisis distintos, separados de «cumplir objetivos»**
+- **a) Analizar la rutina planificada:** ¿el plan es bueno para mi deporte y mi tiempo?
+- **b) Analizar mi entreno real:** lo que registro, **tenga o no rutina** (el usuario puede ir añadiendo ejercicios sin plan). Pregunta: «¿lo que estoy haciendo es válido?»: equilibrio tirón/empuje, volumen por músculo, recuperación entre días, progresión de cargas.
+- Ambos van **aparte** del seguimiento de objetivos (adherencia, `adherence`, y frase semanal, `week_feedback`). Hoy todo está mezclado en `RoutineAnalysis` y el bloque «Plan vs. lo que haces».
+- Pantalla propuesta: en Rutina, dos pestañas o tarjetas («Mi plan» / «Mi entreno real»); el análisis real accesible aunque no haya rutina activa.
 
 ## 🗂️ Backlog (ideas para cuando la app esté en uso, después de M8)
 Tu objetivo: que la IA te organice y te guíe sin tener que ser experto. Las mejoras saldrán de usar la app.

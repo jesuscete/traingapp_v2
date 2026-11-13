@@ -11,7 +11,7 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.sport import fetch_sport_narrative
 from app.models import User
-from app.schemas.sport_analysis import SportAnalysisOut, SportNarrativeOut
+from app.schemas.sport_analysis import SportAnalysisOut, SportNarrativeOut, WeekFeedbackOut
 from app.services import sport_analysis, sport_registry
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,15 @@ async def analyze_sport(
     if narrative and result.basis != "sin_datos":
         result.narrative = await _narrative(result)
     return result
+
+
+@router.get("/week-feedback", response_model=WeekFeedbackOut)
+async def week_feedback(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> WeekFeedbackOut:
+    """Frase tras terminar un entreno: lo que más falta esta semana para el objetivo."""
+    return await sport_analysis.week_feedback_for(session, current_user)
 
 
 async def _narrative(result: SportAnalysisOut) -> SportNarrativeOut:

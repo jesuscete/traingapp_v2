@@ -8,7 +8,7 @@ import { RedirectTo } from "@/lib/redirect";
 
 function Inner() {
   const view = useSearchParams().get("view");
-  return <RedirectTo to={`/entrenar?tab=historial${view ? `&view=${encodeURIComponent(view)}` : ""}`} />;
+  return <RedirectTo to={`/rutinas?tab=historial${view ? `&view=${encodeURIComponent(view)}` : ""}`} />;
 }
 
 export default function Entrenos() {

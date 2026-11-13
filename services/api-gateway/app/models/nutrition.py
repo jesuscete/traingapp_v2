@@ -132,6 +132,10 @@ class NutritionGoal(Base):
     protein_g_per_kg: Mapped[float] = mapped_column(Float, default=2.0)
     # Actividad cotidiana SIN entrenos (los entrenos se suman aparte con sus kcal reales).
     activity_factor: Mapped[float] = mapped_column(Float, default=1.4)
+    # "registro" (factor sin deporte + entrenos reales) | "estimado" (factor con deporte).
+    activity_mode: Mapped[str] = mapped_column(
+        String(10), default="registro", server_default="registro"
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

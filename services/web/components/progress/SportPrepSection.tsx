@@ -182,7 +182,7 @@ export function SportPrepSection() {
             <Link className="m4-link-btn" href="/entrenar">
               Entrenar ahora
             </Link>
-            <Link className="m4-link-btn secondary" href="/entrenar?tab=rutinas">
+            <Link className="m4-link-btn secondary" href="/rutinas?tab=rutinas">
               Crear rutina
             </Link>
           </div>

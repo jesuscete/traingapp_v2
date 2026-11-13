@@ -493,7 +493,9 @@ async def target_for(
         age=calc.age_on(user.birth_year, day),
         sex=sex,
         activity_factor=goal.activity_factor,
-        training_kcal=await _training_kcal(session, user.id, day),
+        training_kcal=(
+            await _training_kcal(session, user.id, day) if goal.activity_mode == "registro" else 0.0
+        ),
         goal=goal.goal,
         protein_g_per_kg=goal.protein_g_per_kg,
         rate_kg_week=goal.rate_kg_week,
@@ -501,7 +503,9 @@ async def target_for(
         target_date=goal.target_date,
         today=day,
     )
-    return TargetOut.model_validate(target, from_attributes=True), [], weight
+    out = TargetOut.model_validate(target, from_attributes=True)
+    out.activity_mode = "estimado" if goal.activity_mode == "estimado" else "registro"
+    return out, [], weight
 
 
 async def _entries(

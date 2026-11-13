@@ -25,6 +25,7 @@ import type {
   CatalogExercise,
   ExerciseAlternative,
   SportAnalysis,
+  WeekFeedback,
   CustomExerciseInput,
   ChatEnqueue,
   ChatMessageOut,
@@ -508,6 +509,10 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
     });
   },
+  getWeekFeedback: (token: string) =>
+    request<WeekFeedback>("/analysis/week-feedback", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
   getExerciseAlternatives: (token: string, exerciseId: string, limit = 8) =>
     request<ExerciseAlternative[]>(
       `/catalog/exercises/${exerciseId}/alternatives?limit=${limit}`,

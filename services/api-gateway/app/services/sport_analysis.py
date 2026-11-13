@@ -13,6 +13,7 @@ from app.analytics.sport_analysis import (
     Basis,
     ExerciseWork,
     SportAnalysis,
+    SportProfile,
     Status,
     analyze,
 )
@@ -22,11 +23,14 @@ from app.crud import routine as routine_crud
 from app.crud import stats as stats_crud
 from app.models import ExerciseCatalog, TrainingSession, User
 from app.schemas.sport_analysis import (
+    AdherenceOut,
     AlternativeOut,
+    ExerciseAdherenceOut,
     GapOut,
     SportAnalysisOut,
     SuggestionOut,
     TargetStatusOut,
+    WeekFeedbackOut,
 )
 from app.services import sport_registry
 
@@ -87,7 +91,7 @@ def _text(details: dict[str, object], key: str) -> str | None:
     return value if isinstance(value, str) and value else None
 
 
-def _catalog_item(row: ExerciseCatalog) -> CatalogItem:
+def catalog_item(row: ExerciseCatalog) -> CatalogItem:
     details = row.details or {}
     name_es = _text(details, "nameEs")
     patterns = exercise_patterns(
@@ -180,7 +184,7 @@ PATTERN_MUSCLES: dict[str, frozenset[str]] = {
 }
 
 
-def _fits_pattern(item: CatalogItem, pattern: str) -> bool:
+def fits_pattern(item: CatalogItem, pattern: str) -> bool:
     expected = PATTERN_MUSCLES.get(pattern)
     if expected is None:
         return True
@@ -190,7 +194,7 @@ def _fits_pattern(item: CatalogItem, pattern: str) -> bool:
 def _suggestions(code: str, catalog: list[CatalogItem]) -> list[SuggestionOut]:
     kind, _, key = code.partition(":")
     if kind == "pattern":
-        pool = [c for c in catalog if key in c.patterns and _fits_pattern(c, key)]
+        pool = [c for c in catalog if key in c.patterns and fits_pattern(c, key)]
     elif kind == "balance":
         pool = [c for c in catalog if c.patterns & {"tiron_horizontal", "tiron_vertical"}]
     elif kind == "muscle":
@@ -257,7 +261,7 @@ async def analyze_user(
 ) -> SportAnalysisOut:
     profile = sport_registry.sport_profile(main_sport(user, sport))
     rows = await catalog_crud.list_visible(session, user.id)
-    catalog = [_catalog_item(r) for r in rows]
+    catalog = [catalog_item(r) for r in rows]
     by_id = {c.row.id: c for c in catalog}
     by_name: dict[str, CatalogItem] = {}
     for c in catalog:
@@ -280,22 +284,186 @@ async def analyze_user(
     use_history = basis == "historial" or (
         basis == "auto" and len(gym_sessions) >= MIN_HISTORY_SESSIONS
     )
+    history_work = _history_work(gym_sessions, by_id, by_name)
     chosen: Basis
     if use_history:
-        work, chosen, span = _history_work(gym_sessions, by_id, by_name), "historial", weeks
+        work, chosen, span = history_work, "historial", float(weeks)
     elif routine_work:
-        work, chosen, span = routine_work, "rutina", 1
+        work, chosen, span = routine_work, "rutina", 1.0
     else:
-        work, chosen, span = [], "sin_datos", 1
+        work, chosen, span = [], "sin_datos", 1.0
     result = analyze(work, profile, weeks=span, sport_days=sport_days)
-    return to_out(result, chosen, catalog)
+    out = to_out(result, chosen, catalog)
+    if routine_id and routine_work:
+        out.adherence = adherence(
+            routine_work,
+            history_work,
+            profile,
+            sessions=len(gym_sessions),
+            weeks=_effective_weeks(gym_sessions, routine.created_at if routine else None, weeks),
+            sport_days=sport_days,
+        )
+    return out
+
+
+ADHERENCE_LIST = 5
+SKIPPED_BELOW = 0.5  # una pauta hecha a menos de la mitad se considera abandonada
+
+
+def _effective_weeks(
+    sessions: list[TrainingSession], since: datetime | None, window: int
+) -> float:
+    """Semanas reales observadas: no penaliza una rutina creada hace unos días."""
+    now = datetime.now(UTC)
+    starts = [now - timedelta(weeks=window)]
+    if since is not None:
+        starts.append(since if since.tzinfo else since.replace(tzinfo=UTC))
+    if sessions:
+        first = min(ts.performed_at for ts in sessions)
+        starts.append(first if first.tzinfo else first.replace(tzinfo=UTC))
+    return max(1.0, (now - max(starts)).days / 7)
+
+
+def adherence(
+    routine_work: list[ExerciseWork],
+    history_work: list[ExerciseWork],
+    profile: SportProfile,
+    *,
+    sessions: int,
+    weeks: float,
+    sport_days: set[int],
+) -> AdherenceOut:
+    planned: dict[str, tuple[str, float]] = {}
+    for ex in routine_work:
+        key = ex.exercise_id or ex.name
+        name, sets = planned.get(key, (ex.name, 0.0))
+        planned[key] = (name, sets + len(ex.reps))
+    done: dict[str, tuple[str, float]] = {}
+    for ex in history_work:
+        key = ex.exercise_id or ex.name
+        name, sets = done.get(key, (ex.name, 0.0))
+        done[key] = (name, sets + len(ex.reps))
+
+    total_planned = sum(sets for _, sets in planned.values()) or 1.0
+    covered = sum(
+        min(sets, done.get(key, ("", 0.0))[1] / weeks) for key, (_, sets) in planned.items()
+    )
+    skipped = [
+        ExerciseAdherenceOut(
+            exercise_id=_uuid(key),
+            name=name,
+            planned_sets_week=round(sets, 1),
+            done_sets_week=round(done.get(key, ("", 0.0))[1] / weeks, 1),
+        )
+        for key, (name, sets) in planned.items()
+        if done.get(key, ("", 0.0))[1] / weeks < sets * SKIPPED_BELOW
+    ]
+    off_plan = sorted(
+        (
+            ExerciseAdherenceOut(
+                exercise_id=_uuid(key),
+                name=name,
+                planned_sets_week=0,
+                done_sets_week=round(sets / weeks, 1),
+            )
+            for key, (name, sets) in done.items()
+            if key not in planned
+        ),
+        key=lambda e: -e.done_sets_week,
+    )
+    history_score = (
+        analyze(history_work, profile, weeks=weeks, sport_days=sport_days).score
+        if history_work
+        else None
+    )
+    return AdherenceOut(
+        weeks=round(weeks, 1),
+        pct=round(100 * covered / total_planned) if sessions else 0,
+        sessions=sessions,
+        history_score=history_score,
+        skipped=skipped[:ADHERENCE_LIST],
+        off_plan=off_plan[:ADHERENCE_LIST],
+    )
+
+
+def _uuid(value: str) -> uuid.UUID | None:
+    try:
+        return uuid.UUID(value)
+    except ValueError:
+        return None
+
+
+FOCUS_KINDS = ("pattern", "balance", "muscle")
+
+
+def week_feedback(analysis: SportAnalysisOut) -> WeekFeedbackOut:
+    """Una frase determinista: lo más importante que falta esta semana para el objetivo."""
+    sport = analysis.label.lower()
+    if analysis.basis == "sin_datos" or all(t.value == 0 for t in analysis.muscles):
+        return WeekFeedbackOut(
+            headline="¡Entreno registrado!",
+            message="Sigue registrando tus entrenos y te diré qué te falta para "
+            f"{sport} cada semana.",
+        )
+    focus = next(
+        (g for kind in FOCUS_KINDS for g in analysis.gaps if g.code.split(":")[0] == kind),
+        None,
+    )
+    if analysis.score >= 80:
+        headline = "¡Semana muy completa!"
+    elif analysis.score >= 50:
+        headline = "Buen entreno"
+    else:
+        headline = "Entreno sumado"
+    if focus is None:
+        return WeekFeedbackOut(
+            headline=headline,
+            message=f"Esta semana vas cubriendo todo lo que pide el {sport}. ¡Sigue así!",
+            score=analysis.score,
+        )
+    return WeekFeedbackOut(
+        headline=headline,
+        message=_focus_message(focus, analysis),
+        score=analysis.score,
+        focus_code=focus.code,
+    )
+
+
+def _focus_message(gap: GapOut, analysis: SportAnalysisOut) -> str:
+    kind, _, key = gap.code.partition(":")
+    example = f" Por ejemplo: {gap.suggestions[0].name.lower()}." if gap.suggestions else ""
+    if kind == "balance":
+        return (
+            "Esta semana llevas más empuje que tirón: mete remos o dominadas en el próximo "
+            f"entreno.{example}"
+        )
+    if kind == "pattern":
+        target = next((t for t in analysis.patterns if t.key == key), None)
+        label = PATTERN_LABELS.get(key, key).lower()
+    else:
+        target = next((t for t in analysis.muscles if t.key == key), None)
+        label = GROUP_LABELS.get(key, key)
+    if target is None or target.value <= 0:
+        return (
+            f"Esta semana aún no has metido {label}: intenta incluirlo en el próximo "
+            f"entreno.{example}"
+        )
+    return (
+        f"Vas corto de {label} esta semana ({target.value:g} de {target.low:g} series): "
+        f"mételo en el próximo entreno.{example}"
+    )
+
+
+async def week_feedback_for(session: AsyncSession, user: User) -> WeekFeedbackOut:
+    analysis = await analyze_user(session, user, sport=None, weeks=1, basis="historial")
+    return week_feedback(analysis)
 
 
 async def alternatives(
     session: AsyncSession, user: User, exercise_id: uuid.UUID, *, limit: int
 ) -> list[AlternativeOut] | None:
     rows = await catalog_crud.list_visible(session, user.id)
-    catalog = [_catalog_item(r) for r in rows]
+    catalog = [catalog_item(r) for r in rows]
     source = next((c for c in catalog if c.row.id == exercise_id), None)
     if source is None:
         return None

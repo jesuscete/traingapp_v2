@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Sheet } from "@/components/nutrition/Sheet";
 import { errMsg, parseNum } from "@/lib/nutrition";
-import type { GoalType } from "@/lib/types";
+import type { ActivityMode, GoalType } from "@/lib/types";
 
 const GOALS: { key: GoalType; label: string; help: string }[] = [
   { key: "perder", label: "Perder grasa", help: "Déficit moderado y sostenido a un ritmo semanal fijo." },
@@ -19,11 +19,19 @@ const GOALS: { key: GoalType; label: string; help: string }[] = [
   },
 ];
 
-const ACTIVITY: { value: number; label: string }[] = [
-  { value: 1.2, label: "Sedentario" },
-  { value: 1.4, label: "Ligera" },
-  { value: 1.6, label: "Activa" },
-  { value: 1.8, label: "Muy activa" },
+// "registro": solo el día a día; el deporte lo ponen tus entrenos registrados.
+const ACTIVITY_DAILY: { value: number; label: string }[] = [
+  { value: 1.2, label: "Sentado" },
+  { value: 1.3, label: "Algo de pie" },
+  { value: 1.45, label: "De pie / andando" },
+  { value: 1.6, label: "Trabajo físico" },
+];
+// "estimado": incluye el deporte semanal porque no se suman los entrenos.
+const ACTIVITY_WITH_SPORT: { value: number; label: string }[] = [
+  { value: 1.4, label: "1-2 entrenos/sem" },
+  { value: 1.55, label: "3-4 entrenos/sem" },
+  { value: 1.7, label: "5-6 entrenos/sem" },
+  { value: 1.9, label: "Doble sesión" },
 ];
 
 type Props = { token: string; onClose: () => void; onSaved: () => void };
@@ -35,7 +43,8 @@ export function GoalSheet({ token, onClose, onSaved }: Props) {
   const [targetDate, setTargetDate] = useState("");
   const [rate, setRate] = useState("");
   const [protein, setProtein] = useState("2.0");
-  const [activity, setActivity] = useState("1.4");
+  const [activity, setActivity] = useState("1.3");
+  const [mode, setMode] = useState<ActivityMode>("registro");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +60,7 @@ export function GoalSheet({ token, onClose, onSaved }: Props) {
         setRate(g.rateKgWeek != null ? String(g.rateKgWeek) : "");
         setProtein(String(g.proteinGPerKg));
         setActivity(String(g.activityFactor));
+        setMode(g.activityMode ?? "registro");
       })
       .catch(() => undefined)
       .finally(() => {
@@ -82,6 +92,7 @@ export function GoalSheet({ token, onClose, onSaved }: Props) {
         rateKgWeek: goal !== "corte" && goal !== "mantener" && Number.isFinite(rt) ? rt : null,
         proteinGPerKg: pr,
         activityFactor: ac,
+        activityMode: mode,
       });
       onSaved();
       onClose();
@@ -138,12 +149,43 @@ export function GoalSheet({ token, onClose, onSaved }: Props) {
             2,0 g/kg es un buen punto de partida; en déficit, 2,2-2,4 ayuda a conservar músculo. Rango 0,8-3,5.
           </p>
 
+          <div className="nu-field">
+            <span>¿Cómo calculo tu gasto?</span>
+            <div className="nu-chips">
+              <button
+                type="button"
+                className={`nu-chip${mode === "registro" ? " active" : ""}`}
+                onClick={() => {
+                  setMode("registro");
+                  setActivity("1.3");
+                }}
+              >
+                Según lo que registro (recomendado)
+              </button>
+              <button
+                type="button"
+                className={`nu-chip${mode === "estimado" ? " active" : ""}`}
+                onClick={() => {
+                  setMode("estimado");
+                  setActivity("1.55");
+                }}
+              >
+                Estimado (no registro siempre)
+              </button>
+            </div>
+          </div>
+          <p className="muted nu-note">
+            {mode === "registro"
+              ? "Cada día se suman las kcal reales de los entrenos que registras: un día de boxeo sube tu objetivo más que uno de gimnasio y un día de descanso lo baja. Es lo más preciso."
+              : "Usamos una media fija que ya incluye tu deporte y no sumamos los entrenos registrados. Útil si se te olvida registrar, pero menos fino: registrar tus entrenos hace que la app acierte más."}
+          </p>
+
           <label className="nu-field">
-            <span>Factor de actividad diaria</span>
+            <span>{mode === "registro" ? "Actividad del día a día (sin entrenar)" : "Actividad total (con deporte)"}</span>
             <input type="text" inputMode="decimal" value={activity} onChange={(e) => setActivity(e.target.value)} />
           </label>
           <div className="nu-chips">
-            {ACTIVITY.map((a) => (
+            {(mode === "registro" ? ACTIVITY_DAILY : ACTIVITY_WITH_SPORT).map((a) => (
               <button
                 key={a.value}
                 type="button"
@@ -155,8 +197,9 @@ export function GoalSheet({ token, onClose, onSaved }: Props) {
             ))}
           </div>
           <p className="muted nu-note">
-            Es tu día a día SIN entrenar (trabajo, pasos). Las kcal de tus entrenos se suman aparte, automáticamente.
-            Por defecto 1,4.
+            {mode === "registro"
+              ? "Solo trabajo y pasos: no cuentes el deporte aquí o se sumaría dos veces."
+              : "Elige según cuántas veces entrenas a la semana."}
           </p>
 
           {error && <p className="error">{error}</p>}

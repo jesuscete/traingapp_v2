@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "node --no-warnings --import ./scripts/test-register.mjs --test \"lib/**/*.test.ts\""
   },
   "dependencies": {
     "leaflet": "^1.9.4",

@@ -97,10 +97,19 @@ export function DaySummary({ data }: { data: NutritionDay }) {
               <dl>
                 <dt>Metabolismo basal</dt>
                 <dd>{kcal(target.bmr)} kcal</dd>
-                <dt>Actividad diaria (sin entrenar)</dt>
-                <dd>+{kcal(target.dailyActivityKcal)} kcal</dd>
-                <dt>Entrenos de hoy</dt>
-                <dd>+{kcal(target.trainingKcal)} kcal</dd>
+                {target.activityMode === "estimado" ? (
+                  <>
+                    <dt>Actividad estimada (con deporte)</dt>
+                    <dd>+{kcal(target.dailyActivityKcal)} kcal</dd>
+                  </>
+                ) : (
+                  <>
+                    <dt>Actividad diaria (sin entrenar)</dt>
+                    <dd>+{kcal(target.dailyActivityKcal)} kcal</dd>
+                    <dt>Entrenos de hoy</dt>
+                    <dd>+{kcal(target.trainingKcal)} kcal</dd>
+                  </>
+                )}
                 <dt className="nu-sum">Mantenimiento</dt>
                 <dd className="nu-sum">{kcal(target.maintenanceKcal)} kcal</dd>
                 <dt>Ajuste por objetivo</dt>

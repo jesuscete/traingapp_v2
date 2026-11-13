@@ -33,10 +33,11 @@ from app.chat.conversation import (
 )
 from app.core.config import settings
 from app.core.plan import fetch_plan_generate, fetch_plan_splits
+from app.crud import catalog as catalog_crud
 from app.crud import prompt as prompt_crud
 from app.crud import routine as routine_crud
 from app.crud.catalog import CatalogExercise, catalog_lookup
-from app.models import Discipline, Routine
+from app.models import Discipline, Routine, User
 from app.schemas.plan import (
     PlanDayOut,
     PlanExerciseOut,
@@ -50,6 +51,8 @@ from app.schemas.routine import (
     RoutineIn,
     RoutineSetIn,
 )
+from app.services import plan_repair, sport_registry
+from app.services import sport_analysis as sport_service
 
 PLAN_KEY = "plan:session"
 
@@ -887,9 +890,30 @@ async def _generate_and_summarize(
     )
     data["name"] = _plan_display_name(plan.sports, split_name)
     plan.plan = _build_summary(data, catalog, disciplines_map)
+    note = await _complete_plan(session, user_id, plan)
     plan.step = "summary"
     await _persist(redis, user_id, plan)
-    return _question(plan, _summary_message(plan), status="ready")
+    return _question(plan, note + _summary_message(plan), status="ready")
+
+
+async def _complete_plan(session: AsyncSession, user_id: uuid.UUID, plan: PlanSession) -> str:
+    """Cubre los patrones que el LLM dejó fuera, con el mismo perfil que usa "Analizar"."""
+    user = await session.get(User, user_id)
+    if plan.plan is None or user is None:
+        return ""
+    rows = await catalog_crud.list_visible(session, user_id)
+    result = plan_repair.complete_plan(
+        plan.plan,
+        sport_registry.sport_profile(sport_service.main_sport(user, None)),
+        [sport_service.catalog_item(r) for r in rows],
+    )
+    plan.plan = result.plan
+    if not result.added:
+        return ""
+    return (
+        f"He completado el plan con {', '.join(result.added)} para cubrir lo que pide tu "
+        f"deporte (puntuación {result.score_before} → {result.score_after}/100).\n\n"
+    )
 
 
 async def process_plan_message(

@@ -45,6 +45,34 @@ class SportAnalysisOut(CamelModel):
     pull_push_ratio: float | None
     gaps: list[GapOut]
     narrative: "SportNarrativeOut | None" = None
+    adherence: "AdherenceOut | None" = None
+
+
+class ExerciseAdherenceOut(CamelModel):
+    exercise_id: uuid.UUID | None = None
+    name: str
+    planned_sets_week: float
+    done_sets_week: float
+
+
+class AdherenceOut(CamelModel):
+    """Rutina frente a lo que el usuario registra de verdad (manda lo practicado)."""
+
+    weeks: float
+    pct: int  # % de las series planificadas que se hacen
+    sessions: int
+    history_score: int | None  # puntuación de lo practicado de verdad
+    skipped: list[ExerciseAdherenceOut]  # de la rutina, hechos poco o nada
+    off_plan: list[ExerciseAdherenceOut]  # practicados fuera de la rutina
+
+
+class WeekFeedbackOut(CamelModel):
+    """Frase breve tras un entreno: cómo va la semana frente al objetivo."""
+
+    headline: str
+    message: str
+    score: int | None = None
+    focus_code: str | None = None
 
 
 class SportNarrativeOut(CamelModel):

@@ -855,6 +855,31 @@ export type SportAnalysis = {
   pullPushRatio: number | null;
   gaps: SportGap[];
   narrative: SportNarrative | null;
+  adherence?: RoutineAdherence | null;
+};
+
+export type ExerciseAdherence = {
+  exerciseId: string | null;
+  name: string;
+  plannedSetsWeek: number;
+  doneSetsWeek: number;
+};
+
+/** Rutina frente a lo registrado de verdad. */
+export type RoutineAdherence = {
+  weeks: number;
+  pct: number;
+  sessions: number;
+  historyScore: number | null;
+  skipped: ExerciseAdherence[];
+  offPlan: ExerciseAdherence[];
+};
+
+export type WeekFeedback = {
+  headline: string;
+  message: string;
+  score: number | null;
+  focusCode: string | null;
 };
 
 export type ExerciseAlternative = {
@@ -993,6 +1018,7 @@ export type NutritionTarget = {
   fiberG: number;
   rateKgWeek: number;
   notes: string[];
+  activityMode?: ActivityMode;
 };
 
 export type NutritionDay = {
@@ -1019,6 +1045,7 @@ export type NutritionGoal = {
   rateKgWeek?: number | null;
   proteinGPerKg: number;
   activityFactor: number;
+  activityMode?: ActivityMode;
 };
 
 export type WeightPoint = {
@@ -1199,3 +1226,6 @@ export type Onboarding = {
   recommended: OnboardingStep[];
   pendingRecommended: number;
 };
+
+/** registro: factor sin deporte + entrenos reales. estimado: factor con deporte incluido. */
+export type ActivityMode = "registro" | "estimado";

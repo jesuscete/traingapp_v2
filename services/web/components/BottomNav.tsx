@@ -34,6 +34,9 @@ const TABS: Tab[] = [
 
 const ACCOUNT_MATCH = ["/cuenta", "/perfil", "/objetivos", "/configuracion"];
 
+// Subpantallas con nombre propio en la barra superior.
+const SUBPAGE_TITLES: Record<string, string> = { "/rutinas": "Rutina" };
+
 function isMatch(pathname: string, match: string[]): boolean {
   return match.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
@@ -56,7 +59,7 @@ export function BottomNav({ hidden = false }: { hidden?: boolean }) {
 
   const tab = currentTab(pathname);
   const isAccount = isMatch(pathname, ACCOUNT_MATCH);
-  const title = isAccount ? "Cuenta" : (tab?.label ?? "");
+  const title = isAccount ? "Cuenta" : (SUBPAGE_TITLES[pathname] ?? tab?.label ?? "");
   const rootHref = tab?.href ?? "/dashboard";
   const isAccountSub = isAccount && pathname.startsWith("/cuenta/");
   const isSubpage = isAccount ? isAccountSub : tab !== undefined && pathname !== tab.href;

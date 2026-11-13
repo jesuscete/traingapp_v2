@@ -98,6 +98,46 @@ def _status(value: float, low: float, high: float | None) -> Status:
     return Status(round(value, 1), low, high, state)
 
 
+ZONE_TOLERANCE = 0.25  # a esta distancia del rango (en proporción de series) la zona puntúa 0
+HIGH_MUSCLE_CREDIT = 0.85  # pasarse de rango es un exceso, no una carencia
+
+
+def _muscle_credit(s: Status) -> float:
+    """Crédito parcial: cubrir la mitad del mínimo vale media nota, no cero."""
+    if s.status == "ok":
+        return 1.0
+    if s.status == "high":
+        return HIGH_MUSCLE_CREDIT
+    return min(1.0, s.value / s.low) if s.low > 0 else 1.0
+
+
+def _zone_credit(s: Status) -> float:
+    if s.status == "ok":
+        return 1.0
+    distance = s.low - s.value if s.value < s.low else s.value - (s.high or 1.0)
+    return max(0.0, 1.0 - distance / ZONE_TOLERANCE)
+
+
+def _score(
+    patterns: Mapping[str, Status],
+    muscles: Mapping[str, Status],
+    rep_zones: Mapping[str, Status],
+    balance: str,
+) -> int:
+    pattern_cov = [min(1.0, s.value / s.low) for s in patterns.values() if s.low > 0] or [1.0]
+    muscle_cov = [_muscle_credit(s) for s in muscles.values()] or [1.0]
+    zone_cov = [_zone_credit(s) for s in rep_zones.values()] or [1.0]
+    return round(
+        100
+        * (
+            0.5 * sum(pattern_cov) / len(pattern_cov)
+            + 0.3 * sum(muscle_cov) / len(muscle_cov)
+            + 0.1 * sum(zone_cov) / len(zone_cov)
+            + 0.1 * (1.0 if balance == "ok" else 0.0)
+        )
+    )
+
+
 def _conflicts(
     work: Sequence[ExerciseWork], profile: SportProfile, sport_days: set[int]
 ) -> list[str]:
@@ -169,21 +209,7 @@ def analyze(
     else:
         balance = "ok"
 
-    pattern_cov = [min(1.0, s.value / s.low) for s in patterns.values()] or [1.0]
-    muscle_ok = [
-        1.0 if s.status == "ok" else 0.5 if s.status in ("low", "high") else 0.0
-        for s in muscles.values()
-    ] or [1.0]
-    zone_ok = [1.0 if s.status == "ok" else 0.0 for s in rep_zones.values()] or [1.0]
-    score = round(
-        100
-        * (
-            0.5 * sum(pattern_cov) / len(pattern_cov)
-            + 0.3 * sum(muscle_ok) / len(muscle_ok)
-            + 0.1 * sum(zone_ok) / len(zone_ok)
-            + 0.1 * (1.0 if balance == "ok" else 0.0)
-        )
-    )
+    score = _score(patterns, muscles, rep_zones, balance)
     analysis = SportAnalysis(
         sport=profile.sport,
         label=profile.label,

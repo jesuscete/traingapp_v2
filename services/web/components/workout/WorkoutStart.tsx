@@ -1,15 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ClipboardList } from "lucide-react";
+import { ChevronRight, ClipboardList, Download, FilePenLine, Plus } from "lucide-react";
 
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { translateDiscipline } from "@/lib/labels";
-import { DAY_TYPE_LABELS, WEEKDAYS } from "@/lib/routines";
+import { ExternalWorkoutSheet } from "@/components/workout/ExternalWorkoutSheet";
+import { WEEKDAYS } from "@/lib/routines";
 import type { CatalogExercise, Routine } from "@/lib/types";
 import { useCatalog } from "@/lib/useCatalog";
 import {
@@ -31,6 +31,7 @@ export function WorkoutStart({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(0);
+  const [external, setExternal] = useState(false);
   const { catalog } = useCatalog(token);
 
   useEffect(() => {
@@ -52,9 +53,10 @@ export function WorkoutStart({
     };
   }, [token]);
 
-  const gymDays = routine?.days.filter((d) => d.dayType === "gimnasio") ?? [];
-  const sportDays = routine?.days.filter((d) => d.dayType === "deporte") ?? [];
-  const todayDow = ((new Date().getDay() + 6) % 7) + 1;
+  // Solo días de gimnasio y sin «hoy toca»: el usuario elige qué entrena.
+  const gymDays = (routine?.days ?? [])
+    .filter((d) => d.dayType === "gimnasio")
+    .sort((a, b) => a.dayOfWeek - b.dayOfWeek);
 
   function startDay(dayId: string) {
     if (!routine) return;
@@ -70,11 +72,10 @@ export function WorkoutStart({
     );
   }
 
-  const suggested = gymDays.find((d) => d.dayOfWeek === todayDow) ?? gymDays[0] ?? null;
-  const others = gymDays.filter((d) => d.id !== suggested?.id);
+  const startFree = () => onStart(newWorkout("Entreno libre", null, []));
 
   return (
-    <main className="dashboard">
+    <main className="dashboard wk-start">
       {pending > 0 && (
         <p className="wk-warn" role="status">
           {pending} entreno{pending === 1 ? "" : "s"} pendiente{pending === 1 ? "" : "s"} de
@@ -82,37 +83,18 @@ export function WorkoutStart({
         </p>
       )}
 
-      <Card variant="raised" className="hoy-hero">
-        <span className="hoy-hero-kicker">Entrenar</span>
-        {loading && <Skeleton height={56} />}
-        {!loading && suggested && (
-          <>
-            <h2>{suggested.label || WEEKDAYS[suggested.dayOfWeek - 1]}</h2>
-            <p>
-              {suggested.dayOfWeek === todayDow ? "Hoy" : WEEKDAYS[suggested.dayOfWeek - 1]} ·{" "}
-              {suggested.exercises.length} ejercicios
-            </p>
-          </>
-        )}
-        {!loading && !suggested && <h2>¿Qué toca hoy?</h2>}
-        {error && <p className="error">{error}</p>}
-        <div className="hoy-hero-actions">
-          {suggested ? (
-            <Button size="lg" fullWidth onClick={() => startDay(suggested.id)}>
-              Empezar entreno
-            </Button>
-          ) : (
-            <Button size="lg" fullWidth onClick={() => onStart(newWorkout("Entreno libre", null, []))}>
-              Entreno libre
-            </Button>
-          )}
+      <section className="wk-start-more">
+        <div className="wk-start-head">
+          <h3 className="wk-start-subtitle">Días de rutina</h3>
+          <Link href="/rutinas" className="wk-start-link">
+            Ver rutina <ChevronRight size={16} aria-hidden="true" />
+          </Link>
         </div>
-      </Card>
-      <div className="wk-start-more">
-        {others.length > 0 && <h3 className="wk-start-subtitle">Otros días de tu rutina</h3>}
-        {others.length > 0 && (
+        {loading && <Skeleton height={120} />}
+        {error && <p className="error">{error}</p>}
+        {!loading && gymDays.length > 0 && (
           <div className="wk-days">
-            {others.map((day) => (
+            {gymDays.map((day) => (
               <button key={day.id} type="button" className="wk-day" onClick={() => startDay(day.id)}>
                 <span className="wk-day-top">
                   <strong>{day.label || WEEKDAYS[day.dayOfWeek - 1]}</strong>
@@ -127,30 +109,47 @@ export function WorkoutStart({
         {!loading && !error && !routine && (
           <EmptyState
             icon={<ClipboardList size={28} strokeWidth={1.75} />}
-            title="Crea tu primera rutina"
-            text="Así verás aquí el día que toca."
-            action={{ label: "Crear rutina", href: "/entrenar?tab=rutinas" }}
+            title="Aún no tienes rutina"
+            text="Crea una para empezar cada día con un toque, o entrena libre."
+            action={{ label: "Crear rutina", href: "/rutinas?tab=rutinas" }}
           />
         )}
         {!loading && routine && gymDays.length === 0 && (
           <p className="muted">Tu rutina activa no tiene días de gimnasio.</p>
         )}
-        {sportDays.map((day) => (
-          <p key={day.id} className="muted">
-            {WEEKDAYS[day.dayOfWeek - 1]} · {DAY_TYPE_LABELS[day.dayType]}
-            {day.disciplineName ? ` · ${translateDiscipline(day.disciplineName)}` : ""}
-          </p>
-        ))}
-        {suggested && (
-          <Button
-            variant="text"
-            fullWidth
-            onClick={() => onStart(newWorkout("Entreno libre", null, []))}
-          >
-            O empieza un entreno libre (sin rutina)
-          </Button>
-        )}
+      </section>
+
+      <div className="wk-start-actions">
+        <Button
+          variant={gymDays.length > 0 ? "secondary" : "primary"}
+          size="lg"
+          fullWidth
+          icon={<Plus size={20} strokeWidth={1.75} aria-hidden="true" />}
+          onClick={startFree}
+        >
+          {gymDays.length > 0 ? "O empieza un entreno libre" : "Empezar entreno libre"}
+        </Button>
+        <Button
+          variant="secondary"
+          size="lg"
+          fullWidth
+          href="/registrar"
+          icon={<FilePenLine size={20} strokeWidth={1.75} aria-hidden="true" />}
+        >
+          Registrar otra actividad
+        </Button>
+        <Button
+          variant="secondary"
+          size="lg"
+          fullWidth
+          icon={<Download size={20} strokeWidth={1.75} aria-hidden="true" />}
+          onClick={() => setExternal(true)}
+        >
+          Cargar entreno externo
+        </Button>
       </div>
+
+      {external && <ExternalWorkoutSheet token={token} onClose={() => setExternal(false)} />}
     </main>
   );
 }

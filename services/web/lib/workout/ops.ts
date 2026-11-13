@@ -183,11 +183,24 @@ export function toggleSupersetWithNext(w: ActiveWorkout, exId: string): ActiveWo
   const cur = w.exercises[i];
   const exercises = [...w.exercises];
   if (cur.supersetGroupId && cur.supersetGroupId === next.supersetGroupId) {
-    exercises[i + 1] = { ...next, supersetGroupId: null };
+    // Separar: lo que queda por debajo pasa a un grupo nuevo (normalize disuelve si queda solo).
+    const group = cur.supersetGroupId;
+    const fresh = uid();
+    for (let j = i + 1; j < exercises.length; j++) {
+      if (exercises[j].supersetGroupId === group) {
+        exercises[j] = { ...exercises[j], supersetGroupId: fresh };
+      }
+    }
   } else {
-    const group = cur.supersetGroupId ?? uid();
-    exercises[i] = { ...cur, supersetGroupId: group };
-    exercises[i + 1] = { ...next, supersetGroupId: group };
+    // Enlazar: fusiona los dos grupos completos (permite superseries de 3 o más).
+    const group = cur.supersetGroupId ?? next.supersetGroupId ?? uid();
+    const absorbed = new Set([cur.supersetGroupId, next.supersetGroupId].filter(Boolean));
+    for (let j = 0; j < exercises.length; j++) {
+      const ex = exercises[j];
+      if (j === i || j === i + 1 || (ex.supersetGroupId && absorbed.has(ex.supersetGroupId))) {
+        exercises[j] = { ...ex, supersetGroupId: group };
+      }
+    }
   }
   return { ...w, exercises: normalizeSupersets(exercises) };
 }
@@ -279,6 +292,19 @@ export function canComplete(ex: WorkoutExercise, index: number): boolean {
   return reps != null && reps > 0;
 }
 
+/**
+ * En superserie se descansa al cerrar la ronda: solo el último ejercicio del grupo
+ * dispara el descanso (con su tiempo). Fuera de superserie, el propio ejercicio.
+ */
+export function supersetRestHolder(
+  exercises: WorkoutExercise[],
+  ex: WorkoutExercise,
+): WorkoutExercise | null {
+  if (!ex.supersetGroupId) return ex;
+  const members = exercises.filter((e) => e.supersetGroupId === ex.supersetGroupId);
+  return members[members.length - 1]?.id === ex.id ? ex : null;
+}
+
 /** Marca/desmarca; al marcar rellena con los valores sugeridos si están vacíos. */
 export function toggleDone(w: ActiveWorkout, exId: string, setId: string): ActiveWorkout {
   const ex = w.exercises.find((e) => e.id === exId);
@@ -298,7 +324,9 @@ export function toggleDone(w: ActiveWorkout, exId: string, setId: string): Activ
     done: true,
   }));
   if (set.type === "calentamiento") return next;
-  const ms = ex.restSeconds * 1000;
+  const restAfter = supersetRestHolder(w.exercises, ex);
+  if (!restAfter) return { ...next, rest: null };
+  const ms = restAfter.restSeconds * 1000;
   return { ...next, rest: { endsAt: Date.now() + ms, total: ms } };
 }
 

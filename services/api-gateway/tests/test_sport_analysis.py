@@ -192,3 +192,49 @@ def test_sport_analysis_narrative(client: TestClient, seed_catalog, monkeypatch)
     data = client.get("/analysis/sport?sport=boxing&narrative=true", headers=headers).json()
     assert data["narrative"]["source"] == "fallback"
     assert data["narrative"]["prioridades"]
+
+
+def _gym_session(client: TestClient, headers: dict[str, str], names: list[str]) -> None:
+    from datetime import UTC, datetime
+
+    from test_gym import _entry, _exercise, _session, _set
+
+    exercises = [
+        _exercise(name, [_set(n, [_entry(0, reps=6, weight=40)]) for n in (1, 2, 3)], order=i)
+        for i, name in enumerate(names)
+    ]
+    payload = _session(exercises[0])
+    payload["exercises"] = exercises
+    payload["performedAt"] = datetime.now(UTC).isoformat()
+    response = client.post("/sessions/gym", json=payload, headers=headers)
+    assert response.status_code == 201, response.text
+
+
+def test_week_feedback_points_to_main_gap(client: TestClient, seed_catalog) -> None:
+    headers = _headers(client, "weekfb@example.com")
+    empty = client.get("/analysis/week-feedback", headers=headers)
+    assert empty.status_code == 200
+    assert empty.json()["focusCode"] is None
+
+    _gym_session(client, headers, ["press banca", "press militar"])
+    data = client.get("/analysis/week-feedback", headers=headers).json()
+    assert data["focusCode"].startswith("pattern:")
+    assert "próximo entreno" in data["message"]
+    assert data["headline"]
+
+
+def test_routine_analysis_reports_adherence(client: TestClient, seed_catalog) -> None:
+    headers = _headers(client, "adherence@example.com")
+    ids = _ids(client, headers)
+    routine = {"name": "Plan", "days": [_day(1, [ids["press banca"], ids["press militar"]])]}
+    created = client.post("/routines", json=routine, headers=headers).json()
+    # Hace press banca y algo fuera de la rutina; se salta el press militar.
+    _gym_session(client, headers, ["press banca", "fondos en paralelas"])
+
+    data = client.get(f"/analysis/sport?routineId={created['id']}", headers=headers).json()
+    adherence = data["adherence"]
+    assert adherence["sessions"] == 1
+    assert 0 < adherence["pct"] < 100
+    assert any("militar" in e["name"].lower() for e in adherence["skipped"])
+    assert any("fondos" in e["name"].lower() for e in adherence["offPlan"])
+    assert adherence["historyScore"] is not None

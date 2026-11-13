@@ -49,10 +49,48 @@ export type ClimbingMetrics = {
 };
 export type GenericMetrics = { kind: "generic"; notes?: string | null };
 
+export type WodFormat =
+  | "for_time"
+  | "amrap"
+  | "emom"
+  | "tabata"
+  | "intervals"
+  | "strength"
+  | "hyrox_sim"
+  | "hyrox_race"
+  | "other";
+export type HyroxCategory = "open_men" | "open_women" | "pro_men" | "pro_women" | "doubles" | "relay";
+export type WodMovement = {
+  exerciseId?: string | null;
+  name: string;
+  reps?: number | null;
+  weightKg?: number | null;
+  distanceM?: number | null;
+  calories?: number | null;
+};
+export type WodSplit = { name: string; seconds: number };
+export type WodMetrics = {
+  kind: "wod";
+  format: WodFormat;
+  name?: string | null;
+  scheme?: string | null;
+  timeCapMinutes?: number | null;
+  timeSeconds?: number | null;
+  rounds?: number | null;
+  extraReps?: number | null;
+  totalReps?: number | null;
+  loadKg?: number | null;
+  rx?: boolean;
+  hyroxCategory?: HyroxCategory | null;
+  movements?: WodMovement[];
+  splits?: WodSplit[];
+};
+
 export type SessionMetrics =
   | CombatMetrics
   | EnduranceMetrics
   | ClimbingMetrics
+  | WodMetrics
   | GenericMetrics;
 
 export type SessionIn = {
@@ -610,6 +648,8 @@ export type CatalogExerciseDetails = {
   instructions?: string[];
   nameEs?: string;
   instructionsEs?: string[];
+  /** Movimientos de CrossFit/HYROX: cómo se miden. */
+  unit?: "reps" | "distance" | "calories";
 };
 
 export type CatalogExercise = {
@@ -842,18 +882,22 @@ export type AgentReply = {
 };
 
 /* ===== M5 nutrición ===== */
-export type MealName = "desayuno" | "comida" | "merienda" | "cena" | "snack";
+export type MealName = "desayuno" | "media_manana" | "comida" | "merienda" | "cena" | "dia";
 export type MealMethod = "pesada" | "etiqueta" | "racion" | "rapida" | "ia";
 export type FoodSource = "off" | "usda" | "custom" | "ia";
 export type GoalType = "perder" | "mantener" | "ganar" | "corte";
 
 export type Serving = { label: string; grams: number };
 
+export type FoodFacets = { stores: string[]; brands: string[] };
+
 export type Food = {
   id: string;
   source: FoodSource;
   name: string;
   brand: string | null;
+  /** Supermercado de origen si viene de una importación por tienda (p. ej. "Lidl"). */
+  store?: string | null;
   barcode: string | null;
   kcal100g: number;
   protein100g: number;
@@ -977,11 +1021,27 @@ export type NutritionGoal = {
   activityFactor: number;
 };
 
+export type WeightPoint = {
+  measuredOn: string;
+  weightKg: number;
+  bodyFatPct?: number | null;
+  musclePct?: number | null;
+};
+
 export type WeightSeries = {
-  points: { measuredOn: string; weightKg: number }[];
+  points: WeightPoint[];
   latestKg: number | null;
   average7dKg: number | null;
   changeWeekKg: number | null;
+  latestBodyFatPct?: number | null;
+  latestMusclePct?: number | null;
+};
+
+export type WeightInput = {
+  measuredOn: string;
+  weightKg: number;
+  bodyFatPct?: number;
+  musclePct?: number;
 };
 
 export type MealTemplate = {

@@ -26,7 +26,7 @@ MEMORY_TTL_SECONDS = 24 * 3600
 MEMORY_MAX_MESSAGES = 30
 CONTEXT_MESSAGES = 16
 MAX_TOOL_STEPS = 4
-MAX_TOOL_CONTENT = 3500
+MAX_TOOL_CONTENT = 12000
 UNAVAILABLE = "El asistente no está disponible ahora mismo. Inténtalo en un rato."
 SPORT_LABELS = {"boxing": "boxeo", "martial_arts": "artes marciales", "triathlon": "triatlón"}
 
@@ -89,7 +89,13 @@ async def _run_tool(
         logger.exception("Agent tool %s failed", name)
         return json.dumps({"error": "No se pudo completar la herramienta"}), None
     content = json.dumps(result.content, ensure_ascii=False, default=str)
-    return content[:MAX_TOOL_CONTENT], result.action
+    if len(content) > MAX_TOOL_CONTENT:
+        # Nunca truncar en silencio: el LLM interpretaria el JSON cortado como completo.
+        content = (
+            content[:MAX_TOOL_CONTENT]
+            + " …[RESULTADO TRUNCADO: datos incompletos; pide un subconjunto más pequeño]"
+        )
+    return content, result.action
 
 
 async def run_turn(

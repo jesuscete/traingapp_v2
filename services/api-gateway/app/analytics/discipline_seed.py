@@ -12,6 +12,9 @@ sembrada en `discipline_muscle_load`.
 DISCIPLINE_SEED: tuple[tuple[str, str, float, str, str], ...] = (
     ("Gimnasio", "gym", 5.0, "gimnasio", "gym"),
     ("Calistenia", "calisthenics", 5.5, "gimnasio", "cardio"),
+    # Compendium: circuit training vigoroso ~8 MET; HYROX suma 8 km de carrera.
+    ("CrossFit", "crossfit", 8.0, "gimnasio", "cardio"),
+    ("HYROX", "hyrox", 8.5, "gimnasio", "cardio"),
     ("Boxeo", "boxing", 7.8, "combate", "cardio"),
     ("Artes marciales", "martial_arts", 7.5, "combate", "cardio"),
     ("Running", "running", 8.2, "cardio", "cardio"),

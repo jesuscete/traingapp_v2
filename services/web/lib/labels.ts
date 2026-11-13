@@ -38,6 +38,8 @@ export const DISCIPLINE_LABELS: Record<string, string> = {
   climbing: "Escalada",
   ski_snowboard: "Esquí / snowboard",
   calisthenics: "Calistenia",
+  crossfit: "CrossFit",
+  hyrox: "HYROX",
 };
 
 export const CATEGORY_LABELS: Record<string, string> = {

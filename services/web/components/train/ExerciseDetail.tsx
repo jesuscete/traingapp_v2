@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { BodyMap } from "@/components/BodyMap";
+import { MuscleBody } from "@/components/MuscleChart";
 import { ExerciseAnimation } from "@/components/gym/ExerciseAnimation";
 import { ExerciseHistoryView } from "@/components/gym/ExerciseHistoryView";
 import { FavoriteButton } from "@/components/gym/FavoriteButton";
@@ -134,8 +134,7 @@ export function ExerciseDetail({ id, embedded = false, onDeleted }: { id: string
                 </span>
               ))}
             </div>
-            <BodyMap
-              showLegend={false}
+            <MuscleBody
               points={Object.entries(exercise.muscleMap)
                 .filter(([, v]) => v > 0)
                 .map(([muscleGroup, value]) => ({ muscleGroup, value }))}

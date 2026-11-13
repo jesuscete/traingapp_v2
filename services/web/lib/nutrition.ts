@@ -2,19 +2,22 @@ import type { Food, MealMethod, MealName, ProposedItem } from "@/lib/types";
 
 export const MEALS: { key: MealName; label: string }[] = [
   { key: "desayuno", label: "Desayuno" },
+  { key: "media_manana", label: "Media mañana" },
   { key: "comida", label: "Comida" },
   { key: "merienda", label: "Merienda" },
   { key: "cena", label: "Cena" },
-  { key: "snack", label: "Snack" },
 ];
+
+/** Registro agregado de todo el día (fuera de MEALS: no se elige como comida). */
+export const DAY_MEAL: { key: MealName; label: string } = { key: "dia", label: "Día completo" };
 
 export function defaultMealForNow(): MealName {
   const h = new Date().getHours();
-  if (h < 11) return "desayuno";
+  if (h < 10) return "desayuno";
+  if (h < 13) return "media_manana";
   if (h < 16) return "comida";
-  if (h < 19) return "merienda";
-  if (h < 23) return "cena";
-  return "snack";
+  if (h < 20) return "merienda";
+  return "cena";
 }
 
 function pad(n: number): string {

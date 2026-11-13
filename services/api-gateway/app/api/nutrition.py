@@ -14,6 +14,7 @@ from app.models import User
 from app.schemas.nutrition import (
     ApplyTemplateIn,
     DayOut,
+    FoodFacetsOut,
     FoodIn,
     FoodOut,
     GoalIn,
@@ -55,10 +56,24 @@ def _invalid(exc: NutritionError) -> HTTPException:
 
 @router.get("/foods/search", response_model=list[FoodOut])
 async def search_foods(
-    db: Db, user: CurrentUser, q: Annotated[str, Query(min_length=2, max_length=80)]
+    db: Db,
+    user: CurrentUser,
+    q: Annotated[str, Query(max_length=80)] = "",
+    store: Annotated[str | None, Query(max_length=40)] = None,
+    brand: Annotated[str | None, Query(max_length=120)] = None,
 ) -> list[FoodOut]:
     """Tus alimentos y los ya usados primero; después caché local y Open Food Facts."""
-    return await nutrition.search_foods(db, user.id, q)
+    if not (store or brand) and len(q.strip()) < 2:
+        raise HTTPException(status_code=422, detail="Escribe al menos 2 letras o elige un filtro")
+    return await nutrition.search_foods(db, user.id, q, store=store, brand=brand)
+
+
+@router.get("/foods/facets", response_model=FoodFacetsOut)
+async def food_facets(
+    db: Db, user: CurrentUser, store: Annotated[str | None, Query(max_length=40)] = None
+) -> FoodFacetsOut:
+    """Supermercados y marcas para los filtros de búsqueda."""
+    return await nutrition.food_facets(db, user.id, store)
 
 
 @router.get("/foods/barcode/{barcode}", response_model=FoodOut)
@@ -171,7 +186,9 @@ async def weight(
 
 @router.post("/weight", response_model=WeightOut, status_code=status.HTTP_201_CREATED)
 async def log_weight(body: WeightIn, db: Db, user: CurrentUser) -> WeightOut:
-    await nutrition.log_weight(db, user, body.measured_on, body.weight_kg)
+    await nutrition.log_weight(
+        db, user, body.measured_on, body.weight_kg, body.body_fat_pct, body.muscle_pct
+    )
     return await nutrition.weight_history(db, user.id, 90, _today())
 
 

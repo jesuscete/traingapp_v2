@@ -1,16 +1,19 @@
 """Lógica de nutrición (M5): alimentos (caché + propios), comidas, objetivos, peso y platos."""
 
 import logging
+import re
 import uuid
 from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.analytics import nutrition as calc
 from app.core import food_sources
+from app.core.config import settings
 from app.models import (
     BodyWeightLog,
     Food,
@@ -23,6 +26,7 @@ from app.models import (
 from app.schemas.nutrition import (
     EXACT_METHODS,
     DayOut,
+    FoodFacetsOut,
     FoodIn,
     FoodOut,
     GoalIn,
@@ -47,8 +51,61 @@ from app.schemas.nutrition import (
 
 logger = logging.getLogger(__name__)
 
-MEALS = ("desayuno", "comida", "merienda", "cena", "snack")
+MEALS = ("desayuno", "media_manana", "comida", "merienda", "cena", "dia")
 LOCAL_RESULTS_ENOUGH = 8
+_SEARCH_STOPWORDS = frozenset({"de", "del", "la", "el", "los", "las", "y", "con", "en", "al"})
+_ACCENTS = {"á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u", "ü": "u"}
+
+
+def _fold(text: str) -> str:
+    text = text.lower()
+    for accented, plain in _ACCENTS.items():
+        text = text.replace(accented, plain)
+    return text
+
+
+def _folded(column: ColumnElement[str] | InstrumentedAttribute[str]) -> ColumnElement[str]:
+    """lower() sin tildes en SQL (replace encadenados: vale en PostgreSQL y SQLite)."""
+    expr: ColumnElement[str] = func.lower(column)
+    for accented, plain in _ACCENTS.items():
+        expr = func.replace(expr, accented, plain)
+    return expr
+
+
+_STEM_LENGTH = 6
+
+
+_BRAND_SEPARATORS = (" ", "-", ".", "'", "&")
+
+
+def _compact(text: str) -> str:
+    """Clave de marca: sin tildes, mayúsculas ni separadores ("Alpen Fest" == "alpenfest")."""
+    text = _fold(text)
+    for sep in _BRAND_SEPARATORS:
+        text = text.replace(sep, "")
+    return text
+
+
+def _compacted(column: ColumnElement[str]) -> ColumnElement[str]:
+    expr = _folded(column)
+    for sep in _BRAND_SEPARATORS:
+        expr = func.replace(expr, sep, "")
+    return expr
+
+
+def search_terms(query: str) -> list[str]:
+    """Patrones LIKE por palabra, sin tildes ni plurales: "cereales" -> "%cereal%"."""
+    terms: list[str] = []
+    for word in re.findall(r"\w+", _fold(query)):
+        if len(word) < 2 or word in _SEARCH_STOPWORDS:
+            continue
+        if len(word) > 4 and word.endswith("es"):
+            word = word[:-2]
+        elif len(word) > 3 and word.endswith("s"):
+            word = word[:-1]
+        # Raiz aproximada: "proteinas" -> "protei" casa con "protein"/"proteina".
+        terms.append(f"%{word[:_STEM_LENGTH]}%")
+    return terms
 
 
 class NutritionError(ValueError):
@@ -76,6 +133,7 @@ async def _cache(session: AsyncSession, cand: food_sources.FoodCandidate) -> Foo
         barcode=cand.barcode,
         name=cand.name,
         brand=cand.brand,
+        store=cand.store,
         kcal_100g=cand.kcal_100g,
         protein_100g=cand.protein_100g,
         carbs_100g=cand.carbs_100g,
@@ -101,10 +159,31 @@ async def visible_food(session: AsyncSession, user_id: uuid.UUID, food_id: uuid.
 
 
 async def search_foods(
-    session: AsyncSession, user_id: uuid.UUID, query: str, limit: int = 20
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    query: str,
+    limit: int = 20,
+    store: str | None = None,
+    brand: str | None = None,
 ) -> list[FoodOut]:
-    """Primero lo tuyo (usados recientemente y propios), luego la caché y por último OFF."""
-    pattern = f"%{query.strip()}%"
+    """Primero lo tuyo (usados recientemente y propios), luego la caché y por último OFF.
+
+    `store` y `brand` filtran por supermercado y marca exactos (sin mayúsculas/tildes);
+    con alguno puesto la consulta de texto puede ir vacía.
+    """
+    terms = search_terms(query) if query.strip() else []
+    name, brand_col = _folded(Food.name), _folded(func.coalesce(Food.brand, ""))
+    conditions: list[ColumnElement[bool]] = [
+        or_(name.like(term), brand_col.like(term)) for term in terms
+    ]
+    if query.strip() and not terms:
+        conditions.append(name.like(f"%{_fold(query.strip())}%"))
+    if store:
+        conditions.append(_folded(func.coalesce(Food.store, "")) == _fold(store.strip()))
+    if brand:
+        conditions.append(_compacted(func.coalesce(Food.brand, "")) == _compact(brand))
+    matches = and_(*conditions)
+    filtered = bool(store or brand)
     recent_ids = select(MealEntry.food_id).where(
         MealEntry.user_id == user_id, MealEntry.food_id.is_not(None)
     )
@@ -112,10 +191,11 @@ async def search_foods(
         (
             await session.scalars(
                 select(Food)
-                .where(_visible(user_id), func.lower(Food.name).like(func.lower(pattern)))
+                .where(_visible(user_id), matches)
                 .order_by(
                     Food.owner_user_id.is_(None),  # propios primero
                     Food.id.not_in(recent_ids),  # luego los ya usados
+                    Food.store.is_(None),  # luego los de supermercado importado (Lidl...)
                     func.length(Food.name),
                 )
                 .limit(limit)
@@ -123,7 +203,7 @@ async def search_foods(
         ).all()
     )
     results = list(local)
-    if len(local) < LOCAL_RESULTS_ENOUGH:
+    if settings.off_remote_search and not filtered and len(local) < LOCAL_RESULTS_ENOUGH:
         try:
             for cand in await food_sources.off_search(query, limit=12):
                 results.append(await _cache(session, cand))
@@ -137,6 +217,35 @@ async def search_foods(
             seen.add(food.id)
             unique.append(food)
     return [food_out(f, user_id) for f in unique[:limit]]
+
+
+async def food_facets(
+    session: AsyncSession, user_id: uuid.UUID, store: str | None = None, limit: int = 300
+) -> FoodFacetsOut:
+    """Supermercados y marcas disponibles para filtrar (marcas del súper si se indica)."""
+    stores = await session.scalars(
+        select(Food.store)
+        .where(_visible(user_id), Food.store.is_not(None))
+        .group_by(Food.store)
+        .order_by(func.count().desc())
+    )
+    brand_query = select(Food.brand).where(_visible(user_id), Food.brand.is_not(None))
+    if store:
+        brand_query = brand_query.where(
+            _folded(func.coalesce(Food.store, "")) == _fold(store.strip())
+        )
+    brands = await session.scalars(
+        brand_query.group_by(Food.brand).order_by(func.count().desc()).limit(limit)
+    )
+    # Varias grafías de la misma marca ("Alpen Fest"/"Alpenfest"): una sola opción, la más usada.
+    unique: dict[str, str] = {}
+    for value in brands:
+        if value and value.strip():
+            unique.setdefault(_compact(value), value.strip())
+    return FoodFacetsOut(
+        stores=[s for s in stores if s],
+        brands=sorted(unique.values(), key=_fold),
+    )
 
 
 async def food_by_barcode(
@@ -462,16 +571,36 @@ async def week_summary(session: AsyncSession, user: User, end: date) -> WeekOut:
     )
 
 
-async def log_weight(session: AsyncSession, user: User, day: date, weight_kg: float) -> None:
+async def log_weight(
+    session: AsyncSession,
+    user: User,
+    day: date,
+    weight_kg: float,
+    body_fat_pct: float | None = None,
+    muscle_pct: float | None = None,
+) -> None:
     row = await session.scalar(
         select(BodyWeightLog).where(
             BodyWeightLog.user_id == user.id, BodyWeightLog.measured_on == day
         )
     )
     if row is None:
-        session.add(BodyWeightLog(user_id=user.id, measured_on=day, weight_kg=weight_kg))
+        session.add(
+            BodyWeightLog(
+                user_id=user.id,
+                measured_on=day,
+                weight_kg=weight_kg,
+                body_fat_pct=body_fat_pct,
+                muscle_pct=muscle_pct,
+            )
+        )
     else:
         row.weight_kg = weight_kg
+        # Sin porcentaje nuevo se conserva el medido antes ese día (no se borra).
+        if body_fat_pct is not None:
+            row.body_fat_pct = body_fat_pct
+        if muscle_pct is not None:
+            row.muscle_pct = muscle_pct
     latest = await session.scalar(
         select(func.max(BodyWeightLog.measured_on)).where(BodyWeightLog.user_id == user.id)
     )
@@ -491,13 +620,27 @@ async def weight_history(
         )
         .order_by(BodyWeightLog.measured_on)
     )
-    points = [(r.measured_on, r.weight_kg) for r in rows.all()]
-    trend = calc.weight_trend(points, today)
+    logs = list(rows.all())
+    trend = calc.weight_trend([(r.measured_on, r.weight_kg) for r in logs], today)
     return WeightOut(
-        points=[WeightPointOut(measured_on=d, weight_kg=w) for d, w in points],
+        points=[
+            WeightPointOut(
+                measured_on=r.measured_on,
+                weight_kg=r.weight_kg,
+                body_fat_pct=r.body_fat_pct,
+                muscle_pct=r.muscle_pct,
+            )
+            for r in logs
+        ],
         latest_kg=trend.latest_kg,
         average_7d_kg=trend.average_7d_kg,
         change_week_kg=trend.change_week_kg,
+        latest_body_fat_pct=next(
+            (r.body_fat_pct for r in reversed(logs) if r.body_fat_pct is not None), None
+        ),
+        latest_muscle_pct=next(
+            (r.muscle_pct for r in reversed(logs) if r.muscle_pct is not None), None
+        ),
     )
 
 

@@ -7,6 +7,7 @@ import {
   formatRoundTime,
 } from "@/lib/metrics";
 import type { SessionMetrics } from "@/lib/types";
+import { HYROX_CATEGORY_LABELS, WOD_FORMAT_LABELS, formatClock, movementText, wodScoreText } from "@/lib/wod";
 
 type Props = {
   metrics: SessionMetrics;
@@ -105,6 +106,49 @@ export function MetricsView({ metrics, discipline, durationMinutes }: Props) {
             </li>
           ))}
         </ul>
+      </section>
+    );
+  }
+
+  if (metrics.kind === "wod") {
+    const score = wodScoreText(metrics);
+    return (
+      <section className="block">
+        <h2>
+          {metrics.name ? `${metrics.name} · ` : ""}
+          {WOD_FORMAT_LABELS[metrics.format]}
+        </h2>
+        <div className="stats">
+          {score && <Stat label="Resultado" value={score} />}
+          <Stat label="Versión" value={metrics.rx === false ? "Scaled" : "Rx"} />
+          {metrics.timeCapMinutes != null && (
+            <Stat label={metrics.format === "amrap" ? "Duración" : "Time cap"} value={`${metrics.timeCapMinutes} min`} />
+          )}
+          {metrics.hyroxCategory && <Stat label="Categoría" value={HYROX_CATEGORY_LABELS[metrics.hyroxCategory]} />}
+        </div>
+        {metrics.scheme && <p className="muted">Esquema: {metrics.scheme}</p>}
+        {(metrics.movements ?? []).length > 0 && (
+          <ul className="m3-list">
+            {(metrics.movements ?? []).map((m, i) => (
+              <li key={i}>
+                <span>{movementText(m)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {(metrics.splits ?? []).length > 0 && (
+          <>
+            <h3 className="wod-sub">Tiempos por tramo</h3>
+            <ul className="m3-list">
+              {(metrics.splits ?? []).map((s, i) => (
+                <li key={i}>
+                  <span>{s.name}</span>
+                  <strong>{formatClock(s.seconds)}</strong>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </section>
     );
   }

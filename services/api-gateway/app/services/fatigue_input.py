@@ -18,7 +18,7 @@ from app.analytics import fatigue as fatigue_analytics
 from app.analytics.catalog import muscle_group_of, normalize_exercise_name
 from app.analytics.fatigue import SessionData
 from app.models import TrainingSession, WorkoutExercise
-from app.schemas.metrics import CombatMetrics, EnduranceMetrics
+from app.schemas.metrics import CombatMetrics, EnduranceMetrics, WodMetrics, WodMovement
 from app.services import sport_registry
 
 # Golpes equivalentes por minuto según el tipo de bloque (carga relativa, no conteo real).
@@ -104,7 +104,9 @@ def gym_group_load(ts: TrainingSession, maps: MuscleMaps) -> dict[str, float]:
     return {g: round(v / fatigue_analytics.GYM_REF_SETS, 4) for g, v in effective.items()}
 
 
-def _metrics(details: Mapping[str, object]) -> CombatMetrics | EnduranceMetrics | None:
+def _metrics(
+    details: Mapping[str, object],
+) -> CombatMetrics | EnduranceMetrics | WodMetrics | None:
     raw = details.get("metrics")
     if not isinstance(raw, dict):
         return None
@@ -113,6 +115,8 @@ def _metrics(details: Mapping[str, object]) -> CombatMetrics | EnduranceMetrics 
             return CombatMetrics.model_validate(raw)
         if raw.get("kind") == "endurance":
             return EnduranceMetrics.model_validate(raw)
+        if raw.get("kind") == "wod":
+            return WodMetrics.model_validate(raw)
     except ValidationError:
         return None
     return None
@@ -139,6 +143,46 @@ def combat_group_load(discipline: str, metrics: CombatMetrics) -> dict[str, floa
             load[group] += strikes * weight
     scale = fatigue_analytics.SATURATION_K / fatigue_analytics.BOXING_REF_STRIKES
     return {g: round(v * scale, 4) for g, v in load.items()}
+
+
+def _movement_involvement(movement: WodMovement, maps: MuscleMaps | None) -> dict[str, float]:
+    muscle_map = None
+    if maps is not None:
+        muscle_map = (
+            maps.by_id.get(movement.exercise_id) if movement.exercise_id else None
+        ) or maps.by_name.get(normalize_exercise_name(movement.name))
+    if muscle_map:
+        return involvement(muscle_map)
+    group = muscle_group_of(movement.name)
+    return {group: 1.0} if group in fatigue_analytics.MUSCLE_GROUPS else {}
+
+
+def wod_minutes(ts: TrainingSession, metrics: WodMetrics) -> float | None:
+    if ts.duration_minutes:
+        return float(ts.duration_minutes)
+    seconds = metrics.time_seconds or sum(s.seconds for s in metrics.splits)
+    return seconds / 60 if seconds else metrics.time_cap_minutes
+
+
+def wod_group_load(
+    ts: TrainingSession, metrics: WodMetrics, maps: MuscleMaps | None
+) -> dict[str, float] | None:
+    """Carga del WOD repartida entre los músculos de sus movimientos.
+
+    Cada movimiento pesa lo mismo (en un WOD se reparte el tiempo entre ellos); un músculo
+    que es principal en todos recibe la carga completa de la sesión. Sin movimientos
+    reconocibles devuelve None y se usa la carga genérica de la disciplina.
+    """
+    minutes = wod_minutes(ts, metrics)
+    involvements = [i for m in metrics.movements if (i := _movement_involvement(m, maps))]
+    if not minutes or not involvements:
+        return None
+    total = fatigue_analytics.SATURATION_K * minutes / fatigue_analytics.WOD_REF_MINUTES
+    load: dict[str, float] = defaultdict(float)
+    for weights in involvements:
+        for group, weight in weights.items():
+            load[group] += weight
+    return {g: round(total * v / len(involvements), 4) for g, v in load.items()}
 
 
 def trimp_of(details: Mapping[str, object]) -> float | None:
@@ -168,6 +212,8 @@ def session_data(ts: TrainingSession, maps: MuscleMaps | None = None) -> Session
     elif isinstance(metrics, CombatMetrics):
         strikes = combat_strikes(metrics)
         group_load = combat_group_load(ts.discipline, metrics)
+    elif isinstance(metrics, WodMetrics) and (wod := wod_group_load(ts, metrics, maps)):
+        group_load = wod
     elif (trimp := trimp_of(details)) is not None:
         group_load, includes_effort = trimp_group_load(ts.discipline, trimp), True
     distance = ts.distance_meters

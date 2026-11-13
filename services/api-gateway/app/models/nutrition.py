@@ -42,6 +42,8 @@ class Food(Base):
     barcode: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(200))
     brand: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # Supermercado de origen (p. ej. "Lidl") cuando viene de una importacion por tienda.
+    store: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
     kcal_100g: Mapped[float] = mapped_column(Float)
     protein_100g: Mapped[float] = mapped_column(Float, default=0)
     carbs_100g: Mapped[float] = mapped_column(Float, default=0)
@@ -66,7 +68,8 @@ class MealEntry(Base):
         Uuid, ForeignKey("users.id", ondelete="CASCADE")
     )
     eaten_on: Mapped[date] = mapped_column(Date)
-    meal: Mapped[str] = mapped_column(String(10))  # desayuno|comida|merienda|cena|snack
+    # desayuno|media_manana|comida|merienda|cena|dia
+    meal: Mapped[str] = mapped_column(String(16))
     food_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("food.id", ondelete="SET NULL"), nullable=True
     )
@@ -112,6 +115,8 @@ class BodyWeightLog(Base):
     )
     measured_on: Mapped[date] = mapped_column(Date)
     weight_kg: Mapped[float] = mapped_column(Float)
+    body_fat_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    muscle_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
 
 
 class NutritionGoal(Base):

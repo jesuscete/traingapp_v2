@@ -37,6 +37,8 @@
   .nu-dia-side { position: sticky; top: var(--space-4); }
   body .nu-page { padding-bottom: 96px; }
 }
+/* Hueco para los botones flotantes (Registrar día / Añadir) sobre la barra inferior. */
+body .nu-page { padding-bottom: calc(var(--bottomnav-height) + env(safe-area-inset-bottom) + 96px); }
 @media (min-width: 600px) { body .nu-page { padding-bottom: 96px; } }
 
 /* Hojas: diálogo centrado desde 600 px */

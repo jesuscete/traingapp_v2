@@ -44,6 +44,7 @@ class FoodCandidate:
     brand: str | None = None
     barcode: str | None = None
     servings: list[dict[str, object]] = field(default_factory=list)
+    store: str | None = None
 
 
 def _num(value: object) -> float | None:
@@ -54,6 +55,13 @@ def _num(value: object) -> float | None:
     except ValueError:
         return None
     return number if number >= 0 else None
+
+
+def product_brands(product: dict[str, object]) -> list[str]:
+    """Marcas de un producto OFF: texto "A, B" (API clasica) o lista (search-a-licious)."""
+    raw = product.get("brands")
+    items = raw if isinstance(raw, list) else str(raw).split(",") if isinstance(raw, str) else []
+    return [str(b).strip() for b in items if str(b).strip()]
 
 
 def parse_off_product(product: dict[str, object]) -> FoodCandidate | None:
@@ -82,15 +90,13 @@ def parse_off_product(product: dict[str, object]) -> FoodCandidate | None:
         servings.append(
             {"label": str(product.get("serving_size") or "1 ración"), "grams": quantity}
         )
-    brands = product.get("brands")
+    brand_list = product_brands(product)
     return FoodCandidate(
         source="off",
         external_id=code,
         barcode=code,
         name=name[:200],
-        brand=str(brands).split(",")[0].strip()[:120]
-        if isinstance(brands, str) and brands
-        else None,
+        brand=brand_list[0][:120] if brand_list else None,
         kcal_100g=kcal,
         protein_100g=_num(nutriments.get("proteins_100g")) or 0.0,
         carbs_100g=_num(nutriments.get("carbohydrates_100g")) or 0.0,

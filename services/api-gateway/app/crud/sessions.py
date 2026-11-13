@@ -1,3 +1,4 @@
+import math
 import uuid
 from datetime import datetime
 
@@ -10,7 +11,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.analytics import kcal as kcal_analytics
 from app.crud.disciplines import load_catalog
 from app.models import Exercise, TrainingSession, WorkoutExercise, WorkoutSet
-from app.schemas.metrics import CombatMetrics, EnduranceMetrics
+from app.schemas.metrics import CombatMetrics, EnduranceMetrics, WodMetrics
 from app.schemas.session import SessionIn, SessionUpdateIn
 
 _GYM_LOADS = (
@@ -103,6 +104,11 @@ def _with_metrics(data: SessionIn) -> SessionIn:
             details.setdefault("avgHeartRate", metrics.avg_heart_rate)
     if isinstance(metrics, CombatMetrics) and data.duration_minutes is None:
         update["duration_minutes"] = round(sum(b.total_minutes() for b in metrics.blocks))
+    if isinstance(metrics, WodMetrics) and data.duration_minutes is None:
+        seconds = metrics.time_seconds or sum(s.seconds for s in metrics.splits)
+        minutes = seconds / 60 if seconds else metrics.time_cap_minutes
+        if minutes:
+            update["duration_minutes"] = max(1, math.ceil(minutes))
     return data.model_copy(update=update)
 
 

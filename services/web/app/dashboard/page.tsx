@@ -62,6 +62,8 @@ function InsightRow({ item }: { item: HomeInsight }) {
   );
 }
 
+const WEEK_LETTERS = ["L", "M", "X", "J", "V", "S", "D"];
+
 function KcalRing({ value, target }: { value: number; target: number }) {
   const r = 34;
   const c = 2 * Math.PI * r;
@@ -183,9 +185,12 @@ export default function Dashboard() {
   const goal = home?.primaryGoal ?? null;
   const goalCountdown = goal ? countdownLabel(goal.daysLeft) : null;
   const active = new Set(home?.activeDays ?? []);
-  const lastDays = Array.from({ length: 7 }, (_, k) => {
+  // Semana natural L-D: los días hasta hoy caen siempre dentro de los 7 que trae activeDays.
+  const today = todayISO();
+  const weekDays = Array.from({ length: 7 }, (_, k) => {
     const now = new Date();
-    return toISODate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (6 - k)));
+    const mondayOffset = (now.getDay() + 6) % 7;
+    return toISODate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - mondayOffset + k));
   });
   const last = recent[0] ?? null;
 
@@ -351,12 +356,18 @@ export default function Dashboard() {
             <Link className="hoy-tile" href="/progreso">
               <span className="hoy-tile-title">Semana</span>
               <div className="hm-days">
-                {lastDays.map((iso) => (
-                  <span key={iso} className={`hm-dot${active.has(iso) ? " on" : ""}`} />
+                {weekDays.map((iso, k) => (
+                  <span
+                    key={iso}
+                    className={`hm-day${iso === today ? " today" : ""}${iso > today ? " future" : ""}`}
+                  >
+                    <span className={`hm-dot${active.has(iso) ? " on" : ""}`} />
+                    {WEEK_LETTERS[k]}
+                  </span>
                 ))}
               </div>
               <span className="hoy-tile-sub">
-                {home.weekSessions} {home.weekSessions === 1 ? "sesión" : "sesiones"} · {formatDuration(home.weekMinutes)}
+                {home.weekSessions} {home.weekSessions === 1 ? "sesión" : "sesiones"} en 7 días · {formatDuration(home.weekMinutes)}
               </span>
             </Link>
           </Card>

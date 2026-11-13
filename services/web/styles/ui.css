@@ -63,9 +63,14 @@
 .ui-fab { position: fixed; right: var(--space-4); bottom: calc(var(--bottomnav-height) + env(safe-area-inset-bottom) + 16px); z-index: 30; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); width: 56px; height: 56px; border: 0; border-radius: var(--radius-pill); background: var(--accent); color: var(--on-accent); box-shadow: var(--shadow-raised); font: inherit; font-weight: 600; cursor: pointer; }
 .ui-fab-label { display: none; }
 .ui-fab:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+.ui-fab-secondary { background: var(--surface-alt); color: var(--accent); border: 1px solid var(--accent); }
+/* Varios FAB juntos: el grupo se posiciona y los botones fluyen en fila. */
+.ui-fab-group { position: fixed; right: var(--space-4); bottom: calc(var(--bottomnav-height) + env(safe-area-inset-bottom) + 16px); z-index: 30; display: flex; align-items: center; gap: var(--space-3); }
+.ui-fab-group .ui-fab { position: static; }
 @media (min-width: 600px) {
   .ui-fab { bottom: 24px; right: 24px; width: auto; padding: 0 var(--space-5); }
   .ui-fab-label { display: inline; }
+  .ui-fab-group { bottom: 24px; right: 24px; }
 }
 
 .ui-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-2); padding: var(--space-5) var(--space-4); color: var(--text-secondary); }

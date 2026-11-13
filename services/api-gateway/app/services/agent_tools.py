@@ -24,6 +24,8 @@ from app.crud import stats as stats_crud
 from app.models import Routine, User
 from app.schemas.agent import AgentActionOut
 from app.schemas.chat import WorkoutDraftOut
+from app.schemas.metrics import WodMetrics
+from app.schemas.nutrition import MEAL_ALIASES
 from app.services import (
     fatigue_engine,
     fatigue_input,
@@ -207,7 +209,14 @@ async def _sport_analysis(ctx: ToolContext, args: dict[str, object]) -> ToolResu
     )
 
 
-def _routine_summary(routine: Routine, names: dict[uuid.UUID, str]) -> dict[str, object]:
+def _routine_summary(
+    routine: Routine, names: dict[uuid.UUID, str], only_day: int | None = None
+) -> dict[str, object]:
+    ordered = sorted(routine.days, key=lambda d: d.day_of_week)
+    gym_number = {
+        d.day_of_week: index
+        for index, d in enumerate((d for d in ordered if d.day_type == "gimnasio"), start=1)
+    }
     return {
         "routine_id": str(routine.id),
         "nombre": routine.name,
@@ -216,6 +225,8 @@ def _routine_summary(routine: Routine, names: dict[uuid.UUID, str]) -> dict[str,
                 "dia": d.day_of_week,
                 "nombre_dia": DAY_NAMES[d.day_of_week],
                 "tipo": d.day_type,
+                "etiqueta": d.label,
+                "sesion_gimnasio": gym_number.get(d.day_of_week),
                 "ejercicios": [
                     {
                         "routine_exercise_id": str(e.id),
@@ -229,7 +240,8 @@ def _routine_summary(routine: Routine, names: dict[uuid.UUID, str]) -> dict[str,
                     for e in d.exercises
                 ],
             }
-            for d in sorted(routine.days, key=lambda d: d.day_of_week)
+            for d in ordered
+            if only_day is None or d.day_of_week == only_day
         ],
     }
 
@@ -248,7 +260,8 @@ async def _get_routine(ctx: ToolContext, args: dict[str, object]) -> ToolResult:
     routine = await routine_crud.get_active_routine(ctx.session, ctx.user.id)
     if routine is None:
         return ToolResult({"rutina": None, "nota": "El usuario no tiene rutina activa."})
-    return ToolResult(_routine_summary(routine, await _names(ctx)))
+    only_day = _int_arg(args, "dia", 0, 0, 7) if args.get("dia") not in (None, "") else 0
+    return ToolResult(_routine_summary(routine, await _names(ctx), only_day or None))
 
 
 async def _search_exercises(ctx: ToolContext, args: dict[str, object]) -> ToolResult:
@@ -317,6 +330,11 @@ async def _log_workout(ctx: ToolContext, args: dict[str, object]) -> ToolResult:
         summary += f" · {draft.duration_minutes} min"
     if draft.exercises:
         summary += f" · {len(draft.exercises)} ejercicios"
+    if isinstance(draft.metrics, WodMetrics):
+        score = draft.metrics.score_text()
+        summary += f" · {draft.metrics.format.replace('_', ' ').upper()}" + (
+            f" {score}" if score else ""
+        )
     action = AgentActionOut(
         id=str(request_id), type="save_workout", summary=summary, request_id=request_id
     )
@@ -326,7 +344,7 @@ async def _log_workout(ctx: ToolContext, args: dict[str, object]) -> ToolResult:
     )
 
 
-MEALS_ES = ("desayuno", "comida", "merienda", "cena", "snack")
+MEALS_ES = ("desayuno", "media_manana", "comida", "merienda", "cena")
 
 
 async def _nutrition_today(ctx: ToolContext, args: dict[str, object]) -> ToolResult:
@@ -347,6 +365,7 @@ async def _nutrition_today(ctx: ToolContext, args: dict[str, object]) -> ToolRes
 async def _log_meal(ctx: ToolContext, args: dict[str, object]) -> ToolResult:
     text = _str_arg(args, "texto")
     meal = str(args.get("comida") or "").strip().lower()
+    meal = MEAL_ALIASES.get(meal, meal)
     if meal not in MEALS_ES:
         raise ToolArgumentError(f"'comida' debe ser una de {MEALS_ES}")
     parsed = await fetch_meal_parse(text)
@@ -473,8 +492,11 @@ TOOLS: dict[str, Tool] = {
         ),
         Tool(
             "ver_rutina",
-            "Rutina activa con días, ejercicios, routine_exercise_id y exercise_id.",
+            "Rutina activa con días, ejercicios, routine_exercise_id y exercise_id. "
+            "Cada día trae su etiqueta y sesion_gimnasio (1.ª, 2.ª… sesión de gimnasio de la "
+            "semana): «el día 3» suele referirse a sesion_gimnasio=3, no al miércoles.",
             _get_routine,
+            {"dia": "opcional: 1=lunes … 7=domingo para ver solo ese día"},
         ),
         Tool(
             "buscar_ejercicios",
@@ -500,7 +522,7 @@ TOOLS: dict[str, Tool] = {
             _log_meal,
             {
                 "texto": "lo que ha comido, tal cual",
-                "comida": "desayuno|comida|merienda|cena|snack",
+                "comida": "desayuno|media_manana|comida|merienda|cena",
             },
             writes=True,
         ),

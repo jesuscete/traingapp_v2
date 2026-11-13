@@ -9,6 +9,7 @@ import type {
   AgentReply,
   ImportResult,
   Food,
+  FoodFacets,
   FoodInput,
   MealEntry,
   MealEntryInput,
@@ -20,6 +21,7 @@ import type {
   ParseMealResult,
   ProposedItem,
   WeightSeries,
+  WeightInput,
   CatalogExercise,
   ExerciseAlternative,
   SportAnalysis,
@@ -568,10 +570,19 @@ export const api = {
     }),
 
   /* ===== M5 nutrición ===== */
-  searchFoods: (token: string, q: string) =>
-    request<Food[]>(`/nutrition/foods/search?q=${encodeURIComponent(q)}`, {
+  searchFoods: (token: string, q: string, filters: { store?: string; brand?: string } = {}) => {
+    const params = new URLSearchParams({ q });
+    if (filters.store) params.set("store", filters.store);
+    if (filters.brand) params.set("brand", filters.brand);
+    return request<Food[]>(`/nutrition/foods/search?${params.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
-    }),
+    });
+  },
+  getFoodFacets: (token: string, store?: string) =>
+    request<FoodFacets>(
+      `/nutrition/foods/facets${store ? `?store=${encodeURIComponent(store)}` : ""}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    ),
   getFoodByBarcode: (token: string, digits: string) =>
     request<Food>(`/nutrition/foods/barcode/${encodeURIComponent(digits)}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -659,7 +670,7 @@ export const api = {
     request<WeightSeries>(`/nutrition/weight?days=${days}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
-  addWeight: (token: string, body: { measuredOn: string; weightKg: number }) =>
+  addWeight: (token: string, body: WeightInput) =>
     request<WeightSeries>("/nutrition/weight", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },

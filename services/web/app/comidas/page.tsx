@@ -1,10 +1,11 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 import { BottomNav } from "@/components/BottomNav";
 import { AddFoodSheet } from "@/components/nutrition/AddFoodSheet";
+import { DayLogSheet } from "@/components/nutrition/DayLogSheet";
 import { DaySummary } from "@/components/nutrition/DaySummary";
 import { EditEntrySheet, TemplateNameSheet } from "@/components/nutrition/EntrySheets";
 import { GoalSheet } from "@/components/nutrition/GoalSheet";
@@ -17,6 +18,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { api } from "@/lib/api";
 import {
+  DAY_MEAL,
   dayLabel,
   defaultMealForNow,
   errMsg,
@@ -51,6 +53,7 @@ function ComidasInner() {
   const [editing, setEditing] = useState<MealEntry | null>(null);
   const [templateFor, setTemplateFor] = useState<MealName | null>(null);
   const [goalOpen, setGoalOpen] = useState(false);
+  const [dayLogOpen, setDayLogOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -99,6 +102,7 @@ function ComidasInner() {
   }
 
   const isToday = day === todayISO();
+  const dayEntries = data?.meals[DAY_MEAL.key] ?? [];
 
   return (
     <main className="dashboard nu-page">
@@ -151,10 +155,24 @@ function ComidasInner() {
           </div>
 
           <div className="nu-dia-meals">
+          {dayEntries.length > 0 && (
+            <MealSection
+              id={DAY_MEAL.key}
+              label={DAY_MEAL.label}
+              dayKcal={data.totals.kcal}
+              entries={dayEntries}
+              onAdd={() => setDayLogOpen(true)}
+              onEdit={() => setDayLogOpen(true)}
+              onDelete={remove}
+              onSaveTemplate={() => undefined}
+            />
+          )}
           {MEALS.map((m) => (
             <MealSection
               key={m.key}
+              id={m.key}
               label={m.label}
+              dayKcal={data.totals.kcal}
               entries={data.meals[m.key] ?? []}
               onAdd={() => setAdding(m.key)}
               onEdit={setEditing}
@@ -201,8 +219,16 @@ function ComidasInner() {
         </>
       )}
 
-      {tab === "dia" && !adding && (
-        <Fab label="Añadir" icon={<Plus size={24} strokeWidth={1.75} aria-hidden="true" />} onClick={() => setAdding(defaultMealForNow())} />
+      {tab === "dia" && !adding && !dayLogOpen && (
+        <div className="ui-fab-group">
+          <Fab
+            variant="secondary"
+            label="Registrar día"
+            icon={<CalendarCheck size={22} strokeWidth={1.75} aria-hidden="true" />}
+            onClick={() => setDayLogOpen(true)}
+          />
+          <Fab label="Añadir" icon={<Plus size={24} strokeWidth={1.75} aria-hidden="true" />} onClick={() => setAdding(defaultMealForNow())} />
+        </div>
       )}
 
       {toast && <p className="nu-toast ok">{toast}</p>}
@@ -220,6 +246,18 @@ function ComidasInner() {
           defaultName={MEALS.find((m) => m.key === templateFor)?.label ?? "Plato"}
           onClose={() => setTemplateFor(null)}
           onSaved={() => setToast("Plato guardado")}
+        />
+      )}
+      {token && dayLogOpen && (
+        <DayLogSheet
+          token={token}
+          day={day}
+          existing={dayEntries}
+          onClose={() => setDayLogOpen(false)}
+          onSaved={() => {
+            void load();
+            setToast("Día registrado");
+          }}
         />
       )}
       {token && goalOpen && <GoalSheet token={token} onClose={() => setGoalOpen(false)} onSaved={load} />}

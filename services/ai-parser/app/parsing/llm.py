@@ -25,6 +25,12 @@ class LlmExercise(BaseModel):
 CombatType = Literal["saco", "sparring", "manoplas", "comba", "sombra", "tecnica", "fisico"]
 COMBAT_DISCIPLINES = frozenset({"boxing", "martial_arts"})
 ENDURANCE_DISCIPLINES = frozenset({"running", "cycling", "swimming", "ski_snowboard"})
+WOD_DISCIPLINES = frozenset({"crossfit", "hyrox"})
+WodFormat = Literal[
+    "for_time", "amrap", "emom", "tabata", "intervals", "strength", "hyrox_sim", "hyrox_race",
+    "other",
+]
+HyroxCategory = Literal["open_men", "open_women", "pro_men", "pro_women", "doubles", "relay"]
 
 
 class LlmCombatBlock(BaseModel):
@@ -32,6 +38,29 @@ class LlmCombatBlock(BaseModel):
     rounds: int | None = Field(default=None, ge=1, le=50)
     roundSeconds: int | None = Field(default=None, ge=10, le=600)
     minutes: float | None = Field(default=None, gt=0, le=300)
+
+
+class LlmWodMovement(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    reps: int | None = Field(default=None, ge=1, le=10_000)
+    weightKg: float | None = Field(default=None, gt=0, le=500)
+    distanceM: float | None = Field(default=None, gt=0, le=100_000)
+    calories: int | None = Field(default=None, ge=1, le=5_000)
+
+
+class LlmWod(BaseModel):
+    format: WodFormat = "other"
+    name: str | None = Field(default=None, max_length=80)
+    scheme: str | None = Field(default=None, max_length=60)
+    timeCapMinutes: float | None = Field(default=None, gt=0, le=360)
+    timeSeconds: int | None = Field(default=None, ge=1, le=6 * 3600)
+    rounds: int | None = Field(default=None, ge=0, le=1_000)
+    extraReps: int | None = Field(default=None, ge=0, le=10_000)
+    totalReps: int | None = Field(default=None, ge=0, le=100_000)
+    loadKg: float | None = Field(default=None, gt=0, le=500)
+    rx: bool | None = None
+    hyroxCategory: HyroxCategory | None = None
+    movements: list[LlmWodMovement] = Field(default_factory=list, max_length=30)
 
 
 class LlmWorkoutDraft(BaseModel):
@@ -48,6 +77,7 @@ class LlmWorkoutDraft(BaseModel):
     distanceMeters: float | None = Field(default=None, gt=0)
     avgHeartRate: int | None = Field(default=None, ge=30, le=230)
     elevationGainM: float | None = Field(default=None, ge=0)
+    wod: LlmWod | None = None
 
 
 async def parse_with_llm(provider: LLMProvider, raw_text: str) -> ParseResponse:
@@ -102,6 +132,11 @@ def _metrics(draft: LlmWorkoutDraft, discipline: str) -> dict[str, object] | Non
         }
         present = {k: v for k, v in endurance.items() if v is not None}
         return {"kind": "endurance", **present} if present else None
+    if discipline in WOD_DISCIPLINES and draft.wod is not None:
+        wod = draft.wod.model_dump(exclude_none=True)
+        if not wod.get("movements"):
+            wod.pop("movements", None)
+        return {"kind": "wod", **wod}
     return None
 
 

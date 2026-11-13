@@ -2,6 +2,7 @@ import asyncio
 import uuid
 
 from app.chat.plan_session import (
+    _gym_day_label,
     cancel_plan,
     confirm_plan,
     is_plan_start,
@@ -154,6 +155,20 @@ def test_parse_split_choice() -> None:
     assert parse_split_choice("weider") == "upper_lower"
     assert parse_split_choice("me da igual") == "any"
     assert parse_split_choice("no se") is None
+
+
+def test_gym_day_label_strips_routine_noise() -> None:
+    plan = "Fullbody 3 días - Boxeo"
+    assert (
+        _gym_day_label("Fullbody Boxeo - Día 3: Fuerza rotacional y core con cuello", 1, plan)
+        == "Día 1 - Fuerza rotacional"
+    )
+    assert _gym_day_label("Pierna y core", 2, plan) == "Día 2 - Pierna y core"
+    assert _gym_day_label("Fullbody A (potencia, core)", 1, plan) == "Día 1 - Potencia"
+    assert _gym_day_label("Torso/Pierna", 1, plan) == "Día 1 - Torso/Pierna"
+    assert _gym_day_label("Gimnasio 2", 2, plan) == "Día 2"
+    assert _gym_day_label(plan, 3, plan) == "Día 3"
+    assert _gym_day_label(None, 1, plan) == "Día 1"
 
 
 def test_plan_display_name() -> None:

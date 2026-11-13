@@ -52,9 +52,18 @@ function Trend({ points }: { points: WeightSeries["points"] }) {
 
 type Props = { token: string; day: string; onChanged: () => void };
 
+/** Vacío -> undefined (no medido); fuera de rango o no numérico -> null (error). */
+function optionalPct(text: string, min: number, max: number): number | undefined | null {
+  if (text.trim() === "") return undefined;
+  const value = parseNum(text);
+  return Number.isFinite(value) && value >= min && value <= max ? value : null;
+}
+
 export function WeightCard({ token, day, onChanged }: Props) {
   const [series, setSeries] = useState<WeightSeries | null>(null);
   const [text, setText] = useState("");
+  const [fatText, setFatText] = useState("");
+  const [muscleText, setMuscleText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,11 +88,21 @@ export function WeightCard({ token, day, onChanged }: Props) {
       setError("Introduce un peso válido (kg).");
       return;
     }
+    const fat = optionalPct(fatText, 2, 70);
+    const muscle = optionalPct(muscleText, 10, 80);
+    if (fat === null || muscle === null) {
+      setError("Revisa los porcentajes: grasa entre 2 y 70 %, músculo entre 10 y 80 %.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      setSeries(await api.addWeight(token, { measuredOn: day, weightKg: kg }));
+      setSeries(
+        await api.addWeight(token, { measuredOn: day, weightKg: kg, bodyFatPct: fat, musclePct: muscle }),
+      );
       setText("");
+      setFatText("");
+      setMuscleText("");
       onChanged();
     } catch (err) {
       setError(errMsg(err, "No se pudo guardar el peso"));
@@ -126,20 +145,55 @@ export function WeightCard({ token, day, onChanged }: Props) {
           </strong>
         </div>
       </div>
+      {(series?.latestBodyFatPct != null || series?.latestMusclePct != null) && (
+        <div className="nu-weight-stats">
+          <div>
+            <span className="muted">% grasa</span>
+            <strong>{series?.latestBodyFatPct != null ? `${g1(series.latestBodyFatPct)} %` : "—"}</strong>
+          </div>
+          <div>
+            <span className="muted">% músculo</span>
+            <strong>{series?.latestMusclePct != null ? `${g1(series.latestMusclePct)} %` : "—"}</strong>
+          </div>
+        </div>
+      )}
       {series && <Trend points={series.points.slice(-30)} />}
       <form className="nu-weight-form" onSubmit={save}>
-        <input
-          type="text"
-          inputMode="decimal"
-          aria-label="Peso en kg"
-          placeholder={dayPoint ? `${g1(dayPoint.weightKg)} (registrado)` : "Peso de hoy (kg)"}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
+        <label className="nu-field nu-weight-kg">
+          <span>Peso (kg)</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder={dayPoint ? `${g1(dayPoint.weightKg)} (registrado)` : "Peso de hoy"}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+        </label>
+        <label className="nu-field">
+          <span>% grasa</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder={dayPoint?.bodyFatPct != null ? g1(dayPoint.bodyFatPct) : "Opcional"}
+            value={fatText}
+            onChange={(e) => setFatText(e.target.value)}
+          />
+        </label>
+        <label className="nu-field">
+          <span>% músculo</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder={dayPoint?.musclePct != null ? g1(dayPoint.musclePct) : "Opcional"}
+            value={muscleText}
+            onChange={(e) => setMuscleText(e.target.value)}
+          />
+        </label>
         <button type="submit" disabled={busy || text.trim() === ""}>
           {dayPoint ? "Actualizar" : "Guardar"}
         </button>
       </form>
+      <p className="muted nu-note">% de grasa y músculo: solo si tu báscula los mide.</p>
       {dayPoint && (
         <button type="button" className="secondary nu-add-link" disabled={busy} onClick={remove}>
           Borrar el peso de este día

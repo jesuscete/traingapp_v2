@@ -18,6 +18,7 @@ import {
   type RouteForm,
 } from "@/lib/metrics";
 import type { ClimbingStyle, CombatBlockType } from "@/lib/types";
+import { WodEditor } from "@/components/metrics/WodEditor";
 
 type Props = {
   kind: MetricsKind;
@@ -33,6 +34,10 @@ function fmtMin(n: number): string {
 
 export function MetricsEditor({ kind, discipline, value, onChange, durationMinutes }: Props) {
   const patch = (changes: Partial<MetricsForm>) => onChange({ ...value, ...changes });
+
+  if (kind === "wod") {
+    return <WodEditor discipline={discipline} value={value.wod} onChange={(wod) => patch({ wod })} />;
+  }
 
   if (kind === "combat") {
     const setBlock = (id: string, changes: Partial<BlockForm>) =>

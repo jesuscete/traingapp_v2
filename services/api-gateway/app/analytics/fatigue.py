@@ -58,6 +58,9 @@ TAU_RESIDUAL: dict[str, float] = {
 SATURATION_K = 1.6  # volumen relativo 1.0 -> 80 % del impulso máximo
 GYM_REF_SETS = 6.0  # series efectivas por grupo para 1-e^-1 (63 %); 10 series -> 81 %
 TRIMP_REF = 100.0  # TRIMP de ~1 h a ritmo medio-alto = volumen relativo 1.0 (M6)
+# WOD (CrossFit/HYROX): minutos de trabajo para volumen relativo 1.0 en el músculo principal
+# de todos los movimientos (con SATURATION_K: 20 min -> ~66 %, una carrera HYROX -> ~95 %).
+WOD_REF_MINUTES = 30.0
 
 # Umbrales de riesgo local.
 WARN_LEVEL = 70.0
@@ -138,6 +141,16 @@ MUSCLE_LOAD_DEFAULT: dict[str, dict[str, float]] = {
         "core": 0.90, "back": 0.85, "shoulders": 0.85, "biceps": 0.85,
         "triceps": 0.85, "chest": 0.80, "forearms": 0.75, "quadriceps": 0.55,
         "calves": 0.45, "glutes": 0.40, "neck": 0.30, "hamstrings": 0.30,
+    },
+    "crossfit": {
+        "quadriceps": 0.85, "shoulders": 0.80, "core": 0.80, "glutes": 0.75,
+        "back": 0.75, "hamstrings": 0.65, "triceps": 0.60, "forearms": 0.60,
+        "chest": 0.50, "biceps": 0.45, "calves": 0.45, "neck": 0.20,
+    },
+    "hyrox": {
+        "quadriceps": 0.95, "glutes": 0.85, "calves": 0.80, "hamstrings": 0.75,
+        "core": 0.70, "back": 0.65, "forearms": 0.65, "shoulders": 0.60,
+        "biceps": 0.40, "triceps": 0.40, "chest": 0.35, "neck": 0.15,
     },
     "football": {
         "quadriceps": 0.90, "hamstrings": 0.90, "glutes": 0.80, "calves": 0.90,

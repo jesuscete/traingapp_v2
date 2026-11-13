@@ -1,3 +1,5 @@
+import asyncio
+import json
 from typing import Any
 
 import httpx
@@ -88,6 +90,34 @@ def test_agent_reads_data_with_tools_and_keeps_memory(
     client.post("/agent/message", json={"text": "gracias"}, headers=headers)
     remembered = [m["content"] for m in script.payloads[2]["messages"]]
     assert "¿qué tengo el lunes?" in remembered and "Tienes press banca el lunes." in remembered
+
+
+def test_ver_rutina_filters_day_and_numbers_gym_sessions(
+    client: TestClient, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = _headers(client, "agent-day@example.com")
+    _routine(client, headers, ids["press banca"])
+    script = ScriptedAgent(_tool("ver_rutina", dia=2), _tool("ver_rutina", dia=1), _reply("Ok."))
+    monkeypatch.setattr("app.core.agent.fetch_agent_step", script)
+
+    client.post("/agent/message", json={"text": "dame el día 1"}, headers=headers)
+    empty = json.loads(script.payloads[1]["messages"][-1]["content"])
+    assert empty["dias"] == []
+    monday = json.loads(script.payloads[2]["messages"][-1]["content"])
+    assert [d["dia"] for d in monday["dias"]] == [1]
+    assert monday["dias"][0]["sesion_gimnasio"] == 1
+
+
+def test_oversized_tool_result_is_marked_truncated(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services import agent as agent_service
+    from app.services.agent_tools import TOOLS, Tool, ToolResult
+
+    async def big(_ctx: object, _args: dict[str, object]) -> ToolResult:
+        return ToolResult({"x": "a" * (agent_service.MAX_TOOL_CONTENT + 10)})
+
+    monkeypatch.setitem(TOOLS, "ver_rutina", Tool("ver_rutina", "", big))
+    content, _ = asyncio.run(agent_service._run_tool(None, "ver_rutina", {}))  # type: ignore[arg-type]
+    assert content.endswith("]") and "TRUNCADO" in content
 
 
 def test_agent_proposal_requires_confirmation(

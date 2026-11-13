@@ -1,12 +1,24 @@
 import re
 import uuid
 from datetime import date
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
-Meal = Literal["desayuno", "comida", "merienda", "cena", "snack"]
+MEAL_ALIASES = {"snack": "media_manana", "almuerzo": "media_manana"}
+
+
+def _meal_alias(value: object) -> object:
+    """Compatibilidad: "snack" (nombre antiguo) y "almuerzo" se guardan como media mañana."""
+    return MEAL_ALIASES.get(value, value) if isinstance(value, str) else value
+
+
+# 5 tomas del día + "dia": registro agregado de todo el día (kcal y macros de otra app).
+Meal = Annotated[
+    Literal["desayuno", "media_manana", "comida", "merienda", "cena", "dia"],
+    BeforeValidator(_meal_alias),
+]
 # Exactas: pesada (gramos de báscula), etiqueta (valores copiados del envase).
 # Estimadas: racion (raciones típicas), rapida (kcal sueltas), ia (texto libre).
 Method = Literal["pesada", "etiqueta", "racion", "rapida", "ia"]
@@ -33,6 +45,7 @@ class FoodOut(CamelModel):
     source: str
     name: str
     brand: str | None
+    store: str | None = None
     barcode: str | None
     kcal_100g: float
     protein_100g: float
@@ -42,6 +55,13 @@ class FoodOut(CamelModel):
     sugar_100g: float | None
     servings: list[Serving] = []
     is_custom: bool = False
+
+
+class FoodFacetsOut(CamelModel):
+    """Opciones de filtro de la búsqueda de alimentos."""
+
+    stores: list[str]
+    brands: list[str]
 
 
 class FoodIn(CamelModel):
@@ -190,11 +210,16 @@ class WeekOut(CamelModel):
 class WeightIn(CamelModel):
     measured_on: date
     weight_kg: float = Field(gt=20, lt=400)
+    # Báscula de bioimpedancia (opcional).
+    body_fat_pct: float | None = Field(default=None, ge=2, le=70)
+    muscle_pct: float | None = Field(default=None, ge=10, le=80)
 
 
 class WeightPointOut(CamelModel):
     measured_on: date
     weight_kg: float
+    body_fat_pct: float | None = None
+    muscle_pct: float | None = None
 
 
 class WeightOut(CamelModel):
@@ -202,6 +227,9 @@ class WeightOut(CamelModel):
     latest_kg: float | None
     average_7d_kg: float | None
     change_week_kg: float | None
+    # Última medición de composición corporal (puede ser de otro día que el último peso).
+    latest_body_fat_pct: float | None = None
+    latest_muscle_pct: float | None = None
 
 
 class GoalIn(CamelModel):

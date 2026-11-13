@@ -313,6 +313,35 @@ def test_confirm_carries_sport_metrics(client: TestClient, _fake_redis, monkeypa
     assert len(created["details"]["metrics"]["blocks"]) == 2
 
 
+def test_chat_wod_reaches_session(client: TestClient, _fake_redis, monkeypatch) -> None:
+    wod_draft = {
+        **BOXING_DRAFT,
+        "rawText": "AMRAP 20: 5 dominadas, 10 flexiones, 15 sentadillas. 18 rondas + 7",
+        "discipline": "crossfit",
+        "metrics": {
+            "kind": "wod",
+            "format": "amrap",
+            "timeCapMinutes": 20,
+            "rounds": 18,
+            "extraReps": 7,
+            "movements": [{"name": "dominadas", "reps": 5}, {"name": "flexiones", "reps": 10}],
+        },
+    }
+
+    async def fake(raw_text: str) -> dict:
+        return wod_draft
+
+    monkeypatch.setattr("app.api.chat.fetch_draft", fake)
+    headers = _auth_headers(client, "chat-wod@example.com")
+    draft = client.post("/chat/draft", json={"text": "amrap"}, headers=headers).json()
+    assert draft["draft"]["metrics"]["kind"] == "wod"
+    created = client.post(
+        "/chat/confirm", json={"requestId": draft["requestId"]}, headers=headers
+    ).json()
+    assert created["discipline"] == "crossfit" and created["durationMinutes"] == 20
+    assert created["details"]["metrics"]["rounds"] == 18
+
+
 def test_draft_drops_malformed_metrics(client: TestClient, _fake_redis, monkeypatch) -> None:
     async def fake(raw_text: str) -> dict:
         return {**BOXING_DRAFT, "metrics": {"kind": "combat", "blocks": [{"type": "nope"}]}}

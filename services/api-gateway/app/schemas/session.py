@@ -13,6 +13,8 @@ from app.schemas.metrics import SessionMetrics, metrics_kind_for
 Discipline = Literal[
     "gym",
     "calisthenics",
+    "crossfit",
+    "hyrox",
     "boxing",
     "martial_arts",
     "running",

@@ -5,16 +5,34 @@
 # arriba por defecto (los datos persisten); usa -InfraDown para pararlos también.
 #
 # Uso:
-#   .\scripts\dev-down.ps1            # para gateway, ai-parser, worker y web
+#   .\scripts\dev-down.ps1            # copia de seguridad + para gateway, ai-parser, worker y web
 #   .\scripts\dev-down.ps1 -InfraDown # además, docker compose down
+#   .\scripts\dev-down.ps1 -NoBackup  # sin copia de seguridad (p. ej. al reiniciar tras un cambio)
 #
 param(
-    [switch]$InfraDown
+    [switch]$InfraDown,
+    [switch]$NoBackup
 )
 
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path "$PSScriptRoot\..").Path
 $pidFile = Join-Path $root ".dev-pids"
+
+# Copia de seguridad al parar (antes de apagar el PC): el proyecto es local, así que este es
+# el momento natural. Se omite con -NoBackup. Si falla, avisa pero no impide parar la app.
+if (-not $NoBackup) {
+    $pgRunning = docker ps --filter "name=^traingapp-postgres$" --format "{{.Names}}" 2>$null
+    if ($pgRunning -eq "traingapp-postgres") {
+        Write-Host "Copia de seguridad de la base de datos..." -ForegroundColor Cyan
+        try {
+            & (Join-Path $PSScriptRoot "backup-db.ps1")
+        } catch {
+            Write-Host "  No se pudo hacer la copia: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "Postgres no está en marcha: no se hace copia de seguridad." -ForegroundColor Yellow
+    }
+}
 
 if (Test-Path $pidFile) {
     Write-Host "Deteniendo procesos registrados en .dev-pids..." -ForegroundColor Cyan

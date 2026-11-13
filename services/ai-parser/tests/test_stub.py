@@ -65,3 +65,34 @@ def test_parse_new_disciplines() -> None:
     assert parse_text("partido de tenis 1h").discipline == "tennis"
     assert parse_text("clase de karate 1h").discipline == "martial_arts"
     assert parse_text("esqui alpino 3h").discipline == "ski_snowboard"
+
+
+def test_parse_crossfit_amrap_without_llm() -> None:
+    text = "AMRAP 20 min: 5 dominadas, 10 flexiones, 15 sentadillas. 18 rondas + 7 scaled"
+    result = parse_text(text)
+    assert result.discipline == "crossfit"
+    assert result.exercises == []
+    assert result.durationMinutes == 20
+    assert result.metrics == {
+        "kind": "wod",
+        "format": "amrap",
+        "timeCapMinutes": 20,
+        "rounds": 18,
+        "extraReps": 7,
+        "rx": False,
+    }
+
+
+def test_parse_hyrox_simulation_without_llm() -> None:
+    result = parse_text("Simulación hyrox open en 1:12:40")
+    assert result.discipline == "hyrox"
+    assert result.metrics is not None
+    assert result.metrics["format"] == "hyrox_sim"
+    assert result.metrics["timeSeconds"] == 4360
+    assert result.metrics["hyroxCategory"] == "open_men"
+
+
+def test_parse_for_time_clock() -> None:
+    result = parse_text("wod for time 21-15-9 thrusters y dominadas en 6:05")
+    assert result.metrics is not None
+    assert (result.metrics["format"], result.metrics["timeSeconds"]) == ("for_time", 365)

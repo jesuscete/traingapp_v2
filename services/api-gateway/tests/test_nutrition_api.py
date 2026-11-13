@@ -67,6 +67,24 @@ def test_exact_and_estimated_entries(client: TestClient) -> None:
     assert fixed.json()["method"] == "pesada" and fixed.json()["kcal"] == 180
 
 
+def test_whole_day_entry(client: TestClient) -> None:
+    headers = _headers(client, "whole-day@example.com")
+    entry = _entry(
+        client,
+        headers,
+        name="Registro del día",
+        kcal=2300,
+        proteinG=160,
+        carbsG=250,
+        fatG=70,
+        meal="dia",
+    )
+    assert entry.status_code == 201, entry.text
+    day = client.get("/nutrition/day", headers=headers).json()
+    assert len(day["meals"]["dia"]) == 1
+    assert day["totals"]["kcal"] == 2300 and day["totals"]["proteinG"] == 160
+
+
 def test_entry_validation_and_isolation(client: TestClient) -> None:
     owner = _headers(client, "owner-food@example.com")
     other = _headers(client, "other-food@example.com")
@@ -117,6 +135,36 @@ def test_goal_cut_and_weight_log(client: TestClient) -> None:
     assert weight["latestKg"] == 74.6 and weight["changeWeekKg"] == round(74.7 - 75.6, 2)
     profile = client.get("/profile", headers=headers).json()
     assert profile["weightKg"] == 74.6
+
+
+def test_weight_with_body_composition(client: TestClient) -> None:
+    headers = _headers(client, "composition@example.com")
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    body = {"measuredOn": yesterday, "weightKg": 80, "bodyFatPct": 18.5, "musclePct": 42}
+    assert client.post("/nutrition/weight", json=body, headers=headers).status_code in (200, 201)
+    # Hoy solo peso: la última composición sigue siendo la de ayer.
+    client.post("/nutrition/weight", json={"measuredOn": TODAY, "weightKg": 79.6}, headers=headers)
+    weight = client.get("/nutrition/weight", headers=headers).json()
+    assert weight["latestKg"] == 79.6
+    assert (weight["latestBodyFatPct"], weight["latestMusclePct"]) == (18.5, 42)
+    assert weight["points"][0]["bodyFatPct"] == 18.5 and weight["points"][1]["bodyFatPct"] is None
+    # Corregir el peso de ayer sin porcentajes no borra los medidos.
+    client.post(
+        "/nutrition/weight", json={"measuredOn": yesterday, "weightKg": 80.2}, headers=headers
+    )
+    again = client.get("/nutrition/weight", headers=headers).json()
+    assert again["points"][0]["weightKg"] == 80.2 and again["points"][0]["bodyFatPct"] == 18.5
+    bad = {"measuredOn": TODAY, "weightKg": 79, "bodyFatPct": 90}
+    assert client.post("/nutrition/weight", json=bad, headers=headers).status_code == 422
+
+
+def test_five_meals_and_snack_alias(client: TestClient) -> None:
+    headers = _headers(client, "meals5@example.com")
+    assert _entry(client, headers, name="Fruta", kcal=80, meal="snack").status_code == 201
+    assert _entry(client, headers, name="Tostada", kcal=150, meal="media_manana").status_code == 201
+    day = client.get("/nutrition/day", headers=headers).json()
+    assert list(day["meals"])[:5] == ["desayuno", "media_manana", "comida", "merienda", "cena"]
+    assert len(day["meals"]["media_manana"]) == 2 and "snack" not in day["meals"]
 
 
 def test_templates(client: TestClient) -> None:
@@ -187,9 +235,98 @@ def test_search_prefers_own_foods(client: TestClient, monkeypatch: pytest.Monkey
         ]
 
     monkeypatch.setattr("app.core.food_sources.off_search", off)
+    monkeypatch.setattr("app.services.nutrition.settings.off_remote_search", True)
     results = client.get("/nutrition/foods/search?q=cacahuete", headers=headers).json()
     assert results[0]["name"] == "Crema de cacahuete Marca X"
     assert any(r["name"] == "Crema de cacahuete Y" for r in results)
+
+
+def test_search_matches_words_plurals_accents_and_brand(client: TestClient) -> None:
+    headers = _headers(client, "search-words@example.com")
+    for name, brand in [
+        ("Copos de avena integral", "Crownfield"),
+        ("Plátano de Canarias", None),
+        ("Pan de molde", None),
+    ]:
+        body = {"name": name, "brand": brand, "kcal100g": 100}
+        assert client.post("/nutrition/foods", json=body, headers=headers).status_code == 201
+
+    def names(q: str) -> list[str]:
+        found = client.get(f"/nutrition/foods/search?q={q}", headers=headers).json()
+        return [r["name"] for r in found]
+
+    assert names("avena integrales") == ["Copos de avena integral"]
+    assert names("crownfield copos") == ["Copos de avena integral"]
+    assert names("platanos") == ["Plátano de Canarias"]
+    assert names("pan integral") == []
+
+
+def test_search_filters_by_store_and_brand(client: TestClient, db_session_factory) -> None:
+    import asyncio
+
+    from app.models import Food
+
+    async def seed() -> None:
+        async with db_session_factory() as session:
+            session.add_all(
+                [
+                    Food(
+                        source="off",
+                        external_id="a",
+                        name="Yogur natural",
+                        brand="Milbona",
+                        store="Lidl",
+                        kcal_100g=60,
+                    ),
+                    Food(
+                        source="off",
+                        external_id="b",
+                        name="Queso fresco",
+                        brand="Milbona",
+                        store="Lidl",
+                        kcal_100g=90,
+                    ),
+                    Food(
+                        source="off",
+                        external_id="c",
+                        name="Yogur griego",
+                        brand="Hacendado",
+                        store="Mercadona",
+                        kcal_100g=120,
+                    ),
+                    Food(
+                        source="off", external_id="d", name="Only whey", brand="Big", kcal_100g=400
+                    ),
+                ]
+            )
+            await session.commit()
+
+    asyncio.run(seed())
+    headers = _headers(client, "filters@example.com")
+
+    def names(params: str) -> list[str]:
+        response = client.get(f"/nutrition/foods/search?{params}", headers=headers)
+        assert response.status_code == 200, response.text
+        return sorted(r["name"] for r in response.json())
+
+    assert names("q=yogur") == ["Yogur griego", "Yogur natural"]
+    assert names("q=yogur&store=lidl") == ["Yogur natural"]
+    assert names("store=Lidl") == ["Queso fresco", "Yogur natural"]
+    assert names("brand=big") == ["Only whey"]
+    assert client.get("/nutrition/foods/search?q=y", headers=headers).status_code == 422
+
+    facets = client.get("/nutrition/foods/facets", headers=headers).json()
+    assert facets["stores"] == ["Lidl", "Mercadona"]
+    assert facets["brands"] == ["Big", "Hacendado", "Milbona"]
+    lidl = client.get("/nutrition/foods/facets?store=lidl", headers=headers).json()
+    assert lidl["brands"] == ["Milbona"]
+
+
+def test_search_terms() -> None:
+    from app.services.nutrition import search_terms
+
+    assert search_terms("Cereales integrales") == ["%cereal%", "%integr%"]
+    assert search_terms("plátanos de Canarias") == ["%platan%", "%canari%"]
 
 
 def test_free_text_proposal_and_batch(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -282,7 +419,7 @@ def test_agent_logs_meal_with_confirmation(
     assert client.get("/nutrition/day", headers=headers).json()["totals"]["kcal"] == 0
     assert client.post(f"/agent/actions/{action['id']}/confirm", headers=headers).status_code == 200
     day = client.get("/nutrition/day", headers=headers).json()
-    assert day["meals"]["snack"][0]["kcal"] == round(89 * 1.2, 1)
+    assert day["meals"]["media_manana"][0]["kcal"] == round(89 * 1.2, 1)  # "snack" = media mañana
 
 
 def test_usda_match_must_be_plausible() -> None:

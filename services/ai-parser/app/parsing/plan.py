@@ -104,6 +104,9 @@ Reglas:
   etc.
 - dayOfWeek: 1=lunes ... 7=domingo. Reserva descanso en los días libres que no
   se usen para gimnasio.
+- label de cada día de gimnasio: SOLO el foco del día en 2-3 palabras (p. ej.
+  "Fuerza rotacional", "Pierna y core"), sin el nombre de la rutina, sin número
+  de día ni día de la semana.
 - No inventes ejercicios fuera del catálogo.
 - Escribe todo en español.
 - No añadas claves extra.

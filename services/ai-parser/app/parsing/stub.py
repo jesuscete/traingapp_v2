@@ -15,6 +15,8 @@ _SETS_REPS_WEIGHT = re.compile(
 _HOURS = re.compile(r"(\d+(?:[.,]\d+)?)\s*(?:h|hora|horas)")
 _MINUTES = re.compile(r"(\d+)\s*(?:min(?:uto)?s?|m\b)")
 
+_HYROX = ("hyrox",)
+_CROSSFIT = ("crossfit", "cross fit", "wod", "amrap", "emom", "for time", "tabata", "metcon")
 _BOXING = ("boxeo", "boxing")
 _MARTIAL_ARTS = ("artes marciales", "karate", "judo", "taekwondo", "mma")
 _RUNNING = ("running", "correr", "carrera", "trote")
@@ -81,6 +83,8 @@ def _extract_exercises(text: str) -> list[ExerciseDraft]:
 def _extract_discipline(text: str, has_exercises: bool) -> Discipline:
     lowered = text.lower()
     for keywords, code in (
+        (_HYROX, "hyrox"),
+        (_CROSSFIT, "crossfit"),
         (_TABLE_TENNIS, "table_tennis"),
         (_TENNIS, "tennis"),
         (_BOXING, "boxing"),
@@ -109,6 +113,61 @@ def _extract_discipline(text: str, has_exercises: bool) -> Discipline:
     return "other"
 
 
+_WOD_FORMATS: tuple[tuple[str, str], ...] = (
+    (r"\bamrap\b", "amrap"),
+    (r"\be\d?mom\b", "emom"),
+    (r"\btabata\b", "tabata"),
+    (r"\bfor time\b|\brft\b|\brondas? por tiempo\b", "for_time"),
+    (r"\bintervalos?\b", "intervals"),
+)
+_CAP = re.compile(r"(?:amrap|e\d?mom|time ?cap|cap)\D{0,4}(\d{1,3})\s*(?:min|')?")
+_ROUNDS = re.compile(
+    r"(\d{1,3})\s*(?:rondas?|rounds?|rds?)\s*(?:\+|y|mas|más)?\s*(\d{1,3})?"
+)
+_CLOCK = re.compile(r"\b(?:(\d{1,2}):)?(\d{1,2}):(\d{2})\b")
+_CATEGORY = (
+    ("pro", "mujer", "pro_women"),
+    ("pro", "", "pro_men"),
+    ("open", "mujer", "open_women"),
+    ("dobles", "", "doubles"),
+    ("doubles", "", "doubles"),
+    ("relevo", "", "relay"),
+)
+
+
+def _wod_metrics(text: str, discipline: str) -> dict[str, object] | None:
+    """WOD sin LLM: formato, time cap, resultado, Rx/Scaled y categoría HYROX."""
+    if discipline not in ("crossfit", "hyrox"):
+        return None
+    lowered = text.lower()
+    wod: dict[str, object] = {"kind": "wod"}
+    fmt = next((code for pattern, code in _WOD_FORMATS if re.search(pattern, lowered)), None)
+    if discipline == "hyrox" and fmt is None:
+        race = any(w in lowered for w in ("carrera", "competi", "race"))
+        fmt = "hyrox_race" if race else "hyrox_sim"
+    wod["format"] = fmt or "other"
+    if (cap := _CAP.search(lowered)) is not None:
+        wod["timeCapMinutes"] = int(cap.group(1))
+    if wod["format"] == "amrap" and (rounds := _ROUNDS.search(lowered)) is not None:
+        wod["rounds"] = int(rounds.group(1))
+        if rounds.group(2):
+            wod["extraReps"] = int(rounds.group(2))
+    if (clock := _CLOCK.search(lowered)) is not None:
+        hours, minutes, seconds = (int(g) if g else 0 for g in clock.groups())
+        wod["timeSeconds"] = hours * 3600 + minutes * 60 + seconds
+    if "scaled" in lowered or "escalad" in lowered:
+        wod["rx"] = False
+    if discipline == "hyrox":
+        for word, extra, code in _CATEGORY:
+            if word in lowered and extra in lowered:
+                wod["hyroxCategory"] = code
+                break
+        else:
+            if "open" in lowered:
+                wod["hyroxCategory"] = "open_men"
+    return wod
+
+
 def _suggested_rpe(
     exercises: list[ExerciseDraft], duration: int | None
 ) -> float | None:
@@ -124,13 +183,20 @@ def parse_text(raw_text: str) -> ParseResponse:
     exercises = _extract_exercises(text)
     duration = _extract_duration(text)
     confidence = 0.9 if exercises else (0.7 if duration else 0.5)
+    discipline = _extract_discipline(text, bool(exercises))
+    metrics = _wod_metrics(text, discipline)
+    if metrics is not None:
+        exercises = []  # en un WOD las cifras son reps por ronda, no series de gimnasio
+        if duration is None and isinstance(metrics.get("timeCapMinutes"), int):
+            duration = int(metrics["timeCapMinutes"])  # type: ignore[call-overload]
     return ParseResponse(
         rawText=text,
-        discipline=_extract_discipline(text, bool(exercises)),
+        discipline=discipline,
         performedAt=datetime.now(UTC).isoformat(),
         durationMinutes=duration,
         exercises=exercises,
         suggestedRpe=_suggested_rpe(exercises, duration),
         confidence=confidence,
         unresolved=[],
+        metrics=metrics,
     )

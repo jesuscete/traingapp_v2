@@ -102,7 +102,7 @@ Origen: [ANALISIS_TECNICO.md](ANALISIS_TECNICO.md) §2, §3 y §5.
 - [x] Búsqueda, código de barras, mis platos, peso con media de 7 días, agente (`registrar_comida` propone, `ver_nutricion`).
 - [x] Web: `/comidas` (anillo de kcal, macros, exacto/estimado, comidas, añadir por 5 vías, peso, objetivo) y tarjeta "Hoy comido" en el dashboard.
 - [x] Clave de USDA configurada en `.env` local.
-- [ ] Probarlo en el móvil (M5.1). El escáner con cámara (mkcert/HTTPS) queda en el backlog; mientras tanto, el código de barras se teclea.
+- [ ] Probarlo en el móvil. El escáner con cámara ya funciona con HTTPS (Tailscale, M8).
 
 ### M5.1 · Prueba en el móvil y pulido 🟡
 - [x] Ronda 1 de pulido tras el uso real (2026-11-12):
@@ -143,8 +143,8 @@ Origen: [ANALISIS_TECNICO.md](ANALISIS_TECNICO.md) §2, §3 y §5.
 #### M6.2 · Conexión automática con Garmin ✅ (2026-11-12, [ADR-008](decisions/ADR-008-garmin-api-personal.md))
 - [x] Clave personal de la API oficial de Garmin (gratuita, solo lectura): conectar en **Configuración → Garmin**, clave y token **cifrados**, desconectar.
 - [x] Sincronización: la API personal no envía avisos, así que hay sondeo cada 30 min, sincronización al abrir Inicio (si hace más de 15 min) y botón «Sincronizar ahora». Las actividades entran por el importador de M6.1, sin duplicar lo subido a mano.
-- [ ] Validar con tu cuenta real: que lleguen actividades, FC en reposo, sueño y VFC. Los nombres de campo de salud son deducidos (ver ADR-008).
-- [ ] Datos de salud diarios: **FC en reposo**, sueño, estrés/Body Battery o HRV si están disponibles → readiness de la fatiga (hoy se rellena a mano).
+- [x] Validado con tu cuenta real (2026-11-12): actividades y FC en reposo llegan (13 días). El sueño de esos días vino vacío desde Garmin, y la VFC «sin datos» (tu reloj no la envía) ya no da error. Falta comprobar el sueño una noche con el reloj puesto.
+- [x] Salud diaria → readiness de la fatiga: FC en reposo, sueño y VFC. Estrés y Body Battery llegan en la respuesta, pero aún no se usan (backlog).
 - [x] Historial: 30 días al conectar y botón «Traer últimos 90 días». Insignia «Garmin» en las actividades sincronizadas.
 
 #### M6.3 · Global (después de M8, con la app nativa)

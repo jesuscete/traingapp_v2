@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     plan_session_ttl_seconds: int = 3600
     # Bases de alimentos (M5). USDA: clave gratuita en api.data.gov (DEMO_KEY = muy limitada).
     off_base_url: str = "https://es.openfoodfacts.org"
+    # Buscador nuevo de OFF (search-a-licious): admite filtros por tienda y pais.
+    off_search_url: str = "https://search.openfoodfacts.org"
+    # Busqueda remota en OFF cuando hay pocos resultados locales. Desactivada mientras la
+    # base local (importacion Lidl) cubre lo habitual: OFF es lento y mete ruido.
+    off_remote_search: bool = False
     usda_base_url: str = "https://api.nal.usda.gov/fdc/v1"
     usda_api_key: str = "DEMO_KEY"
     food_api_timeout_seconds: float = 8

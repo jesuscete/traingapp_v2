@@ -12,6 +12,7 @@ from app.analytics.catalog_seed import (
     MUSCLE_ZONE_OF,
     zone_of,
 )
+from app.analytics.discipline_seed import DISCIPLINE_SEED
 from app.analytics.exercise_seed import EXERCISE_CATALOG_SEED
 from app.crud.catalog import exercise_muscle_map
 
@@ -175,8 +176,9 @@ def test_list_disciplines_endpoint(
     response = client.get("/catalog/disciplines", headers=headers)
     assert response.status_code == 200
     items = response.json()
-    assert len(items) == 22
+    assert len(items) == len(DISCIPLINE_SEED)
     by_code = {item["normalizedName"]: item for item in items}
+    assert by_code["hyrox"]["kind"] == "cardio" and by_code["crossfit"]["met"] == 8.0
     gym = by_code["gym"]
     assert gym["category"] == "gimnasio"
     assert gym["kind"] == "gym"

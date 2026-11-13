@@ -76,7 +76,7 @@ def test_user_text_is_delimited_as_data() -> None:
 
 
 def test_parse_with_llm_invalid_discipline_falls_to_other() -> None:
-    content = '{"discipline":"crossfit","exercises":[],"confidence":0.5,"unresolved":[]}'
+    content = '{"discipline":"quidditch","exercises":[],"confidence":0.5,"unresolved":[]}'
     result = asyncio.run(parse_with_llm(FakeProvider(content), "x"))
     assert result.discipline == "other"
 
@@ -155,3 +155,25 @@ def test_parse_meal_endpoint_route() -> None:
     headers = {"X-Internal-Token": settings.internal_token}
     assert client.post("/parse/meal", json={"text": "x"}).status_code == 401
     assert client.post("/parse/meal", json={"text": ""}, headers=headers).status_code == 422
+
+
+def test_parse_with_llm_builds_wod_metrics() -> None:
+    content = (
+        '{"discipline":"crossfit","exercises":[],"unresolved":[],'
+        '"wod":{"format":"amrap","timeCapMinutes":20,"rounds":18,"extraReps":7,"rx":false,'
+        '"movements":[{"name":"dominadas","reps":5},{"name":"remo","distanceM":250}]}}'
+    )
+    result = asyncio.run(parse_with_llm(FakeProvider(content), "amrap 20"))
+    assert result.discipline == "crossfit"
+    assert result.metrics == {
+        "kind": "wod",
+        "format": "amrap",
+        "timeCapMinutes": 20.0,
+        "rounds": 18,
+        "extraReps": 7,
+        "rx": False,
+        "movements": [{"name": "dominadas", "reps": 5}, {"name": "remo", "distanceM": 250.0}],
+    }
+    # Sin bloque wod (o en otra disciplina) no se inventan métricas.
+    bare = '{"discipline":"crossfit"}'
+    assert asyncio.run(parse_with_llm(FakeProvider(bare), "x")).metrics is None

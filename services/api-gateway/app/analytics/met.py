@@ -12,6 +12,8 @@ MET_BY_DISCIPLINE: dict[str, float] = {
     "cycling": 7.1,  # ~20 km/h
     "swimming": 6.0,  # nado recreativo
     "gym": 5.0,  # fuerza general 8-15 reps
+    "crossfit": 8.0,  # circuito vigoroso
+    "hyrox": 8.5,  # carrera + estaciones funcionales
     "other": 4.0,
 }
 

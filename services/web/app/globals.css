@@ -2192,7 +2192,7 @@ a.btn:hover {
 .wk-day-top { display: flex; gap: 0.5rem; align-items: center; }
 
 .wk-header {
-  position: sticky; top: 3.4rem; z-index: 6;
+  position: sticky; top: 0; z-index: 6;
   background: var(--bg); padding: 0.5rem 0 0.6rem; border-bottom: 1px solid var(--border);
   margin-bottom: 0.8rem;
 }
@@ -2239,7 +2239,8 @@ a.btn:hover {
 .wk-grid-head { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; text-align: center; padding-bottom: 0.2rem; }
 .wk-row-wrap { position: relative; overflow: hidden; margin-bottom: 6px; border-radius: 10px; }
 .wk-row { position: relative; z-index: 1; background: var(--surface); padding: 2px 0; transition: transform 0.18s ease, background 0.15s ease; }
-.wk-row.done { background: rgba(var(--accent2-rgb), 0.14); }
+/* Opaco: un fondo translucido deja ver el boton rojo de borrado que hay debajo. */
+.wk-row.done { background: linear-gradient(rgba(var(--accent2-rgb), 0.14), rgba(var(--accent2-rgb), 0.14)), var(--surface); }
 .wk-row-wrap.revealed .wk-row { transform: translateX(-88px); }
 .wk-type {
   width: 40px; height: 44px; padding: 0; border-radius: 10px; font-weight: 700;
@@ -2268,6 +2269,7 @@ a.btn:hover {
   border-radius: 10px; margin-top: 0.2rem;
 }
 .wk-add-ex { min-height: 52px; border: 1px dashed var(--accent); background: transparent; }
+body .dashboard > .wk-add-ex { display: block; margin: 0.2rem auto 0; }
 .wk-empty { text-align: center; padding: 1.5rem 0; }
 
 @media (hover: hover) and (min-width: 700px) {
@@ -2636,9 +2638,21 @@ a.btn:hover {
 .nu-warn { margin: 0.6rem 0; padding: 0.6rem 0.8rem; background: var(--surface-alt); border-left: 3px solid var(--warning); border-radius: 8px; font-size: 0.88rem; }
 .nu-warn a { color: var(--accent); font-weight: 600; }
 
-.nu-meal-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.3rem; }
-.nu-meal-head h2 { margin: 0; flex: 1; }
-.nu-meal-kcal { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.9rem; }
+.nu-meal-head { display: flex; align-items: center; gap: 0.6rem; }
+.nu-meal-toggle {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.6rem; min-height: 48px;
+  padding: 0; background: transparent; color: var(--text); text-align: left; border-radius: 10px;
+}
+.nu-meal-chevron { flex: none; color: var(--muted); transition: transform 0.18s ease; transform: rotate(-90deg); }
+.nu-meal.open .nu-meal-chevron { transform: rotate(0deg); }
+.nu-meal-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.nu-meal-title h2 { margin: 0; font-size: 1.05rem; }
+.nu-meal-count { font-size: 0.75rem; font-weight: 500; }
+.nu-meal-kcal { font-variant-numeric: tabular-nums; font-size: 0.9rem; white-space: nowrap; }
+.nu-meal-kcal strong { font-size: 1.05rem; }
+.nu-meal-share { height: 4px; margin: 0.45rem 0 0.1rem; border-radius: 999px; background: var(--surface-alt); overflow: hidden; }
+.nu-meal-share > div { height: 100%; background: var(--accent); border-radius: inherit; transition: width 0.3s ease; }
+.nu-meal.open .nu-meal-share { margin-bottom: 0.5rem; }
 .nu-add-btn { width: 48px; height: 48px; padding: 0; font-size: 1.6rem; line-height: 1; border-radius: 50%; }
 .nu-empty { margin: 0.2rem 0 0.4rem; font-size: 0.85rem; }
 .nu-entries { list-style: none; margin: 0; padding: 0; }
@@ -2654,6 +2668,7 @@ a.btn:hover {
 .nu-src-usda { color: var(--ok); }
 .nu-src-custom { color: var(--accent); }
 .nu-src-ia { color: var(--warning); }
+.nu-store { background: rgba(var(--accent-rgb), 0.16); color: var(--accent); font-weight: 700; }
 .nu-add-link { min-height: 44px; margin-top: 0.4rem; background: transparent; color: var(--accent); }
 
 .nu-sheet-body { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
@@ -2684,6 +2699,10 @@ a.btn:hover {
 .nu-preview-kcal { font-size: 1.7rem; font-variant-numeric: tabular-nums; }
 .nu-search { padding-top: 0.6rem; }
 .nu-search-input { min-height: 48px; }
+.nu-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.nu-brand { position: relative; }
+.nu-filter { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; font-size: 0.78rem; color: var(--muted); }
+.nu-filter select, .nu-filter input { min-height: 44px; margin-bottom: 0.4rem; padding: 0.5rem 0.7rem; }
 .nu-list { list-style: none; margin: 0; padding: 0; }
 .nu-food-row { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 56px; padding: 0.4rem 0; background: transparent; color: var(--text); text-align: left; border-bottom: 1px solid var(--border); border-radius: 0; }
 .nu-food-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -2718,9 +2737,14 @@ a.btn:hover {
 .nu-trend { width: 100%; height: auto; display: block; margin-bottom: 0.4rem; }
 .nu-trend-line { stroke: var(--accent); stroke-width: 2; }
 .nu-trend-dot { fill: var(--accent); }
-.nu-weight-form { display: flex; gap: 0.5rem; }
-.nu-weight-form input { margin: 0; min-height: 48px; flex: 1; }
-.nu-weight-form button { min-height: 48px; }
+.nu-weight-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; align-items: end; }
+.nu-weight-form .nu-field { margin: 0; min-width: 0; }
+.nu-weight-form input { margin: 0; min-height: 48px; width: 100%; }
+.nu-weight-form button { grid-column: 1 / -1; min-height: 48px; }
+@media (min-width: 700px) {
+  .nu-weight-form { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; }
+  .nu-weight-form button { grid-column: auto; }
+}
 .nu-toast { position: fixed; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60; padding: 0.6rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; }
 .nu-today-line { font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .nu-today-card { display: flex; flex-direction: column; gap: 0.15rem; }
@@ -2831,6 +2855,8 @@ a.btn:hover {
 .hm-day { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: var(--muted); }
 .hm-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); }
 .hm-dot.on { background: var(--accent); border-color: var(--accent); }
+.hm-day.today { color: var(--accent); font-weight: 700; }
+.hm-day.future .hm-dot { opacity: 0.4; }
 .hm-ring { position: relative; width: 84px; height: 84px; flex-shrink: 0; }
 .hm-ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.8rem; line-height: 1.1; }
 .hm-food { display: flex; gap: 1rem; align-items: center; color: var(--text); text-decoration: none; }
@@ -2913,3 +2939,31 @@ button.danger {
   background: var(--danger, #ef4444);
   color: #fff;
 }
+
+/* WOD (CrossFit / HYROX) */
+.wod-sub { margin: 1rem 0 0.4rem; font-size: 0.95rem; }
+.wod-toggles { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin-top: 0.2rem; }
+.wod-check { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; }
+.wod-check input { width: auto; margin: 0; }
+.wod-hyrox-btn { align-self: end; min-height: 44px; margin-bottom: 0.7rem; }
+.wod-move { display: grid; gap: 0.4rem; }
+.wod-move-row { display: grid; grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr) 44px; gap: 0.4rem; }
+.wod-move-row input, .wod-move-row select { margin: 0; min-height: 44px; padding: 0.5rem; }
+.wod-move-row button { min-height: 44px; padding: 0; }
+.wod-picker { position: relative; }
+.wod-picker input { margin: 0; }
+.wod-suggest, .nu-suggest {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20; margin: 0; padding: 0.25rem;
+  list-style: none; background: var(--surface-alt); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); max-height: 240px; overflow-y: auto;
+}
+.wod-suggest button, .nu-suggest button {
+  width: 100%; text-align: left; background: transparent; color: var(--text); min-height: 40px;
+  padding: 0.4rem 0.6rem; border-radius: 8px; font-weight: 500;
+}
+.wod-suggest button:hover, .nu-suggest button:hover { background: rgba(var(--accent-rgb), 0.15); }
+.wod-splits { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 0.6rem; }
+@media (min-width: 700px) { .wod-splits { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.wod-row { flex-wrap: wrap; }
+.wod-row > .m3-field { flex: 1 1 150px; }
+.wod-row > .wod-hyrox-btn { flex: 1 1 200px; }

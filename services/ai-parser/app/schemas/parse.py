@@ -6,6 +6,8 @@ from pydantic.alias_generators import to_camel
 DISCIPLINES: tuple[str, ...] = (
     "gym",
     "calisthenics",
+    "crossfit",
+    "hyrox",
     "boxing",
     "martial_arts",
     "running",
@@ -30,6 +32,8 @@ DISCIPLINES: tuple[str, ...] = (
 Discipline = Literal[
     "gym",
     "calisthenics",
+    "crossfit",
+    "hyrox",
     "boxing",
     "martial_arts",
     "running",
@@ -84,5 +88,5 @@ class ParseResponse(CamelModel):
     suggestedRpe: float | None = None
     confidence: float = 0.0
     unresolved: list[str] = []
-    # Métricas por deporte (combate/resistencia) con la forma del api-gateway.
+    # Métricas por deporte (combate/resistencia/WOD) con la forma del api-gateway.
     metrics: dict[str, object] | None = None

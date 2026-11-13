@@ -1,4 +1,5 @@
 import { uid } from "@/lib/workout/ops";
+import { emptyWodForm, summarizeWod, wodFormToMetrics, wodMetricsToForm, type WodForm } from "@/lib/wod";
 import type {
   ClimbingStyle,
   CombatBlock,
@@ -14,11 +15,14 @@ export function metricsKindFor(discipline: string): MetricsKind {
   if (discipline === "boxing" || discipline === "martial_arts") return "combat";
   if (ENDURANCE_DISCIPLINES.includes(discipline)) return "endurance";
   if (discipline === "climbing") return "climbing";
+  if (discipline === "crossfit" || discipline === "hyrox") return "wod";
   return "generic";
 }
 
 /** Disciplinas elegibles para /registrar (gimnasio se registra en /entrenar). */
 export const LOGGABLE_DISCIPLINES: string[] = [
+  "crossfit",
+  "hyrox",
   "boxing",
   "martial_arts",
   "running",
@@ -94,6 +98,7 @@ export type MetricsForm = {
   style: ClimbingStyle;
   routes: RouteForm[];
   notes: string;
+  wod: WodForm;
 };
 
 export function newBlock(): BlockForm {
@@ -122,6 +127,7 @@ export function emptyMetricsForm(): MetricsForm {
     style: "boulder",
     routes: [],
     notes: "",
+    wod: emptyWodForm(),
   };
 }
 
@@ -179,6 +185,9 @@ export function metricsToForm(metrics: SessionMetrics | null | undefined): Metri
         attempts: r.attempts != null ? String(r.attempts) : "",
         sent: r.sent,
       }));
+      break;
+    case "wod":
+      form.wod = wodMetricsToForm(metrics);
       break;
     case "generic":
       form.notes = metrics.notes ?? "";
@@ -287,6 +296,8 @@ export function formToMetrics(kind: MetricsKind, form: MetricsForm): MetricsResu
     return { metrics: { kind: "climbing", style: form.style, routes }, error: null };
   }
 
+  if (kind === "wod") return wodFormToMetrics(form.wod);
+
   const notes = form.notes.trim();
   if (notes.length > 500) return fail("Las notas admiten hasta 500 caracteres.");
   return { metrics: { kind: "generic", ...(notes ? { notes } : {}) }, error: null };
@@ -356,6 +367,8 @@ export function summarizeMetrics(metrics: SessionMetrics | null | undefined): st
       const grades = metrics.routes.map((r) => r.grade).join(", ");
       return `${CLIMBING_STYLE_LABELS[metrics.style] ?? metrics.style}: ${sent}/${metrics.routes.length} encadenadas${grades ? ` (${grades})` : ""}`;
     }
+    case "wod":
+      return summarizeWod(metrics);
     case "generic":
       return metrics.notes ?? "";
   }

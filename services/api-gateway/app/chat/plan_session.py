@@ -640,6 +640,50 @@ def _resolve_discipline(
     return disciplines.get("other")
 
 
+GYM_LABEL_RULE = (
+    "\n- label de cada dia de gimnasio: SOLO el foco del dia en 2-3 palabras "
+    '(p. ej. "Fuerza rotacional", "Pierna y core"), sin el nombre de la rutina, '
+    "sin numero de dia ni dia de la semana."
+)
+_LABEL_SEPARATOR_RE = re.compile(r"\s*[-–—:|·()]\s*")
+_LABEL_CUT_RE = re.compile(r",|\s+con\s+|\s+para\s+", re.IGNORECASE)
+_LABEL_NOISE_WORDS = frozenset(
+    {"dia", "dias", "sesion", "gimnasio", "gym", "entreno", "rutina", "semana", "full", "body",
+     "fullbody", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"}
+)
+_LABEL_TRAILING_WORDS = frozenset({"y", "e", "de", "del", "la", "el", "con", "para", "a"})
+_LABEL_MAX_WORDS = 3
+
+
+def _gym_day_label(raw: str | None, number: int, plan_name: str) -> str:
+    """Etiqueta corta de un dia de gimnasio: 'Dia N - <foco>' (max 3 palabras de foco).
+
+    El LLM tiende a repetir el nombre de la rutina, el split o el numero de dia
+    en cada etiqueta; aqui se descarta ese ruido y se queda el foco del dia.
+    """
+    base = f"Día {number}"
+    if not raw:
+        return base
+    noise = _LABEL_NOISE_WORDS | set(normalize_exercise_name(plan_name).split())
+    def is_noise(word: str) -> bool:
+        norm = normalize_exercise_name(word)
+        return len(norm) <= 1 or norm.isdigit() or norm in noise
+
+    for segment in _LABEL_SEPARATOR_RE.split(_LABEL_CUT_RE.split(raw)[0]):
+        words = segment.split()
+        while words and is_noise(words[0]):
+            words.pop(0)
+        if not any(not is_noise(w) for w in words):
+            continue
+        focus = words[:_LABEL_MAX_WORDS]
+        while focus and normalize_exercise_name(focus[-1]) in _LABEL_TRAILING_WORDS:
+            focus.pop()
+        if focus:
+            text = " ".join(focus)
+            return f"{base} - {text[0].upper()}{text[1:]}"
+    return base
+
+
 def _build_summary(
     data: dict[str, object],
     catalog: dict[str, CatalogExercise],
@@ -724,10 +768,16 @@ def _build_summary(
                 )
             )
     name = data.get("name")
-    return PlanSummaryOut(
-        name=str(name).strip() if isinstance(name, str) and name.strip() else "Mi rutina",
-        days=days,
-    )
+    plan_name = str(name).strip() if isinstance(name, str) and name.strip() else "Mi rutina"
+    days.sort(key=lambda d: d.day_of_week)
+    gym_number = 0
+    for index, day in enumerate(days):
+        if day.day_type == "gimnasio":
+            gym_number += 1
+            days[index] = day.model_copy(
+                update={"label": _gym_day_label(day.label, gym_number, plan_name)}
+            )
+    return PlanSummaryOut(name=plan_name, days=days)
 
 
 def _to_routine_in(plan: PlanSession) -> RoutineIn:
@@ -823,6 +873,7 @@ async def _generate_and_summarize(
     )
     system_prompt = (
         training_prompt.system_prompt.replace("{perfil}", training_prompt.name)
+        + GYM_LABEL_RULE
         if training_prompt is not None
         else None
     )

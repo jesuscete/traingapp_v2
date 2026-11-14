@@ -59,7 +59,8 @@ export default function Home() {
   return (
     <main className="auth">
       <div className="card">
-        <h1>TraingApp</h1>
+        <img className="auth-logo" src="/logo-mark.png" alt="" width={72} height={72} />
+        <h1>Athlys</h1>
         <p className="subtitle">
           Registra tus entrenamientos con el chat de IA
         </p>

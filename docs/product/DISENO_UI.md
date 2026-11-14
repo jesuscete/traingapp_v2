@@ -224,3 +224,9 @@ La app detecta el ancho de pantalla y si está instalada (`display-mode: standal
 - Service worker v2: siempre busca primero la versión nueva. La v1 servía código viejo y provocaba el error en Apariencia.
 
 **Pendiente menor:** «Cargando…» de texto en Importar, Registrar y dos hojas, y reintentar en la pestaña Fatiga. Pasar los formularios antiguos al componente Button.
+
+## Rebranding 1 — Athlys (2026-11-14)
+
+- **Nombre:** Athlys. Logo en `docs/brand/athlys-logo.png`; iconos PWA y `public/logo-mark.png` (fondo transparente) generados a partir de él.
+- **Colores en prueba:** Apariencia sustituye modo + 9 colores por 5 temas oscuros completos (`html[data-theme]`, clave `athlys_theme`): Original (por defecto), Athlys, Midnight Teal, Ink Iris y Forest Lime. Se quita temporalmente el modo claro hasta decidir la estética.
+- **Tipografía:** Manrope (interfaz, `--font-body`) y Sora (titulares/marca, `--font-display`).

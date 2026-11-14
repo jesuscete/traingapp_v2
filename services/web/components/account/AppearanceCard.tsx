@@ -3,13 +3,13 @@
 import { Check } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { ACCENTS, getThemePrefs, MODES, setThemeAccent, setThemeMode, type ThemePrefs } from "@/lib/theme";
+import { DEFAULT_THEME, getThemeId, setTheme, THEMES } from "@/lib/theme";
 
 export function AppearanceCard() {
-  const [prefs, setPrefs] = useState<ThemePrefs>({ mode: "dark", accent: "azul" });
+  const [current, setCurrent] = useState<string>(DEFAULT_THEME);
 
   useEffect(() => {
-    setPrefs(getThemePrefs());
+    setCurrent(getThemeId());
   }, []);
 
   return (
@@ -17,43 +17,29 @@ export function AppearanceCard() {
       <h3>Apariencia</h3>
       <p className="subtitle">Se guarda en este navegador y se aplica al instante.</p>
 
-      <h4 className="appearance-label">Modo</h4>
-      <div className="segmented" role="group" aria-label="Modo">
-        {MODES.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            className={`segmented-btn${prefs.mode === m.id ? " active" : ""}`}
-            aria-pressed={prefs.mode === m.id}
-            onClick={() => {
-              setThemeMode(m.id);
-              setPrefs((p) => ({ ...p, mode: m.id }));
-            }}
-          >
-            {m.name}
-          </button>
-        ))}
-      </div>
-
-      <h4 className="appearance-label">Color</h4>
-      <div className="swatch-grid" role="group" aria-label="Color">
-        {ACCENTS.map((a) => {
-          const selected = prefs.accent === a.id;
+      <h4 className="appearance-label">Tema</h4>
+      <div className="theme-list" role="radiogroup" aria-label="Tema">
+        {THEMES.map((t) => {
+          const selected = current === t.id;
           return (
             <button
-              key={a.id}
+              key={t.id}
               type="button"
-              className={`swatch${selected ? " selected" : ""}`}
-              style={{ background: a.swatch }}
-              aria-label={a.name}
-              aria-pressed={selected}
-              title={a.name}
+              role="radio"
+              aria-checked={selected}
+              className={`theme-option${selected ? " selected" : ""}`}
               onClick={() => {
-                setThemeAccent(a.id);
-                setPrefs((p) => ({ ...p, accent: a.id }));
+                setTheme(t.id);
+                setCurrent(t.id);
               }}
             >
-              {selected && <Check size={20} strokeWidth={3} aria-hidden="true" />}
+              <span className="theme-swatches" aria-hidden="true">
+                {t.swatches.map((c) => (
+                  <span key={c} style={{ background: c }} />
+                ))}
+              </span>
+              <span className="theme-name">{t.name}</span>
+              {selected && <Check size={20} strokeWidth={2.5} aria-hidden="true" />}
             </button>
           );
         })}

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Barlow_Condensed, Geist, Geist_Mono, Inter } from "next/font/google";
+import { Geist, Geist_Mono, Manrope, Sora } from "next/font/google";
 import { PendingSync } from "@/components/PendingSync";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -16,13 +16,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const inter = Inter({
+const manrope = Manrope({
   variable: "--font-body",
   subsets: ["latin"],
   display: "swap",
 });
 
-const barlowCondensed = Barlow_Condensed({
+const sora = Sora({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["500", "600", "700"],
@@ -30,10 +30,10 @@ const barlowCondensed = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: "TraingApp",
+  title: "Athlys",
   description: "Registra y analiza tus entrenamientos con IA",
-  appleWebApp: { capable: true, title: "TrainingApp", statusBarStyle: "black-translucent" },
-  icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "Athlys", statusBarStyle: "black-translucent" },
+  icons: { icon: "/favicon-64.png", apple: "/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
@@ -49,7 +49,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${barlowCondensed.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${sora.variable}`}
       suppressHydrationWarning
     >
       <head>

@@ -1,7 +1,6 @@
 /*
- * Tokens de diseño (M9 · F1). Dos ejes independientes:
- *   - Modo:   html[data-mode="dark" | "light"]   (lo decide lib/theme.ts; "auto" sigue al sistema)
- *   - Color:  html[data-accent="azul" | "naranja" | …]   color de marca para acciones y selección
+ * Tokens de diseño. Tema completo por html[data-theme="original" | "athlys" | "teal" | "iris" | "lima"]
+ * (lo aplica lib/theme.ts). Temas en prueba hasta fijar la estética definitiva.
  * Los nombres de variable antiguos (--bg-base, --surface, --accent…) se mantienen para que
  * todo el CSS existente adopte el tema sin cambios.
  */
@@ -48,7 +47,7 @@
   --sport-combat: #e11d48;
   --sport-other: #a1a1aa;
 
-  /* --- Modo oscuro (por defecto) --- */
+  /* --- Tema "original" (por defecto) --- */
   color-scheme: dark;
   --bg-base: #121317;
   --surface: #1b1d22;
@@ -61,8 +60,6 @@
   --warning: #f5b942;
   --success-color: #22c55e;
   --shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.45);
-
-  /* --- Color de marca por defecto: azul --- */
   --accent: #3b82f6;
   --accent-rgb: 59, 130, 246;
   --on-accent: #ffffff;
@@ -79,57 +76,34 @@
   --danger: var(--error);
 }
 
-/* --- Modo claro --- */
-html[data-mode="light"] {
-  color-scheme: light;
-  --bg-base: #f5f6f8;
-  --surface: #ffffff;
-  --surface-alt: #eef0f3;
-  --surface-raised: #ffffff;
-  --border: #dfe2e7;
-  --text-primary: #15171c;
-  --text-secondary: #5b6170;
-  --error: #dc2626;
-  --warning: #b45309;
-  --success-color: #15803d;
-  --accent2: #0d9488;
-  --accent2-rgb: 13, 148, 136;
-  --shadow-raised: 0 8px 24px rgba(17, 24, 39, 0.12);
+/* --- Athlys: base / superficie / acento / secundario / texto --- */
+html[data-theme="athlys"] {
+  --bg-base: #101820; --surface: #202e38; --surface-alt: #283843; --surface-raised: #2c3d49; --border: #2f404c;
+  --text-primary: #f4f6f5; --text-secondary: #9fb0b8;
+  --accent: #00cdb5; --accent-rgb: 0, 205, 181; --on-accent: #101820;
+  --accent2: #72dccb; --accent2-rgb: 114, 220, 203;
 }
 
-/* --- Colores de marca (oscuro / claro: el claro es algo más intenso para el contraste) --- */
-html[data-accent="azul"] { --accent: #3b82f6; --accent-rgb: 59, 130, 246; --on-accent: #ffffff; }
-html[data-mode="light"][data-accent="azul"] { --accent: #2563eb; --accent-rgb: 37, 99, 235; }
-
-html[data-accent="naranja"] { --accent: #ff6b3d; --accent-rgb: 255, 107, 61; --on-accent: #ffffff; }
-html[data-mode="light"][data-accent="naranja"] { --accent: #e4572e; --accent-rgb: 228, 87, 46; }
-
-html[data-accent="rojo"] { --accent: #f43f5e; --accent-rgb: 244, 63, 94; --on-accent: #ffffff; }
-html[data-mode="light"][data-accent="rojo"] { --accent: #e11d48; --accent-rgb: 225, 29, 72; }
-
-html[data-accent="verde"] {
-  --accent: #22c55e; --accent-rgb: 34, 197, 94; --on-accent: #06210f;
-  --accent2: #38bdf8; --accent2-rgb: 56, 189, 248;
-}
-html[data-mode="light"][data-accent="verde"] {
-  --accent: #16a34a; --accent-rgb: 22, 163, 74; --on-accent: #ffffff;
-  --accent2: #0284c7; --accent2-rgb: 2, 132, 199;
+/* --- Midnight · Graphite · Teal · Mint · Cloud --- */
+html[data-theme="teal"] {
+  --bg-base: #101820; --surface: #202e38; --surface-alt: #283843; --surface-raised: #2c3d49; --border: #2f404c;
+  --text-primary: #f1f4f2; --text-secondary: #9fb2ad;
+  --accent: #36bfa3; --accent-rgb: 54, 191, 163; --on-accent: #101820;
+  --accent2: #a6dccb; --accent2-rgb: 166, 220, 203;
 }
 
-html[data-accent="violeta"] { --accent: #8b5cf6; --accent-rgb: 139, 92, 246; --on-accent: #ffffff; }
-html[data-mode="light"][data-accent="violeta"] { --accent: #7c3aed; --accent-rgb: 124, 58, 237; }
-
-html[data-accent="cian"] { --accent: #22d3ee; --accent-rgb: 34, 211, 238; --on-accent: #062a30; }
-html[data-mode="light"][data-accent="cian"] { --accent: #0891b2; --accent-rgb: 8, 145, 178; --on-accent: #ffffff; }
-
-html[data-accent="ambar"] { --accent: #f59e0b; --accent-rgb: 245, 158, 11; --on-accent: #241500; }
-html[data-mode="light"][data-accent="ambar"] { --accent: #b45309; --accent-rgb: 180, 83, 9; --on-accent: #ffffff; }
-
-html[data-accent="lima"] {
-  --accent: #a3e635; --accent-rgb: 163, 230, 53; --on-accent: #1a2e05;
-  --accent2: #2fd9a8; --accent2-rgb: 47, 217, 168;
+/* --- Ink · Slate · Iris · Lavender · Mist --- */
+html[data-theme="iris"] {
+  --bg-base: #171b24; --surface: #2a313f; --surface-alt: #343c4c; --surface-raised: #3a4355; --border: #3f4859;
+  --text-primary: #f3f1f6; --text-secondary: #a9a8bd;
+  --accent: #8584c7; --accent-rgb: 133, 132, 199; --on-accent: #171b24;
+  --accent2: #b9b8e5; --accent2-rgb: 185, 184, 229;
 }
-html[data-mode="light"][data-accent="lima"] { --accent: #4d7c0f; --accent-rgb: 77, 124, 15; --on-accent: #ffffff; }
 
-html[data-accent="grafito"] { --accent: #e5e7eb; --accent-rgb: 229, 231, 235; --on-accent: #111827; }
-html[data-mode="light"][data-accent="grafito"] { --accent: #1f2937; --accent-rgb: 31, 41, 55; --on-accent: #ffffff; }
+/* --- Forest · Moss · Lime · Sage · Ivory --- */
+html[data-theme="lima"] {
+  --bg-base: #151c19; --surface: #222e27; --surface-alt: #29372f; --surface-raised: #2f3e35; --border: #34443a;
+  --text-primary: #f3f3ea; --text-secondary: #a8ae9f;
+  --accent: #a6c66c; --accent-rgb: 166, 198, 108; --on-accent: #151c19;
+  --accent2: #d1dfaf; --accent2-rgb: 209, 223, 175;
+}

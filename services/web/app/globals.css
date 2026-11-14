@@ -104,6 +104,8 @@ button:disabled {
   max-width: 360px;
 }
 
+.auth-logo { display: block; width: 72px; height: 72px; margin: 0 auto var(--space-3); object-fit: contain; }
+
 .auth {
   min-height: 100vh;
   display: flex;

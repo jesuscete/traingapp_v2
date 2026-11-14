@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { ChevronRight, ClipboardList, Download, FilePenLine, Plus } from "lucide-react";
 
 import { api } from "@/lib/api";
-import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ExternalWorkoutSheet } from "@/components/workout/ExternalWorkoutSheet";
@@ -119,34 +118,19 @@ export function WorkoutStart({
         )}
       </section>
 
-      <div className="wk-start-actions">
-        <Button
-          variant={gymDays.length > 0 ? "secondary" : "primary"}
-          size="lg"
-          fullWidth
-          icon={<Plus size={20} strokeWidth={1.75} aria-hidden="true" />}
-          onClick={startFree}
-        >
-          {gymDays.length > 0 ? "O empieza un entreno libre" : "Empezar entreno libre"}
-        </Button>
-        <Button
-          variant="secondary"
-          size="lg"
-          fullWidth
-          href="/registrar"
-          icon={<FilePenLine size={20} strokeWidth={1.75} aria-hidden="true" />}
-        >
-          Registrar otra actividad
-        </Button>
-        <Button
-          variant="secondary"
-          size="lg"
-          fullWidth
-          icon={<Download size={20} strokeWidth={1.75} aria-hidden="true" />}
-          onClick={() => setExternal(true)}
-        >
-          Cargar entreno externo
-        </Button>
+      <div className="wk-actions" role="group" aria-label="Otras formas de entrenar">
+        <button type="button" className="wk-action" onClick={startFree}>
+          <Plus size={22} strokeWidth={2} aria-hidden="true" />
+          <span>Entreno libre</span>
+        </button>
+        <Link href="/registrar" className="wk-action">
+          <FilePenLine size={22} strokeWidth={2} aria-hidden="true" />
+          <span>Otra actividad</span>
+        </Link>
+        <button type="button" className="wk-action" onClick={() => setExternal(true)}>
+          <Download size={22} strokeWidth={2} aria-hidden="true" />
+          <span>Cargar entreno</span>
+        </button>
       </div>
 
       {external && <ExternalWorkoutSheet token={token} onClose={() => setExternal(false)} />}

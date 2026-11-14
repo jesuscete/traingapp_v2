@@ -1,12 +1,12 @@
 /*
- * Service worker de TrainingApp (M8): la app se abre aunque no haya cobertura en el gimnasio.
+ * Service worker de Athlys (M8): la app se abre aunque no haya cobertura en el gimnasio.
  * - Páginas: red primero; sin red, la última versión guardada (o la del entreno).
  * - Recursos estáticos de Next (/_next/static, iconos): también red primero. En modo desarrollo
  *   sus nombres no cambian entre versiones; servirlos de la caché dejaba código viejo (v1).
  * - API (/api, GET): red primero; sin red, la última respuesta guardada en ESTE móvil.
  *   Nunca se guardan /api/auth ni peticiones que no sean GET. Al cerrar sesión se borra todo.
  */
-const VERSION = "v2"; // cambiar la versión borra las cachés anteriores
+const VERSION = "v3"; // cambiar la versión borra las cachés anteriores
 const PAGES = `pages-${VERSION}`;
 const STATIC = `static-${VERSION}`;
 const API = `api-${VERSION}`;

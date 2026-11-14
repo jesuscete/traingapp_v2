@@ -84,8 +84,8 @@ export function BottomNav({ hidden = false }: { hidden?: boolean }) {
 
       <nav className="app-nav" aria-label="Navegación principal">
         <Link className="app-nav-brand" href="/dashboard">
-          <Dumbbell size={24} strokeWidth={1.75} aria-hidden="true" />
-          <span>TraingApp</span>
+          <img className="app-nav-logo" src="/logo-mark.png" alt="" width={28} height={28} />
+          <span>Athlys</span>
         </Link>
         <ul className="app-nav-list">
           {TABS.map((t) => {

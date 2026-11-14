@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { Markdown } from "@/components/Markdown";
+
 import type { ChatActionState, ChatMessage } from "@/lib/chatStore";
 import type { ChatCard } from "@/lib/types";
 import { TOOL_LABELS } from "@/lib/useChatEngine";
@@ -37,7 +39,9 @@ function ActionCard({
   return (
     <div className={`m4-action m4-action-${action.status}`}>
       {action.type === "save_meal" && <p className="m4-action-tag">Guardar comida</p>}
-      <p className="m4-action-summary">{action.summary}</p>
+      <div className="m4-action-summary">
+        <Markdown text={action.summary} />
+      </div>
       {open && (
         <div className="m4-action-btns">
           <button
@@ -138,7 +142,11 @@ export function ChatThread({ variant, messages, busy, onConfirm, onDiscard }: Pr
         const tools = toolSummary(message.tools);
         return (
           <div key={message.id} className={`m4-msg ${message.role}`}>
-            {message.text && <div className={`${bubble} ${message.role}`}>{message.text}</div>}
+            {message.text && (
+              <div className={`${bubble} ${message.role}`}>
+                {message.role === "user" ? message.text : <Markdown text={message.text} />}
+              </div>
+            )}
             {message.cards?.map((card, index) => (
               <ChatCardView key={`${message.id}-card-${index}`} card={card} />
             ))}

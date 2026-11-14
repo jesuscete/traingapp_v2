@@ -568,7 +568,12 @@ async def week_summary(session: AsyncSession, user: User, end: date) -> WeekOut:
                 day=day,
                 kcal=totals.kcal,
                 protein_g=totals.protein_g,
+                carbs_g=totals.carbs_g,
+                fat_g=totals.fat_g,
                 target_kcal=target.target_kcal if target else None,
+                target_protein_g=target.protein_g if target else None,
+                target_carbs_g=target.carbs_g if target else None,
+                target_fat_g=target.fat_g if target else None,
             )
         )
     logged = [d for d in days if d.kcal > 0]

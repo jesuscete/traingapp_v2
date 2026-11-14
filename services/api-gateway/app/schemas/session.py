@@ -152,3 +152,4 @@ class SessionListItem(CamelModel):
     fatigue: int | None = None
     distance_meters: float | None = None
     external_source: str | None = None  # "file" / "garmin": origen de la actividad
+    avg_heart_rate: float | None = None

@@ -13,11 +13,13 @@ import { MiniRing } from "@/components/sport/PrepSummary";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { StatTile } from "@/components/ui/StatTile";
 import { NextSteps } from "@/components/onboarding/NextSteps";
 import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
 import { formatDuration } from "@/lib/format";
 import { formatDistance } from "@/lib/metrics";
 import { translateDiscipline } from "@/lib/labels";
+import { summarizeToday } from "@/lib/todayDone";
 import { kcal as fmtKcal, shortDate, toISODate, todayISO } from "@/lib/nutrition";
 import type {
   Fatigue,
@@ -178,15 +180,14 @@ export default function Dashboard() {
 
   const target = mealsToday?.target ?? null;
 
-  const insights = home?.insights ?? [];
-  const restItem = insights.find((i) => i.kind === "rest");
-  const warnItem = insights.find((i) => i.kind === "warning");
+  const allInsights = home?.insights ?? [];
+  const restItem = allInsights.find((i) => i.kind === "rest");
+  const warnItem = allInsights.find((i) => i.kind === "warning");
   const hero = restItem
     ? { title: "Día de descanso o suave", text: restItem.title }
     : warnItem
       ? { title: "Entreno suave", text: warnItem.title }
       : { title: "Toca entrenar", text: home?.sportLabel ?? "" };
-  const shownInsights = showAllInsights ? insights : insights.slice(0, 3);
   const goal = home?.primaryGoal ?? null;
   const goalCountdown = goal ? countdownLabel(goal.daysLeft) : null;
   const active = new Set(home?.activeDays ?? []);
@@ -199,9 +200,12 @@ export default function Dashboard() {
   });
   const weekAgo = toISODate(new Date(Date.now() - 6 * 86_400_000));
   const lastWeek = recent.filter((s) => localISO(s.performedAt) >= weekAgo);
-  const burnedToday = recent
-    .filter((s) => localISO(s.performedAt) === today)
-    .reduce((sum, s) => sum + (s.estimatedKcal ?? 0), 0);
+  const todaySessions = recent.filter((s) => localISO(s.performedAt) === today);
+  const done = summarizeToday(todaySessions);
+  // Con el entreno ya hecho, «hoy toca descanso» deja de tener sentido.
+  const insights = done ? allInsights.filter((i) => i.kind !== "rest") : allInsights;
+  const shownInsights = showAllInsights ? insights : insights.slice(0, 3);
+  const burnedToday = done?.kcal ?? 0;
   const weekKcal = lastWeek.reduce((sum, s) => sum + (s.estimatedKcal ?? 0), 0);
 
   function dismissSteps() {
@@ -277,18 +281,47 @@ export default function Dashboard() {
 
       <div className="hoy-layout">
       {home && (
-        <Card variant="raised" className="hoy-hero">
+        <Card variant="raised" className={`hoy-hero${done ? " done" : ""}`}>
           <span className="hoy-hero-kicker">Hoy</span>
-          <h2>{hero.title}</h2>
-          {hero.text && <p>{hero.text}</p>}
-          <div className="hoy-hero-actions">
-            <Button href="/entrenar" size="lg" fullWidth>
-              Empezar entreno
-            </Button>
-            <Button href="/registrar" variant="text">
-              Registrar otra actividad
-            </Button>
-          </div>
+          {done ? (
+            <>
+              <div className="hoy-done-head">
+                <span className="hoy-done-icon">
+                  <DisciplineIcon discipline={done.mainDiscipline} size={28} />
+                </span>
+                <h2>{done.title}</h2>
+              </div>
+              <p>Enhorabuena, el entreno de hoy ya está hecho.</p>
+              <div className="ui-stat-row hoy-done-stats">
+                {done.minutes > 0 && <StatTile value={formatDuration(done.minutes)} label="duración" />}
+                {done.kcal > 0 && <StatTile value={fmtKcal(done.kcal)} label="kcal" />}
+                {done.avgHeartRate !== null && <StatTile value={done.avgHeartRate} label="ppm de media" />}
+                {done.distanceMeters > 0 && <StatTile value={formatDistance(done.distanceMeters)} label="distancia" />}
+                {done.volumeKg > 0 && <StatTile value={`${fmtKcal(done.volumeKg)} kg`} label="volumen" />}
+              </div>
+              <div className="hoy-hero-actions">
+                <Button href={`/entrenos/${done.sessions[0].id}`} variant="secondary" size="lg" fullWidth>
+                  {done.sessions.length > 1 ? "Ver entreno principal" : "Ver entreno"}
+                </Button>
+                <Button href="/registrar" variant="text">
+                  Registrar otra actividad
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2>{hero.title}</h2>
+              {hero.text && <p>{hero.text}</p>}
+              <div className="hoy-hero-actions">
+                <Button href="/entrenar" size="lg" fullWidth>
+                  Empezar entreno
+                </Button>
+                <Button href="/registrar" variant="text">
+                  Registrar otra actividad
+                </Button>
+              </div>
+            </>
+          )}
           {insights.length > 0 && (
             <div className="hoy-insights">
               {shownInsights.map((item, i) => (
@@ -323,7 +356,7 @@ export default function Dashboard() {
               <span className="hoy-tile-title">Fatiga</span>
               {bodyPoints.length > 0 ? (
                 <div className="hoy-tile-body">
-                  <MuscleBody points={bodyPoints} />
+                  <MuscleBody points={bodyPoints} compact />
                 </div>
               ) : (
                 <span className="hoy-tile-sub">Sin datos aún</span>

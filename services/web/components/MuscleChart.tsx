@@ -91,7 +91,8 @@ function intensityFor(value: number): number {
   );
 }
 
-export function MuscleBody({ points }: { points: BodyPoint[] }) {
+/** `compact`: sin rótulos, se ajusta al alto del contenedor (tarjetas pequeñas). */
+export function MuscleBody({ points, compact = false }: { points: BodyPoint[]; compact?: boolean }) {
   const { colors, defaultFill, border } = useThemeColors();
 
   const { parts, unmapped } = useMemo(() => {
@@ -120,7 +121,7 @@ export function MuscleBody({ points }: { points: BodyPoint[] }) {
   if (parts.length === 0) return null;
 
   return (
-    <div className="bodymap">
+    <div className={`bodymap${compact ? " compact" : ""}`}>
       <div className="bodymap-figure">
         <Body
           side="front"
@@ -130,7 +131,7 @@ export function MuscleBody({ points }: { points: BodyPoint[] }) {
           border={border}
           scale={0.65}
         />
-        <p className="muted">Frente</p>
+        {!compact && <p className="muted">Frente</p>}
       </div>
       <div className="bodymap-figure">
         <Body
@@ -141,7 +142,7 @@ export function MuscleBody({ points }: { points: BodyPoint[] }) {
           border={border}
           scale={0.65}
         />
-        <p className="muted">Espalda</p>
+        {!compact && <p className="muted">Espalda</p>}
       </div>
     </div>
   );

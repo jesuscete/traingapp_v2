@@ -490,6 +490,7 @@ export type SessionSummary = {
   estimatedKcal: number | null;
   distanceMeters?: number | null;
   externalSource?: string | null;
+  avgHeartRate?: number | null;
 };
 
 export type SessionPage = {
@@ -1089,7 +1090,17 @@ export type NutritionDay = {
 };
 
 export type NutritionWeek = {
-  days: { day: string; kcal: number; proteinG: number; targetKcal: number | null }[];
+  days: {
+    day: string;
+    kcal: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+    targetKcal: number | null;
+    targetProteinG: number | null;
+    targetCarbsG: number | null;
+    targetFatG: number | null;
+  }[];
   averageKcal: number;
   averageTargetKcal: number | null;
 };

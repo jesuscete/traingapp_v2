@@ -10,6 +10,7 @@ import { DaySummary } from "@/components/nutrition/DaySummary";
 import { EditEntrySheet, TemplateNameSheet } from "@/components/nutrition/EntrySheets";
 import { GoalSheet } from "@/components/nutrition/GoalSheet";
 import { MealSection } from "@/components/nutrition/MealSection";
+import { WeekView } from "@/components/nutrition/WeekView";
 import { WeightCard } from "@/components/nutrition/WeightCard";
 import { Button } from "@/components/ui/Button";
 import { Fab } from "@/components/ui/Fab";
@@ -185,23 +186,13 @@ function ComidasInner() {
       )}
 
       {data && tab === "semana" && week && (
-        <section className="energy-card">
-          <h3>Últimos 7 días</h3>
-          <div className="ui-stat-row">
-            <StatTile value={kcal(week.averageKcal)} label="kcal de media" />
-            {week.averageTargetKcal !== null && <StatTile value={kcal(week.averageTargetKcal)} label="objetivo medio" />}
-          </div>
-          <ul className="nu-week-list">
-            {week.days.map((d) => (
-              <li key={d.day}>
-                <button type="button" className="nu-daylabel" onClick={() => { setDay(d.day); setTab("dia"); }}>
-                  {dayLabel(d.day)}
-                </button>
-                <span> · {kcal(d.kcal)} kcal{d.targetKcal !== null ? ` / ${kcal(d.targetKcal)}` : ""} · {Math.round(d.proteinG)} g prot.</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <WeekView
+          week={week}
+          onOpenDay={(d) => {
+            setDay(d);
+            setTab("dia");
+          }}
+        />
       )}
 
       {tab === "peso" && token && (

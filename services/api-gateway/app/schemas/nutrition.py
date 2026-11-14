@@ -206,7 +206,12 @@ class WeekDayOut(CamelModel):
     day: date
     kcal: float
     protein_g: float
+    carbs_g: float = 0
+    fat_g: float = 0
     target_kcal: float | None
+    target_protein_g: float | None = None
+    target_carbs_g: float | None = None
+    target_fat_g: float | None = None
 
 
 class WeekOut(CamelModel):

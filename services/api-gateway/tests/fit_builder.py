@@ -85,7 +85,7 @@ MESSAGES: dict[str, tuple[int, list[tuple[str, int, tuple[str, int]]]]] = {
     ),
 }
 SPORT = {"running": 1, "cycling": 2, "swimming": 5, "training": 10}
-SUB_SPORT = {"generic": 0, "strength_training": 20}
+SUB_SPORT = {"generic": 0, "strength_training": 20, "cardio_training": 26}
 
 
 def _crc(data: bytes, crc: int = 0) -> int:
@@ -192,5 +192,26 @@ def strength_fit(start: datetime) -> bytes:
         calories=120,
         avg_hr=110,
         max_hr=140,
+    )
+    return b.build()
+
+
+def cardio_fit(start: datetime, minutes: int = 45, hr: int = 150, serial: int = 777) -> bytes:
+    """Modo «Cardio» del reloj (training / cardio_training): FC y kcal, sin deporte concreto."""
+    b = FitBuilder().add("file_id", type=4, manufacturer=1, serial=serial, created=fit_ts(start))
+    seconds = minutes * 60
+    for t in range(0, seconds + 1, 5):
+        b.add("record", timestamp=fit_ts(start) + t, hr=hr + (t // 60) % 20)
+    b.add(
+        "session",
+        timestamp=fit_ts(start) + seconds,
+        start=fit_ts(start),
+        sport=SPORT["training"],
+        sub_sport=SUB_SPORT["cardio_training"],
+        elapsed=seconds * 1000,
+        timer=seconds * 1000,
+        calories=610,
+        avg_hr=hr + 9,
+        max_hr=hr + 30,
     )
     return b.build()

@@ -130,8 +130,11 @@ export type FatigueExplain = {
   sessions: FatigueExplainItem[];
 };
 
+export type ClassificationStatus = "pending" | "done" | "skipped";
+
 export type SessionDetails = {
   metrics?: SessionMetrics | null;
+  classification?: { status: ClassificationStatus; at?: string } | null;
   rpe?: number | null;
   perceivedFatigue?: number | null;
   [key: string]: unknown;
@@ -1305,3 +1308,40 @@ export type Onboarding = {
 
 /** registro: factor sin deporte + entrenos reales. estimado: factor con deporte incluido. */
 export type ActivityMode = "registro" | "estimado";
+
+/** Entreno del reloj sin deporte concreto (ADR-012). */
+export type PendingWatch = {
+  id: string;
+  performedAt: string;
+  durationMinutes: number | null;
+  estimatedKcal: number | null;
+  avgHeartRate: number | null;
+  maxHeartRate: number | null;
+  distanceMeters: number | null;
+  sport: string | null;
+  subSport: string | null;
+  trimp: number | null;
+};
+
+export type ClassifyExercise = {
+  name: string;
+  sets?: number | null;
+  reps?: number | null;
+  weightKg?: number | null;
+};
+
+export type ClassifyInput = {
+  discipline: string;
+  note?: string;
+  intensity?: number;
+  metrics?: SessionMetrics | null;
+  exercises?: ClassifyExercise[];
+};
+
+export type ClassifyPreview = {
+  discipline: string | null;
+  exercises: ClassifyExercise[];
+  metrics: SessionMetrics | null;
+  intensity: number | null;
+  unresolved: string[];
+};

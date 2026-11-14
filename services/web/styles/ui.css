@@ -360,3 +360,29 @@
 .mw-flag.low { border-left-color: var(--warning); }
 .mw-flag.ok { border-left-color: var(--success); }
 .mw-empty { margin: 0; font-size: var(--font-size-small); }
+
+/* Entrenos del reloj sin catalogar */
+.cw { display: flex; flex-direction: column; gap: var(--space-2); }
+.cw-head { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); border-radius: 12px; background: var(--surface-alt); }
+.cw-mode { font-size: var(--font-size-label); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+.cw-stats { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); font-size: var(--font-size-small); color: var(--text-secondary); }
+.cw-label { margin: var(--space-3) 0 0; font-weight: 600; font-size: var(--font-size-small); }
+.cw-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.cw-chip { display: flex; align-items: center; gap: var(--space-2); min-height: var(--touch-min); padding: 0 var(--space-3); border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
+.cw-chip.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-weight: 600; }
+.cw-select, .cw-text { width: 100%; font: inherit; }
+.cw-text { resize: vertical; }
+.cw-preview { padding: var(--space-2) var(--space-3); border-radius: 10px; background: color-mix(in srgb, var(--accent) 10%, transparent); font-size: var(--font-size-small); }
+.cw-preview p { margin: 0; }
+.cw-preview ul { margin: var(--space-1) 0 0; padding-left: 1.2em; }
+.cw-rpe { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
+.cw-rpe-btn { min-height: 36px; padding: 0; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-primary); font: inherit; cursor: pointer; }
+.cw-rpe-btn.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent, #fff); }
+.cw-actions { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
+.cw-actions .ui-btn:last-child { flex: 1; }
+.cw-confirm p { margin: 0 0 var(--space-2); font-size: var(--font-size-small); }
+.cw-banner { display: flex; align-items: center; gap: var(--space-3); width: 100%; margin: var(--space-3) 0 0; padding: var(--space-3); border-radius: 14px; border: 1px solid color-mix(in srgb, var(--warning) 50%, var(--border)); background: color-mix(in srgb, var(--warning) 10%, var(--surface)); color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
+.cw-banner svg { flex: none; color: var(--warning); }
+.cw-banner span { flex: 1; display: flex; flex-direction: column; }
+.cw-banner small { color: var(--text-secondary); }
+.cw-note { margin: var(--space-2) 0 0; font-size: var(--font-size-small); color: var(--text-secondary); }

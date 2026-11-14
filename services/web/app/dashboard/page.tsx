@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BedDouble, CheckCircle2, ChevronRight, Flame, Lightbulb, type LucideIcon } from "lucide-react";
+import { AlertTriangle, BedDouble, CheckCircle2, ChevronRight, Flame, Lightbulb, Watch, type LucideIcon } from "lucide-react";
 
 import { api } from "@/lib/api";
+import { ClassifySheet } from "@/components/activity/ClassifySheet";
 import { BottomNav } from "@/components/BottomNav";
 import { GoalKindIcon, countdownLabel } from "@/components/goals";
 import { DisciplineIcon } from "@/components/icons";
@@ -28,6 +29,7 @@ import type {
   HomeSummary,
   NutritionDay,
   Onboarding,
+  PendingWatch,
   SportAnalysis,
   SessionSummary,
   User,
@@ -114,6 +116,8 @@ export default function Dashboard() {
   const [stepsHidden, setStepsHidden] = useState(false);
   const [showAllInsights, setShowAllInsights] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [pendingWatch, setPendingWatch] = useState<PendingWatch[]>([]);
+  const [classifyOpen, setClassifyOpen] = useState(false);
 
   const loadOnboarding = useCallback(() => {
     if (!token) return;
@@ -154,6 +158,10 @@ export default function Dashboard() {
       api.getSportAnalysis(token, { weeks: 4 }).then(setPrep).catch(() => setPrep(null));
       api.statsFatigue(token).then(setFatigue).catch(() => setFatigue(null));
       api.getNutritionDay(token, todayISO()).then(setMealsToday).catch(() => setMealsToday(null));
+      api
+        .listUnclassified(token)
+        .then((r) => setPendingWatch(r.items))
+        .catch(() => setPendingWatch([]));
       api
         .listSessions(token, { page: 1, pageSize: 20 })
         .then((p) => setRecent(p.items))
@@ -279,6 +287,32 @@ export default function Dashboard() {
             <Skeleton height={120} />
           </div>
         </>
+      )}
+
+      {pendingWatch.length > 0 && (
+        <button type="button" className="cw-banner" onClick={() => setClassifyOpen(true)}>
+          <Watch size={22} strokeWidth={1.75} aria-hidden="true" />
+          <span>
+            <strong>
+              {pendingWatch.length === 1
+                ? "Tienes 1 entreno del reloj sin catalogar"
+                : `Tienes ${pendingWatch.length} entrenos del reloj sin catalogar`}
+            </strong>
+            <small>Dime qué fue (HYROX, boxeo, fútbol…) para afinar fatiga y análisis.</small>
+          </span>
+          <ChevronRight size={18} strokeWidth={1.75} aria-hidden="true" />
+        </button>
+      )}
+      {token && classifyOpen && pendingWatch.length > 0 && (
+        <ClassifySheet
+          token={token}
+          items={pendingWatch}
+          onClose={() => {
+            setClassifyOpen(false);
+            setReloadKey((k) => k + 1);
+          }}
+          onChanged={() => undefined}
+        />
       )}
 
       <div className="hoy-layout">

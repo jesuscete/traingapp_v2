@@ -28,6 +28,9 @@ def _exercise_volume(exercise: Exercise) -> float:
     return 0.0
 
 
+exercise_volume = _exercise_volume
+
+
 def _as_float(value: object) -> float | None:
     if isinstance(value, bool):
         return None
@@ -310,6 +313,7 @@ class SessionUpdateError(Exception):
     """La edición no es válida para esta sesión."""
 
 
+WATCH_KCAL_KEY = "watchKcal"
 HEADER_FIELDS = ("raw_text", "performed_at", "duration_minutes", "intensity", "fatigue", "note")
 
 
@@ -367,6 +371,10 @@ async def update_for_user(
             kind=info.kind if info else None,
             met_value=info.met if info else None,
         )
+        # Las kcal medidas por el reloj valen más que cualquier estimación.
+        watch_kcal = _as_float((record.details or {}).get(WATCH_KCAL_KEY))
+        if watch_kcal is not None:
+            record.estimated_kcal = watch_kcal
     await session.commit()
 
 

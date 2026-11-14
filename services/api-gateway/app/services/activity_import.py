@@ -21,6 +21,7 @@ from app.models import ActivityStream, TrainingSession, User
 from app.schemas.gym import GymSessionIn, SetEntryIn, WorkoutExerciseIn, WorkoutSetIn
 from app.schemas.metrics import EnduranceMetrics, metrics_kind_for
 from app.schemas.session import SessionIn
+from app.services import watch_classify
 
 EXTERNAL_SOURCE = "file"
 MAX_FILE_BYTES = 15 * 1024 * 1024
@@ -266,6 +267,11 @@ async def import_file(
     kcal = _kcal(act, user)
     if kcal is not None:
         record.estimated_kcal = round(kcal, 1)
+        record.details = {
+            **(record.details or {}),
+            sessions_crud.WATCH_KCAL_KEY: record.estimated_kcal,
+        }
+    watch_classify.mark_if_unspecific(record)
     if act.avg_hr:
         record.avg_heart_rate = act.avg_hr
     if act.max_hr:

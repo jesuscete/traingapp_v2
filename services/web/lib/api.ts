@@ -37,6 +37,9 @@ import type {
   Fatigue,
   FatigueSeries,
   MuscleWeek,
+  PendingWatch,
+  ClassifyInput,
+  ClassifyPreview,
   GymSession,
   GymSessionIn,
   HistorySummary,
@@ -224,6 +227,27 @@ export const api = {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
+    }),
+  listUnclassified: (token: string) =>
+    request<{ items: PendingWatch[] }>("/sessions/unclassified", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+  classifyPreview: (token: string, text: string) =>
+    request<ClassifyPreview>("/sessions/classify/preview", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ text }),
+    }),
+  classifySession: (token: string, id: string, body: ClassifyInput) =>
+    request<Session | GymSession>(`/sessions/${id}/classify`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    }),
+  skipClassification: (token: string, id: string) =>
+    request<void>(`/sessions/${id}/classify/skip`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
     }),
   updateSession: (token: string, id: string, body: SessionUpdate) =>
     request<Session | GymSession>(`/sessions/${id}`, {

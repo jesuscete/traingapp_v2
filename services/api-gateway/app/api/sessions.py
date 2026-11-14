@@ -2,11 +2,13 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics import gym as gym_analytics
 from app.analytics import periods
+from app.analytics.discipline_seed import DISCIPLINE_SEED
 from app.analytics.impacts import compute_discipline_impacts, compute_muscle_impacts
 from app.api.deps import get_current_user
 from app.core.database import get_db
@@ -24,9 +26,18 @@ from app.schemas.session import (
     SessionOut,
     SessionUpdateIn,
 )
-from app.services import session_ingest
+from app.schemas.watch import (
+    ClassifyIn,
+    ClassifyPreviewIn,
+    ClassifyPreviewOut,
+    PendingWatchListOut,
+    PendingWatchOut,
+)
+from app.services import session_ingest, watch_classify
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+SEED_NAMES = {code: name for name, code, *_ in DISCIPLINE_SEED}
 
 
 @router.post(
@@ -104,6 +115,100 @@ async def sessions_summary(
         deltas=periods.compute_discipline_deltas(current, previous),
         recent=recent,
     )
+
+
+@router.get("/unclassified", response_model=PendingWatchListOut)
+async def unclassified_sessions(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> PendingWatchListOut:
+    """Entrenos del reloj sin deporte concreto, pendientes de catalogar (ADR-012)."""
+    items: list[PendingWatchOut] = []
+    for record in await watch_classify.list_pending(session, current_user.id):
+        activity = (record.details or {}).get("activity")
+        info = activity if isinstance(activity, dict) else {}
+        trimp = (record.details or {}).get("trimp")
+        items.append(
+            PendingWatchOut(
+                id=record.id,
+                performed_at=record.performed_at,
+                duration_minutes=record.duration_minutes,
+                estimated_kcal=record.estimated_kcal,
+                avg_heart_rate=record.avg_heart_rate,
+                max_heart_rate=record.max_heart_rate,
+                distance_meters=record.distance_meters,
+                sport=str(info["sport"]) if info.get("sport") else None,
+                sub_sport=str(info["subSport"]) if info.get("subSport") else None,
+                trimp=float(trimp) if isinstance(trimp, int | float) else None,
+            )
+        )
+    return PendingWatchListOut(items=items)
+
+
+@router.post("/classify/preview", response_model=ClassifyPreviewOut)
+async def classify_preview(
+    body: ClassifyPreviewIn,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> ClassifyPreviewOut:
+    """La IA interpreta la descripción del entreno; no guarda nada."""
+    try:
+        return await watch_classify.preview(body.text)
+    except (httpx.HTTPError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="La IA no está disponible; elige la actividad a mano.",
+        ) from exc
+
+
+@router.post("/{session_id}/classify", response_model=GymSessionOut | SessionOut)
+async def classify_session(
+    session_id: uuid.UUID,
+    body: ClassifyIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> GymSessionOut | SessionOut:
+    """Asigna la actividad real a un entreno del reloj conservando FC, zonas y kcal."""
+    info = (await load_catalog(session)).info(body.discipline)
+    label = info.name if info else SEED_NAMES.get(body.discipline, body.discipline)
+    try:
+        await watch_classify.classify(
+            session,
+            current_user.id,
+            session_id,
+            body,
+            weight_kg=current_user.weight_kg,
+            label=label,
+        )
+    except LookupError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        ) from None
+    except watch_classify.ClassifyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from None
+    reloaded = await sessions.get_for_user(session, session_id, current_user.id)
+    assert reloaded is not None
+    return await session_out(session, reloaded)
+
+
+@router.post("/{session_id}/classify/skip", status_code=status.HTTP_204_NO_CONTENT)
+async def skip_classification(
+    session_id: uuid.UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    """«No catalogar»: no se vuelve a preguntar por este entreno."""
+    try:
+        await watch_classify.skip(session, current_user.id, session_id)
+    except LookupError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        ) from None
+    except watch_classify.ClassifyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from None
 
 
 @router.get("/{session_id}", response_model=GymSessionOut | SessionOut)

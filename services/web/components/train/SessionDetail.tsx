@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { ActivitySection } from "@/components/activity/ActivitySection";
+import { ClassifySheet } from "@/components/activity/ClassifySheet";
 import { ActivityStats } from "@/components/activity/ActivityStats";
 import { ProgressPlaceholder } from "@/components/activity/ProgressPlaceholder";
 import {
@@ -22,9 +23,30 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { api } from "@/lib/api";
 import { translateDiscipline } from "@/lib/labels";
 import { formToMetrics, metricsKindFor, metricsToForm } from "@/lib/metrics";
-import type { GymSession, Session, SessionUpdate } from "@/lib/types";
+import type { GymSession, PendingWatch, Session, SessionUpdate } from "@/lib/types";
 
 const TOKEN_KEY = "traingapp_token";
+
+function num(value: unknown): number | null {
+  return typeof value === "number" ? value : null;
+}
+
+/** Datos del reloj para la hoja de catalogar, sacados del detalle de la sesión. */
+function asPendingWatch(session: Session | GymSession): PendingWatch {
+  const activity = (session.details?.activity ?? {}) as Record<string, unknown>;
+  return {
+    id: session.id,
+    performedAt: session.performedAt,
+    durationMinutes: session.durationMinutes,
+    estimatedKcal: session.estimatedKcal,
+    avgHeartRate: num(activity.avgHr),
+    maxHeartRate: num(activity.maxHr),
+    distanceMeters: "distanceMeters" in session ? (session.distanceMeters ?? null) : null,
+    sport: typeof activity.sport === "string" ? activity.sport : null,
+    subSport: typeof activity.subSport === "string" ? activity.subSport : null,
+    trimp: num(session.details?.trimp),
+  };
+}
 
 function isGymSession(session: Session | GymSession): session is GymSession {
   return "workoutExercises" in session;
@@ -40,6 +62,7 @@ export function SessionDetail({ id, embedded = false }: { id: string; embedded?:
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [classifying, setClassifying] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem(TOKEN_KEY);
@@ -66,6 +89,7 @@ export function SessionDetail({ id, embedded = false }: { id: string; embedded?:
 
   const isGym = session != null && isGymSession(session);
   const metrics = session?.details?.metrics ?? null;
+  const classification = session?.details?.classification?.status ?? null;
 
   async function save(data: ActivitySubmit) {
     if (!token || !session) return;
@@ -144,6 +168,30 @@ export function SessionDetail({ id, embedded = false }: { id: string; embedded?:
               <p>
                 <Link href="/progreso?tab=rendimiento">Analizar mi preparación</Link>
               </p>
+            )}
+            {!editing && classification === "pending" && (
+              <div className="cw-note">
+                <p>Este entreno del reloj no dice qué deporte fue. Catalógalo para afinar fatiga y análisis.</p>
+                <button type="button" className="ui-btn primary md" onClick={() => setClassifying(true)}>
+                  Catalogar
+                </button>
+              </div>
+            )}
+            {!editing && classification === "skipped" && (
+              <p className="cw-note">
+                Sin catalogar: la fatiga y el análisis usan una estimación genérica.{" "}
+                <button type="button" className="ui-btn text" onClick={() => setClassifying(true)}>
+                  Catalogar ahora
+                </button>
+              </p>
+            )}
+            {token && classifying && (
+              <ClassifySheet
+                token={token}
+                items={[asPendingWatch(session)]}
+                onClose={() => setClassifying(false)}
+                onChanged={() => void load(token, id)}
+              />
             )}
             {!editing && (
               <button

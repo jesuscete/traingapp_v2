@@ -3,27 +3,56 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { g1, kcal } from "@/lib/nutrition";
+import { macroAdvice, macroBars } from "@/lib/macros";
+import { g1, kcal, todayISO } from "@/lib/nutrition";
 import type { NutritionDay } from "@/lib/types";
 
 const R = 52;
 const CIRC = 2 * Math.PI * R;
 
-function MacroBar({ label, value, target }: { label: string; value: number; target: number | null }) {
-  const pct = target && target > 0 ? Math.min(100, (value / target) * 100) : 0;
-  const over = target !== null && target > 0 && value > target * 1.05;
+function MacroBars({ data }: { data: NutritionDay }) {
+  const { totals, target } = data;
+  if (!target) {
+    return (
+      <div className="nu-macros">
+        {[
+          ["Proteína", totals.proteinG],
+          ["Hidratos", totals.carbsG],
+          ["Grasas", totals.fatG],
+        ].map(([label, value]) => (
+          <div key={label} className="nu-macro-head">
+            <span>{label}</span>
+            <span className="muted">{Math.round(Number(value))} g</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  const advice = macroAdvice(totals, target, data.day === todayISO() ? new Date().getHours() : 23);
   return (
-    <div className="nu-macro">
-      <div className="nu-macro-head">
-        <span>{label}</span>
-        <span className="muted">
-          {Math.round(value)}
-          {target !== null ? ` / ${Math.round(target)}` : ""} g
-        </span>
-      </div>
-      <div className="nu-macro-track">
-        <div className={`nu-macro-fill${over ? " over" : ""}`} style={{ width: `${pct}%` }} />
-      </div>
+    <div className="nu-macros">
+      {macroBars(totals, target).map((b) => (
+        <div key={b.key} className={`nu-mrow ${b.key}${b.over ? " over" : ""}`}>
+          <div className="nu-macro-head">
+            <span>
+              {b.label} <span className="muted">· {b.sharePct} %</span>
+            </span>
+            <span className={b.over ? "nu-over" : "muted"}>
+              {Math.round(b.value)} / {Math.round(b.target)} g
+              {b.over ? ` (+${Math.round(b.value - b.target)})` : ""}
+            </span>
+          </div>
+          <div className="nu-mbar" aria-hidden="true">
+            <span className="nu-mbar-track" style={{ width: `${b.trackPct}%` }} />
+            <span className="nu-mbar-fill" style={{ width: `${b.fillPct}%` }} />
+            {b.overPct > 0 && (
+              <span className="nu-mbar-over" style={{ left: `${b.trackPct}%`, width: `${b.overPct}%` }} />
+            )}
+            <span className="nu-mbar-goal" style={{ left: `${b.trackPct}%` }} />
+          </div>
+        </div>
+      ))}
+      {advice && <p className="nu-advice">{advice}</p>}
     </div>
   );
 }
@@ -74,11 +103,7 @@ export function DaySummary({ data }: { data: NutritionDay }) {
         <span className="nu-exact-dot est" /> estimado {kcal(data.estimatedKcal)} kcal
       </p>
 
-      <div className="nu-macros">
-        <MacroBar label="Proteína" value={totals.proteinG} target={target?.proteinG ?? null} />
-        <MacroBar label="Hidratos" value={totals.carbsG} target={target?.carbsG ?? null} />
-        <MacroBar label="Grasas" value={totals.fatG} target={target?.fatG ?? null} />
-      </div>
+      <MacroBars data={data} />
 
       {data.missingProfile.length > 0 && (
         <p className="nu-warn">

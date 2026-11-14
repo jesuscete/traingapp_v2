@@ -102,3 +102,12 @@ export function macroAdvice(totals: MacroTotals, target: MacroTotals, hour: numb
   }
   return null;
 }
+
+/** Versión de dos o tres palabras de `macroAdvice` para tarjetas pequeñas. */
+export function macroFlag(totals: MacroTotals, target: MacroTotals, hour: number): string | null {
+  const overs = KEYS.filter((k) => grams(target, k) > 0 && grams(totals, k) > grams(target, k) * OVER);
+  if (overs.length > 0) return `Pasado en ${overs.map((k) => LABELS[k].toLowerCase()).join(" y ")}`;
+  const advice = macroAdvice(totals, target, hour);
+  if (advice?.startsWith("Vas corto de proteína")) return "Falta proteína";
+  return null;
+}

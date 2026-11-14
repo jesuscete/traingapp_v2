@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { dayStatus, macroAdvice, macroBars } from "@/lib/macros";
+import { dayStatus, macroAdvice, macroBars, macroFlag } from "@/lib/macros";
 
 const TARGET = { proteinG: 150, carbsG: 250, fatG: 70 };
 
@@ -39,4 +39,10 @@ test("consejo: por la mañana no se agobia", () => {
 test("consejo: proteína rezagada por la tarde", () => {
   const advice = macroAdvice({ proteinG: 40, carbsG: 200, fatG: 50 }, TARGET, 16);
   assert.ok(advice?.startsWith("Vas corto de proteína"));
+});
+
+test("aviso corto para tarjetas", () => {
+  assert.equal(macroFlag({ proteinG: 60, carbsG: 300, fatG: 40 }, TARGET, 17), "Pasado en hidratos");
+  assert.equal(macroFlag({ proteinG: 40, carbsG: 200, fatG: 50 }, TARGET, 16), "Falta proteína");
+  assert.equal(macroFlag({ proteinG: 20, carbsG: 60, fatG: 10 }, TARGET, 9), null);
 });

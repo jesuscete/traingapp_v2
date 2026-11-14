@@ -19,6 +19,7 @@ import { WelcomeModal } from "@/components/onboarding/WelcomeModal";
 import { formatDuration } from "@/lib/format";
 import { formatDistance } from "@/lib/metrics";
 import { translateDiscipline } from "@/lib/labels";
+import { macroFlag } from "@/lib/macros";
 import { summarizeToday } from "@/lib/todayDone";
 import { kcal as fmtKcal, shortDate, toISODate, todayISO } from "@/lib/nutrition";
 import type {
@@ -179,6 +180,7 @@ export default function Dashboard() {
   );
 
   const target = mealsToday?.target ?? null;
+  const mealsFlag = mealsToday && target ? macroFlag(mealsToday.totals, target, new Date().getHours()) : null;
 
   const allInsights = home?.insights ?? [];
   const restItem = allInsights.find((i) => i.kind === "rest");
@@ -388,6 +390,7 @@ export default function Dashboard() {
                       />
                     </div>
                   )}
+                  {mealsFlag && <span className="hoy-tile-flag">{mealsFlag}</span>}
                 </>
               ) : (
                 <span className="hoy-tile-sub">Registra tus comidas</span>

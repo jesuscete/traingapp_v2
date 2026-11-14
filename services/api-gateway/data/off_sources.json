@@ -1,0 +1,27 @@
+{
+  "_doc": "Supermercados y marcas disponibles en Open Food Facts (España), consultados con `python -m scripts.import_off_store --dry-run`. 'validos' = con nombre y kcal coherentes (lo que se importaría). Consultar este fichero en vez de repetir la consulta; actualizarlo al reimportar.",
+  "checked_on": "2026-11-14",
+  "country": "spain",
+  "import_command": ".venv/Scripts/python.exe -m scripts.import_off_store --store <tienda> --brand <marca>[:Etiqueta]",
+  "stores": [
+    {"value": "carrefour", "label": "Carrefour", "off_products": 8737, "valid": 7102, "imported": true, "imported_on": "2026-11-14", "rows": 7088},
+    {"value": "mercadona", "label": "Mercadona", "off_products": 5101, "valid": 4041, "imported": false},
+    {"value": "eroski", "label": "Eroski", "off_products": 2518, "valid": 1869, "imported": false},
+    {"value": "lidl", "label": "Lidl", "off_products": null, "valid": null, "imported": true, "rows": 2055},
+    {"value": "alcampo", "label": "Alcampo", "off_products": 977, "valid": 748, "imported": false},
+    {"value": "dia", "label": "Dia", "off_products": 958, "valid": 749, "imported": false}
+  ],
+  "brands": [
+    {"value": "prozis", "label": "Prozis", "off_products": 719, "valid": 591, "imported": true, "imported_on": "2026-11-14", "rows": 590},
+    {"value": "hsn", "label": "HSN", "off_products": 225, "valid": 187, "imported": false},
+    {"value": "mcdonald-s", "label": "McDonald's", "off_products": 4, "valid": 3, "imported": true, "imported_on": "2026-11-14", "rows": 3},
+    {"value": "burger-king", "label": "Burger King", "off_products": 5, "valid": 4, "imported": false},
+    {"value": "telepizza", "label": "Telepizza", "off_products": 2, "valid": 1, "imported": false},
+    {"value": "kfc", "label": "KFC", "off_products": 0, "valid": 0, "imported": false},
+    {"value": "domino-s-pizza", "label": "Domino's", "off_products": 0, "valid": 0, "imported": false}
+  ],
+  "notes": [
+    "La comida rápida casi no está en OFF (solo productos envasados con código de barras). Se cubre con el diccionario de comidas (la IA la estima una vez y queda guardada) o con una semilla de las tablas nutricionales oficiales de cada cadena.",
+    "Las importaciones por marca no rellenan 'store'; se distinguen por 'brand'."
+  ]
+}

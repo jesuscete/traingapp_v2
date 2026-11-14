@@ -58,6 +58,7 @@ async def review_routine_with_llm(
         build_user_prompt(payload),
         LlmRoutineReview,
         max_tokens=settings.llm_review_max_tokens,
+        task="review",
     )
     return RoutineReviewResponse(
         puntos_fuertes=_clean(review.puntos_fuertes),

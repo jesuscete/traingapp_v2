@@ -18,9 +18,9 @@ def test_profiles_load_with_aliases_and_fallback() -> None:
     profiles = sport_registry.load_profiles()
     assert {"boxing", "martial_arts", "generic"} <= set(profiles)
     assert sport_registry.profile_doc("martial_arts").sport == "boxing"
-    assert sport_registry.profile_doc("tennis").sport == "generic"
+    assert sport_registry.profile_doc("golf").sport == "generic"
     assert sport_registry.block_weights("boxing", "comba") is not None
-    assert sport_registry.block_weights("tennis", "comba") is None
+    assert sport_registry.block_weights("golf", "comba") is None
 
 
 @pytest.mark.parametrize(
@@ -58,6 +58,7 @@ def test_agent_tool_returns_profile(client: TestClient, monkeypatch: pytest.Monk
     body = {"email": "profile-tool@example.com", "password": "password123", "name": "P"}
     token = client.post("/auth/register", json=body).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
+    client.put("/profile", json={"primarySport": "boxeo"}, headers=headers)
     steps = [
         {"source": "llm", "action": "herramienta", "tool": "perfil_deporte", "arguments": {}},
         {"source": "llm", "action": "responder", "message": "Ok", "arguments": {}},

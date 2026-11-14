@@ -368,8 +368,7 @@ async def _log_meal(ctx: ToolContext, args: dict[str, object]) -> ToolResult:
     meal = MEAL_ALIASES.get(meal, meal)
     if meal not in MEALS_ES:
         raise ToolArgumentError(f"'comida' debe ser una de {MEALS_ES}")
-    parsed = await fetch_meal_parse(text)
-    proposal = await nutrition.parse_meal_text(ctx.session, ctx.user.id, parsed)
+    proposal = await nutrition.parse_meal(ctx.session, ctx.user.id, text, fetch_meal_parse)
     if not proposal.items:
         raise ToolArgumentError("No he podido interpretar la comida; pide más detalle")
     kcal = sum(i.kcal_100g * i.grams / 100 for i in proposal.items)

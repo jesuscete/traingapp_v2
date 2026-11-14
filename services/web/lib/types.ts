@@ -304,6 +304,8 @@ export type User = {
   primarySport?: string | null;
   maxHr?: number | null;
   restingHr?: number | null;
+  fitnessLevel?: string | null;
+  equipment?: UserEquipment | null;
 };
 
 export type Energy = {
@@ -665,6 +667,7 @@ export type CatalogExercise = {
   isFavorite: boolean;
   isCustom?: boolean;
   details: CatalogExerciseDetails | null;
+  equipment?: string | null;
 };
 
 export type MuscleGroupKey =
@@ -888,6 +891,31 @@ export type ExerciseAlternative = {
   similarity: number;
   imageUrl: string | null;
   isCustom: boolean;
+  equipment?: string | null;
+  equipmentLabel?: string | null;
+  reason?: string | null;
+  sameCondition?: boolean;
+};
+
+/* ===== M10: material del usuario ===== */
+export type EquipmentCode =
+  | "barbell"
+  | "e-z curl bar"
+  | "dumbbell"
+  | "kettlebells"
+  | "cable"
+  | "machine"
+  | "bands"
+  | "medicine ball"
+  | "exercise ball"
+  | "foam roll"
+  | "body only"
+  | "other";
+export type EquipmentPreset = "gimnasio" | "casa" | "sin_material";
+export type UserEquipment = {
+  preset: EquipmentPreset;
+  extra: EquipmentCode[];
+  missing: EquipmentCode[];
 };
 
 export type AgentActionType = "save_workout" | "swap_exercise" | "add_exercise" | "save_meal";
@@ -899,11 +927,35 @@ export type AgentAction = {
   requestId: string | null;
 };
 
+/* ===== M10: tarjetas del chat (respuestas sin IA) ===== */
+export type ChatCardItem = {
+  title: string;
+  subtitle?: string | null;
+  badge?: string | null;
+  detail?: string | null;
+  imageUrl?: string | null;
+  exerciseId?: string | null;
+  value?: number | null;
+};
+
+export type ChatCardSection = { title?: string | null; items: ChatCardItem[] };
+
+export type ChatCard = {
+  type: "routine" | "fatigue" | "exercises" | "nutrition";
+  title: string;
+  subtitle?: string | null;
+  sections: ChatCardSection[];
+  link?: string | null;
+  linkLabel?: string | null;
+};
+
 export type AgentReply = {
-  source: "llm" | "fallback";
+  source: "llm" | "fallback" | "rules";
   reply: string;
   actions: AgentAction[];
   toolsUsed: string[];
+  cards?: ChatCard[];
+  handoff?: "guided" | null;
 };
 
 /* ===== M5 nutrición ===== */
@@ -989,12 +1041,16 @@ export type ProposedItem = {
   fiber100g: number | null;
   source: "usda" | "ia" | "custom" | "off";
   foodId: string | null;
+  /** Frase del diccionario de comidas (M10): si cambias los gramos, se recuerda tu ración. */
+  alias?: string | null;
+  quantity?: number | null;
 };
 
 export type ParseMealResult = {
   items: ProposedItem[];
   unresolved: string[];
-  source: "llm" | "fallback";
+  /** "rules" = todo salió del diccionario, sin IA. */
+  source: "llm" | "fallback" | "rules";
 };
 
 export type NutritionTotals = {

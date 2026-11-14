@@ -2,6 +2,7 @@ import asyncio
 from collections import defaultdict
 from collections.abc import AsyncIterator, Iterator
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -170,6 +171,38 @@ class FakeRedis:
 
     async def ttl(self, name: str) -> int:
         return 900 if name in self.lists else -2
+
+
+AI_PARSER_CLIENT_MODULES = ("agent", "meal", "parser", "plan", "review", "sport")
+
+
+class LlmCallBlocked(httpx.ConnectError):
+    """Un test ha intentado llamar a ai-parser (y por tanto a un LLM real) sin simularlo."""
+
+
+def _blocked_ai_parser_client() -> httpx.AsyncClient:
+    def handler(request: httpx.Request) -> httpx.Response:
+        LLM_CALLS.append(request.url.path)
+        raise LlmCallBlocked(f"Llamada real a ai-parser bloqueada en tests: {request.url.path}")
+
+    return httpx.AsyncClient(
+        base_url="http://ai-parser.test", transport=httpx.MockTransport(handler)
+    )
+
+
+LLM_CALLS: list[str] = []
+
+
+@pytest.fixture(autouse=True)
+def _block_real_llm(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
+    """Ningún test llega a un proveedor real: se comporta como si ai-parser estuviera caído.
+
+    Devuelve las rutas que se intentaron llamar, para aserciones de "esto no usa IA".
+    """
+    LLM_CALLS.clear()
+    for module in AI_PARSER_CLIENT_MODULES:
+        monkeypatch.setattr(f"app.core.{module}.ai_parser_client", _blocked_ai_parser_client)
+    yield LLM_CALLS
 
 
 @pytest.fixture(autouse=True)

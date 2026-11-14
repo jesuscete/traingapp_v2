@@ -1,6 +1,15 @@
 import uuid
 
+import pytest
 from fastapi.testclient import TestClient
+
+from app.core.config import settings
+
+
+@pytest.fixture(autouse=True)
+def _llm_plan_engine(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Estos tests cubren el generador por LLM (APP_PLAN_ENGINE=llm), que sigue disponible."""
+    monkeypatch.setattr(settings, "plan_engine", "llm")
 
 REGISTER = {"email": "plan@example.com", "password": "password123", "name": "Plan"}
 

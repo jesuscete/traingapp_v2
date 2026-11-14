@@ -10,7 +10,14 @@ from app.models.fatigue import (
 from app.models.goal import UserGoal
 from app.models.gym import SetEntry, WorkoutExercise, WorkoutSessionSummary, WorkoutSet
 from app.models.integration import GarminConnection
-from app.models.nutrition import BodyWeightLog, Food, MealEntry, MealTemplate, NutritionGoal
+from app.models.nutrition import (
+    BodyWeightLog,
+    Food,
+    FoodAlias,
+    MealEntry,
+    MealTemplate,
+    NutritionGoal,
+)
 from app.models.prompt import DisciplineTrainingPrompt, TrainingPrompt
 from app.models.routine import (
     Discipline,
@@ -30,6 +37,7 @@ __all__ = [
     "GarminConnection",
     "MealEntry",
     "MealTemplate",
+    "FoodAlias",
     "NutritionGoal",
     "UserFavoriteExercise",
     "DailyMuscleDoms",

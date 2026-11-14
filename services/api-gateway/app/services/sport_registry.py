@@ -3,9 +3,10 @@
 from functools import lru_cache
 from pathlib import Path
 
+from app.analytics.catalog import normalize_exercise_name
 from app.analytics.patterns import PATTERN_LABELS
 from app.analytics.sport_analysis import GROUP_LABELS, SportProfile
-from app.schemas.sport_profile import Phase, SportProfileDoc
+from app.schemas.sport_profile import Goal, Phase, SportProfileDoc
 
 PROFILES_DIR = Path(__file__).resolve().parents[2] / "data" / "sport_profiles"
 DEFAULT_SPORT = "generic"
@@ -82,3 +83,48 @@ def compact_summary(sport: str | None, phase: Phase = "general") -> str:
     if doc.coach_notes:
         lines.append(f"Notas: {doc.coach_notes}")
     return "\n".join(lines)
+
+
+_MARTIAL_KEYS = frozenset({"martial_arts", "kickboxing", "muay thai", "mma", "artes marciales"})
+
+
+def resolve_sport(raw: str | None) -> str | None:
+    """Nombre libre de deporte («boxeo», «correr») -> clave de perfil, o None si no hay perfil.
+
+    Una sola tabla de alias: la de los propios perfiles (`aliases`), normalizada.
+    """
+    if not raw:
+        return None
+    key = normalize_exercise_name(raw)
+    doc = _normalized_index().get(key)
+    if doc is None or doc.sport == DEFAULT_SPORT:
+        return None
+    return "martial_arts" if key in _MARTIAL_KEYS else doc.sport
+
+
+@lru_cache(maxsize=1)
+def _normalized_index() -> dict[str, SportProfileDoc]:
+    return {normalize_exercise_name(k): doc for k, doc in load_profiles().items()}
+
+
+def find_goal(sport: str | None, text: str) -> Goal | None:
+    """Objetivo del perfil cuyo sinónimo aparece en el texto (el más largo gana)."""
+    folded = f" {normalize_exercise_name(text)} "
+    best: tuple[int, Goal] | None = None
+    for goal in profile_doc(sport).goals:
+        for synonym in goal.synonyms:
+            needle = normalize_exercise_name(synonym)
+            if needle and f" {needle} " in folded and (best is None or len(needle) > best[0]):
+                best = (len(needle), goal)
+    return best[1] if best else None
+
+
+def goal_patterns(sport: str | None, goal: Goal) -> list[tuple[str, int]]:
+    """Patrones que desarrolla un objetivo, con la prioridad de su cualidad (mayor primero)."""
+    doc = profile_doc(sport)
+    priority: dict[str, int] = {}
+    for quality in doc.qualities:
+        if quality.key in goal.qualities:
+            for pattern in quality.patterns:
+                priority[pattern] = max(priority.get(pattern, 0), quality.priority)
+    return sorted(priority.items(), key=lambda kv: (-kv[1], kv[0]))

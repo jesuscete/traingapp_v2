@@ -102,6 +102,7 @@ async def step_with_llm(provider: LLMProvider, body: AgentStepRequest) -> AgentS
         _system(body),
         "Conversación hasta ahora:\n\n" + user_data(_render_messages(body.messages)),
         LlmAgentStep,
+        task="agent",
     )
     known = {t.name for t in body.tools}
     if step.action == "herramienta" and not body.force_answer and step.tool in known:

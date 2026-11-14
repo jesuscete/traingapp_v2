@@ -48,6 +48,7 @@ async def narrate_with_llm(
         with_user_data_rule(SYSTEM_PROMPT),
         f"Deporte principal: {sport_label}.\n\n" + user_data(rendered),
         LlmNarrative,
+        task="narrative",
     )
     return SportNarrativeResponse(
         source="llm",
@@ -56,21 +57,62 @@ async def narrate_with_llm(
     )
 
 
+SEVERITY_ORDER = {"alta": 0, "media": 1, "baja": 2}
+
+
+def _first_rule(profile: object) -> str | None:
+    """Primera regla de carga del perfil resumido («Reglas: …»), para la redacción sin IA."""
+    if not isinstance(profile, str):
+        return None
+    for line in profile.splitlines():
+        if line.startswith("Reglas: "):
+            rule = line[len("Reglas: ") :].split(". ")[0].strip()
+            return rule.rstrip(".") + "." if rule else None
+    return None
+
+
 def narrate_deterministic(sport_label: str, analysis: dict[str, object]) -> SportNarrativeResponse:
+    """Redacción sin IA: diagnóstico por bandas, carencias por gravedad con ejercicios concretos
+    y la regla de calendario más importante del deporte."""
     score = analysis.get("score")
-    gaps = analysis.get("gaps")
-    messages = [
-        str(g.get("message"))
-        for g in (gaps if isinstance(gaps, list) else [])
-        if isinstance(g, dict) and g.get("message")
-    ]
+    raw_gaps = analysis.get("gaps")
+    gaps = [g for g in (raw_gaps if isinstance(raw_gaps, list) else []) if isinstance(g, dict)]
+    gaps.sort(key=lambda g: SEVERITY_ORDER.get(str(g.get("gravedad") or g.get("severity")), 3))
+    priorities: list[str] = []
+    for gap in gaps:
+        message = str(gap.get("message") or "").strip()
+        if not message:
+            continue
+        exercises = gap.get("ejercicios")
+        names = [str(e) for e in exercises][:2] if isinstance(exercises, list) else []
+        priorities.append(message + (f" Prueba: {', '.join(names)}." if names else ""))
+    rule = _first_rule(analysis.get("perfilDeporte"))
+    if rule:
+        priorities = priorities[: MAX_PRIORITIES - 1] + [f"Calendario: {rule}"]
+    value = score if isinstance(score, int | float) else 0
+    band = (
+        "bien encaminada"
+        if value >= 80
+        else "aceptable, con carencias concretas"
+        if value >= 60
+        else "lejos de lo que pide tu deporte"
+    )
+    serious = sum(1 for g in gaps if str(g.get("gravedad") or g.get("severity")) == "alta")
     return SportNarrativeResponse(
         source="fallback",
         resumen=(
-            f"Puntuación de preparación para {sport_label}: {score}/100. "
-            f"Hay {len(messages)} aspectos a mejorar."
+            f"Tu preparación para {sport_label} está {band} ({score}/100). "
+            + (
+                (
+                    "Hay 1 carencia importante (empieza por ahí); el resto son de ajuste."
+                    if serious == 1
+                    else f"Hay {serious} carencias importantes; empieza por ellas."
+                )
+                if serious
+                else "Lo que falta es de ajuste fino."
+            )
         ),
-        prioridades=messages[:MAX_PRIORITIES] or ["Mantén la estructura actual."],
+        prioridades=priorities[:MAX_PRIORITIES] or ["Mantén la estructura actual."],
     )
 
 

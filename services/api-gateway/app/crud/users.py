@@ -1,5 +1,6 @@
 import uuid
 
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,6 +34,7 @@ async def create(
 
 _PROFILE_FIELDS = (
     "name",
+    "equipment",
     "weight_kg",
     "height_cm",
     "birth_year",
@@ -55,6 +57,8 @@ _PROFILE_FIELDS = (
 async def update_profile(session: AsyncSession, user: User, body: ProfileIn) -> User:
     for field in _PROFILE_FIELDS:
         value = getattr(body, field)
+        if isinstance(value, BaseModel):
+            value = value.model_dump()
         if value is not None:
             setattr(user, field, value)
     if body.birth_date is not None:

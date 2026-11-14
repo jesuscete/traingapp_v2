@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     # Claude vía CLI local (suscripción de Claude Code): alias o id de modelo.
     claude_cli_path: str = "claude"
     claude_model: str = "sonnet"
+    # M10 · modelo por tarea: las tareas cortas y de salida cerrada usan el modelo rápido.
+    # Añadir "agent" cuando se haya comprobado que la calidad del chat no baja.
+    claude_model_fast: str = "haiku"
+    llm_fast_tasks: str = ""  # medido 2026-11-13: Haiku por CLI no fue más rápido (9 s vs 6 s)
     ollama_url: str = "http://localhost:11434"
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"

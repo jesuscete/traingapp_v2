@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import type { ChatActionState, ChatMessage } from "@/lib/chatStore";
+import type { ChatCard } from "@/lib/types";
 import { TOOL_LABELS } from "@/lib/useChatEngine";
 
 type Variant = "page" | "widget";
@@ -73,6 +74,62 @@ function ActionCard({
   );
 }
 
+function barTone(card: ChatCard, value: number): string {
+  if (card.type === "fatigue") {
+    return value >= 85 ? "danger" : value >= 70 ? "warning" : "ok";
+  }
+  return value >= 100 ? "ok" : "accent";
+}
+
+/** Tarjeta estructurada (rutina, fatiga, ejercicios, comidas) que llega sin pasar por la IA. */
+function ChatCardView({ card }: { card: ChatCard }) {
+  return (
+    <section className={`m10-card m10-card-${card.type}`}>
+      <header className="m10-card-head">
+        <strong>{card.title}</strong>
+        {card.subtitle && <span className="muted">{card.subtitle}</span>}
+      </header>
+      {card.sections.map((section, index) => (
+        <div key={`${section.title ?? "s"}-${index}`} className="m10-card-section">
+          {section.title && <p className="m10-card-section-title">{section.title}</p>}
+          {section.items.length === 0 && <p className="muted m10-card-empty">—</p>}
+          <ul className="m10-card-items">
+            {section.items.map((item, itemIndex) => (
+              <li key={`${item.title}-${itemIndex}`} className="m10-card-item">
+                {item.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.imageUrl} alt="" className="m10-card-img" loading="lazy" />
+                )}
+                <div className="m10-card-body">
+                  <div className="m10-card-row">
+                    <span className="m10-card-title">{item.title}</span>
+                    {item.badge && <span className="m10-card-badge">{item.badge}</span>}
+                  </div>
+                  {item.subtitle && <span className="m10-card-sub">{item.subtitle}</span>}
+                  {item.value != null && (
+                    <span className="m10-card-bar" aria-label={`${Math.round(item.value)} de 100`}>
+                      <span
+                        className={`m10-card-bar-fill m10-tone-${barTone(card, item.value)}`}
+                        style={{ width: `${Math.max(2, Math.min(100, item.value))}%` }}
+                      />
+                    </span>
+                  )}
+                  {item.detail && <span className="m10-card-detail muted">{item.detail}</span>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {card.link && (
+        <Link href={card.link} className="m10-card-link">
+          {card.linkLabel ?? "Abrir"} →
+        </Link>
+      )}
+    </section>
+  );
+}
+
 export function ChatThread({ variant, messages, busy, onConfirm, onDiscard }: Props) {
   const bubble = `chat-${variant}-bubble`;
   return (
@@ -81,7 +138,10 @@ export function ChatThread({ variant, messages, busy, onConfirm, onDiscard }: Pr
         const tools = toolSummary(message.tools);
         return (
           <div key={message.id} className={`m4-msg ${message.role}`}>
-            <div className={`${bubble} ${message.role}`}>{message.text}</div>
+            {message.text && <div className={`${bubble} ${message.role}`}>{message.text}</div>}
+            {message.cards?.map((card, index) => (
+              <ChatCardView key={`${message.id}-card-${index}`} card={card} />
+            ))}
             {message.actions?.map((action) => (
               <ActionCard
                 key={action.id}
@@ -91,7 +151,12 @@ export function ChatThread({ variant, messages, busy, onConfirm, onDiscard }: Pr
                 onDiscard={onDiscard}
               />
             ))}
-            {tools && <span className="muted m4-tools">{tools}</span>}
+            {tools && (
+              <span className="muted m4-tools">
+                {tools}
+                {message.source === "rules" ? " · al instante, sin IA" : ""}
+              </span>
+            )}
           </div>
         );
       })}

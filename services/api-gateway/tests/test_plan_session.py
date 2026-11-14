@@ -1,6 +1,8 @@
 import asyncio
 import uuid
 
+import pytest
+
 from app.chat.plan_session import (
     _gym_day_label,
     cancel_plan,
@@ -16,7 +18,14 @@ from app.chat.plan_session import (
     process_plan_message,
     spread_days,
 )
+from app.core.config import settings
 from app.crud import routine as routine_crud
+
+
+@pytest.fixture(autouse=True)
+def _llm_plan_engine(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Estos tests cubren el generador por LLM (APP_PLAN_ENGINE=llm), que sigue disponible."""
+    monkeypatch.setattr(settings, "plan_engine", "llm")
 
 SPLITS = [
     {

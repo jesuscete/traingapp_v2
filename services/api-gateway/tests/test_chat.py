@@ -3,6 +3,8 @@ import uuid
 
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
+
 REGISTER = {"email": "chat@example.com", "password": "password123", "name": "Chat"}
 
 DRAFT_PAYLOAD = {
@@ -86,7 +88,7 @@ def test_internal_create_session(client: TestClient) -> None:
             "exercises": [{"name": "press banca", "sets": 5, "reps": 5, "weightKg": 80}],
         },
     }
-    headers = {"X-Internal-Token": "internal-dev-token"}
+    headers = {"X-Internal-Token": settings.internal_token}
     response = client.post("/internal/sessions", json=body, headers=headers)
     assert response.status_code == 201
     assert response.json()["volumeKg"] == 2000

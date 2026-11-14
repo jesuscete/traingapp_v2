@@ -1,4 +1,4 @@
-import type { AgentAction } from "@/lib/types";
+import type { AgentAction, ChatCard } from "@/lib/types";
 
 export type ChatActionStatus = "pending" | "busy" | "done" | "discarded" | "expired" | "failed";
 
@@ -15,6 +15,10 @@ export type ChatMessage = {
   text: string;
   actions?: ChatActionState[];
   tools?: string[];
+  /** Respuesta estructurada (rutina, fatiga, ejercicios…) pintada sin IA. */
+  cards?: ChatCard[];
+  /** "rules" = respondido sin IA por el router del servidor. */
+  source?: "llm" | "fallback" | "rules";
 };
 
 export type ChatState = { messages: ChatMessage[]; planActive: boolean };

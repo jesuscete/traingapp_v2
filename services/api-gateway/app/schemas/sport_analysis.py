@@ -87,6 +87,39 @@ class AlternativeOut(CamelModel):
     similarity: float
     image_url: str | None = None
     is_custom: bool = False
+    equipment: str | None = None
+    equipment_label: str | None = None
+    reason: str | None = None
+    same_condition: bool = True
 
 
 SportAnalysisOut.model_rebuild()
+
+
+class RecommendationItemOut(CamelModel):
+    exercise_id: uuid.UUID
+    name: str
+    image_url: str | None = None
+    equipment: str
+    equipment_label: str
+    pattern: str
+    pattern_label: str
+    quality: str
+    reason: str
+    sets: int
+    reps_min: int
+    reps_max: int
+    rest_seconds: int
+    note: str = ""
+
+
+class RecommendationOut(CamelModel):
+    """Ejercicios para un objetivo («mejorar la pegada») elegidos sin IA con el mapa del deporte."""
+
+    sport: str
+    sport_label: str
+    goal_key: str | None
+    goal_label: str
+    focus: str
+    items: list[RecommendationItemOut]
+    summary: str

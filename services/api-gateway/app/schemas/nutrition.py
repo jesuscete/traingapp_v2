@@ -144,6 +144,9 @@ class ProposedItem(CamelModel):
     fiber_100g: float | None = Field(default=None, ge=0, le=100)
     source: Literal["usda", "ia", "off", "custom"] = "ia"
     food_id: uuid.UUID | None = None
+    # Frase del diccionario de la que sale (para recordar tu ración si la cambias).
+    alias: str | None = Field(default=None, max_length=200)
+    quantity: float | None = Field(default=None, gt=0, le=100)
 
 
 class ParseMealIn(CamelModel):
@@ -153,7 +156,8 @@ class ParseMealIn(CamelModel):
 class ParseMealOut(CamelModel):
     items: list[ProposedItem]
     unresolved: list[str] = []
-    source: Literal["llm", "fallback"]
+    # "rules" = todo salió del diccionario, sin IA.
+    source: Literal["llm", "fallback", "rules"]
 
 
 class MealBatchIn(CamelModel):

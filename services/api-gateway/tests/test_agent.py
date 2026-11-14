@@ -72,7 +72,9 @@ def test_agent_reads_data_with_tools_and_keeps_memory(
     )
     monkeypatch.setattr("app.core.agent.fetch_agent_step", script)
 
-    first = client.post("/agent/message", json={"text": "¿qué tengo el lunes?"}, headers=headers)
+    # «¿qué tengo el lunes?» ya lo resuelve el router sin IA; esta pregunta abierta va al agente.
+    question = "¿Está bien equilibrado lo del lunes?"
+    first = client.post("/agent/message", json={"text": question}, headers=headers)
     assert first.status_code == 200, first.text
     data = first.json()
     assert data == {
@@ -80,6 +82,8 @@ def test_agent_reads_data_with_tools_and_keeps_memory(
         "reply": "Tienes press banca el lunes.",
         "actions": [],
         "toolsUsed": ["ver_rutina"],
+        "cards": [],
+        "handoff": None,
     }
     tool_message = script.payloads[1]["messages"][-1]
     assert (
@@ -89,7 +93,7 @@ def test_agent_reads_data_with_tools_and_keeps_memory(
 
     client.post("/agent/message", json={"text": "gracias"}, headers=headers)
     remembered = [m["content"] for m in script.payloads[2]["messages"]]
-    assert "¿qué tengo el lunes?" in remembered and "Tienes press banca el lunes." in remembered
+    assert question in remembered and "Tienes press banca el lunes." in remembered
 
 
 def test_ver_rutina_filters_day_and_numbers_gym_sessions(

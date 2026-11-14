@@ -1,17 +1,25 @@
 {
   "sport": "boxing",
   "label": "Boxeo",
-  "aliases": ["martial_arts"],
+  "aliases": ["martial_arts", "boxeo", "kickboxing", "muay thai", "mma", "artes marciales"],
   "version": 1,
   "summary": "Deporte de combate intermitente de alta intensidad: rounds de 3 min con 1 min de descanso y esfuerzos explosivos repetidos (golpeo y desplazamientos) sobre una base aeróbica. La potencia nace en piernas y cadera y se transmite por un core rotacional; hombros, cuello y antebrazos sostienen la guardia y absorben impactos.",
   "qualities": [
-    {"key": "potencia_rotacional", "label": "Potencia rotacional y transferencia cadera-tronco", "priority": 5},
-    {"key": "resistencia_potencia", "label": "Resistencia a la potencia (repetir golpes explosivos round tras round)", "priority": 5},
+    {"key": "potencia_rotacional", "label": "Potencia rotacional y transferencia cadera-tronco", "priority": 5, "patterns": ["rotacion", "anti_rotacion"], "focus": "potencia"},
+    {"key": "explosividad", "label": "Explosividad de piernas y cadera (el golpe nace en el suelo)", "priority": 5, "patterns": ["pliometria", "olimpico"], "focus": "potencia"},
+    {"key": "resistencia_potencia", "label": "Resistencia a la potencia (repetir golpes explosivos round tras round)", "priority": 5, "patterns": ["pliometria", "rotacion"], "focus": "resistencia"},
     {"key": "aerobica", "label": "Base aeróbica para recuperar entre rounds", "priority": 4},
-    {"key": "resistencia_hombro", "label": "Resistencia muscular de hombro para la guardia", "priority": 4},
-    {"key": "cuello", "label": "Fuerza de cuello para absorber impactos", "priority": 4},
-    {"key": "fuerza_maxima", "label": "Fuerza máxima de base (tren inferior y tirón)", "priority": 3},
+    {"key": "resistencia_hombro", "label": "Resistencia muscular de hombro para la guardia", "priority": 4, "patterns": ["tiron_horizontal", "empuje_vertical"], "focus": "resistencia"},
+    {"key": "cuello", "label": "Fuerza de cuello para absorber impactos", "priority": 4, "patterns": ["cuello"], "focus": "resistencia"},
+    {"key": "fuerza_maxima", "label": "Fuerza máxima de base (tren inferior y tirón)", "priority": 3, "patterns": ["bisagra", "unilateral", "tiron_vertical"], "focus": "fuerza"},
     {"key": "movilidad", "label": "Movilidad de cadera, torácica y tobillo", "priority": 3}
+  ],
+  "goals": [
+    {"key": "pegada", "label": "Pegar más fuerte", "synonyms": ["pegada", "pegar mas fuerte", "golpear mas fuerte", "potencia de golpeo", "potencia de golpe", "golpe mas fuerte", "punch"], "qualities": ["potencia_rotacional", "explosividad", "fuerza_maxima"], "focus": "potencia"},
+    {"key": "aguante", "label": "Aguantar más rounds", "synonyms": ["aguante", "aguantar mas", "resistencia", "cansarme menos", "fondo", "llegar entero"], "qualities": ["resistencia_potencia", "resistencia_hombro", "aerobica"], "focus": "resistencia"},
+    {"key": "velocidad", "label": "Golpear más rápido", "synonyms": ["velocidad", "mas rapido", "rapidez", "explosivo", "explosividad"], "qualities": ["explosividad", "potencia_rotacional"], "focus": "potencia"},
+    {"key": "guardia", "label": "Mantener la guardia sin cansar hombros", "synonyms": ["guardia", "hombros cansados", "bajar los brazos"], "qualities": ["resistencia_hombro"], "focus": "resistencia"},
+    {"key": "encajar", "label": "Encajar mejor los golpes", "synonyms": ["encajar", "aguantar golpes", "cuello"], "qualities": ["cuello", "potencia_rotacional"], "focus": "resistencia"}
   ],
   "energy_systems": {
     "formato": "3 min de trabajo / 1 min de descanso, de 3 a 12 rounds",
@@ -31,15 +39,16 @@
     "tiron_vertical": 4
   },
   "key_exercises": {
-    "rotacion": ["lanzamiento lateral de balón medicinal", "giro ruso", "leñador en polea", "landmine rotacional"],
-    "anti_rotacion": ["press Pallof", "plancha lateral", "paseo con peso a un lado"],
-    "pliometria": ["saltos al cajón", "lanzamiento de balón medicinal", "saltos laterales"],
-    "olimpico": ["cargada de potencia", "press empujadora", "balanceo con kettlebell"],
-    "unilateral": ["sentadilla búlgara", "step-up", "peso muerto rumano a una pierna"],
-    "bisagra": ["peso muerto rumano", "hip thrust"],
-    "cuello": ["isométricos de cuello (4 direcciones)", "flexión y extensión de cuello con arnés"],
-    "tiron_horizontal": ["remo con barra", "remo con mancuerna", "face pull"],
-    "tiron_vertical": ["dominadas", "jalón al pecho"]
+    "rotacion": ["Lanzamiento de balón medicinal", "Giro ruso con disco", "Leñador con polea alta", "Giros con landmine (180°)"],
+    "anti_rotacion": ["Press Pallof", "Plancha lateral", "Dead bug"],
+    "pliometria": ["Saltos al cajón", "Lanzamiento de balón medicinal", "Saltos laterales sobre conos"],
+    "olimpico": ["Cargada de potencia", "Press empujadora", "Balanceo con kettlebell"],
+    "unilateral": ["Sentadilla búlgara con mancuernas", "Subidas al cajón con mancuernas", "Peso muerto a una pierna con kettlebell"],
+    "bisagra": ["Peso muerto rumano", "Hip thrust"],
+    "cuello": ["Isométrico de cuello: frontal y posterior", "Isométrico de cuello: laterales", "Flexión de cuello sentado con arnés de cabeza"],
+    "tiron_horizontal": ["Remo con barra", "Remo con mancuerna a un brazo", "Face pull"],
+    "tiron_vertical": ["Dominadas", "Jalón al pecho"],
+    "empuje_vertical": ["Press militar", "Landmine press"]
   },
   "muscle_targets": {
     "shoulders": [6, 12],

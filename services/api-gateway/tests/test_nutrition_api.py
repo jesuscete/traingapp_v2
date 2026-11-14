@@ -374,6 +374,7 @@ def test_free_text_proposal_and_batch(client: TestClient, monkeypatch: pytest.Mo
 
     monkeypatch.setattr("app.api.nutrition.fetch_meal_parse", parsed)
     monkeypatch.setattr("app.core.food_sources.usda_search", usda)
+    monkeypatch.setattr("app.core.config.settings.usda_enabled", True)  # apagado por defecto
     proposal = client.post(
         "/nutrition/meals/parse", json={"text": "2 tostadas con crema"}, headers=headers
     ).json()

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { WeekCard } from "@/components/home/WeekCard";
 import { BodyTab } from "@/components/progress/BodyTab";
+import { MuscleWeekCard } from "@/components/progress/MuscleWeekCard";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatTile } from "@/components/ui/StatTile";
@@ -51,6 +52,7 @@ export function SummaryTab({ token }: { token: string }) {
       </div>
       <WeekCard home={home} showDays={false} showTotals={false} />
     </Card>
+    <MuscleWeekCard token={token} />
     <BodyTab token={token} />
     </>
   );

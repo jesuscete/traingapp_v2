@@ -114,6 +114,22 @@ class FatigueMuscleOut(CamelModel):
     zone: str = "other"
 
 
+class MuscleWeekItemOut(CamelModel):
+    muscle_group: str
+    load: float
+    relative: float
+    level: str  # high | ok | low | none
+
+
+class MuscleWeekOut(CamelModel):
+    """Carga por músculo de los últimos 7 días (todos los deportes)."""
+
+    as_of: date
+    muscles: list[MuscleWeekItemOut]
+    high: list[str]
+    low: list[str]
+
+
 class FatigueRiskOut(CamelModel):
     muscle_group: str
     level: str

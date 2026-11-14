@@ -350,3 +350,13 @@
 .bc-goal.tone-bad { border-left-color: var(--danger); }
 .bc-empty { margin: var(--space-3) 0; font-size: var(--font-size-small); }
 .bc-fat .bc-end { fill: var(--warning); } .bc-muscle .bc-end { fill: var(--success-color); } .bc-goal { color: var(--text-primary); }
+
+/* Progreso · carga muscular 7 días */
+.mw { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--space-3); align-items: center; }
+.mw-body { height: 150px; display: flex; justify-content: center; min-width: 0; }
+.mw-text { display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--font-size-small); }
+.mw-flag { margin: 0; padding: var(--space-2) var(--space-3); border-radius: 10px; border-left: 3px solid var(--border); background: var(--surface-alt); }
+.mw-flag.high { border-left-color: var(--danger); }
+.mw-flag.low { border-left-color: var(--warning); }
+.mw-flag.ok { border-left-color: var(--success); }
+.mw-empty { margin: 0; font-size: var(--font-size-small); }

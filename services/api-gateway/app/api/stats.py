@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics import calibration as calibration_analytics
-from app.analytics import computations, met
+from app.analytics import computations, met, muscle_week
 from app.analytics import fatigue as fatigue_analytics
 from app.analytics import insights as insights_analytics
 from app.analytics import load as load_analytics
@@ -201,6 +201,29 @@ async def stats_fatigue(
         readiness=readiness_out,
         risks=risks,
         projection=projection,
+    )
+
+
+@router.get("/muscle-week", response_model=stats_schemas.MuscleWeekOut)
+async def stats_muscle_week(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> stats_schemas.MuscleWeekOut:
+    """Cuánto se ha cargado cada músculo en 7 días y cuáles van de más / de menos."""
+    fatigue = await fatigue_engine.simulate_fatigue(session, current_user.id, days_back=14)
+    week = muscle_week.classify(
+        muscle_week.weekly_loads(fatigue.impulses, fatigue.today, fatigue_analytics.MUSCLE_GROUPS)
+    )
+    return stats_schemas.MuscleWeekOut(
+        as_of=fatigue.today,
+        muscles=[
+            stats_schemas.MuscleWeekItemOut(
+                muscle_group=m.group, load=m.load, relative=m.relative, level=m.level
+            )
+            for m in week.muscles
+        ],
+        high=week.high,
+        low=week.low,
     )
 
 

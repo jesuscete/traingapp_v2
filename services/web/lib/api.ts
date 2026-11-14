@@ -36,6 +36,7 @@ import type {
   FatigueExplain,
   Fatigue,
   FatigueSeries,
+  MuscleWeek,
   GymSession,
   GymSessionIn,
   HistorySummary,
@@ -311,6 +312,8 @@ export const api = {
     request<Fatigue>(`/stats/fatigue?projectDays=${projectDays}`, {
       headers: { Authorization: `Bearer ${token}` },
     }),
+  statsMuscleWeek: (token: string) =>
+    request<MuscleWeek>("/stats/muscle-week", { headers: { Authorization: `Bearer ${token}` } }),
   statsFatigueSeries: (token: string, days = 30) =>
     request<FatigueSeries>(`/stats/fatigue/series?days=${days}`, {
       headers: { Authorization: `Bearer ${token}` },

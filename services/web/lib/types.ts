@@ -436,6 +436,15 @@ export type Readiness = {
   restDay: boolean;
 };
 
+export type MuscleWeekLevel = "high" | "ok" | "low" | "none";
+
+export type MuscleWeek = {
+  asOf: string;
+  muscles: { muscleGroup: string; load: number; relative: number; level: MuscleWeekLevel }[];
+  high: string[];
+  low: string[];
+};
+
 export type Fatigue = {
   asOf: string;
   projected: string;

@@ -24,17 +24,14 @@ const USER_KEY = "traingapp_user";
 
 const GREETING_RE =
   /^\s*(hola|buenas|buenos\s+d[ií]as|hey|hi|hello|saludos|qu[eé]\s+t[aá]l)\W*$/i;
-/** Peticiones de crear/recomendar un plan o rutina: flujo guiado antiguo. */
-const GUIDED_RE =
-  /(recomi[eé]nd\w*|recomend\w*|cre[ae]\w*|dise[nñ]\w*|arm[ae]\w*|h[aá]zme|necesito)\s.*\b(plan|planes|rutina)\b/i;
 
 export const GUIDED_PROMPT = "Quiero que me recomiendes un plan de entrenamiento";
 
 export const STARTER_PROMPTS = [
+  "¿Qué me toca hoy?",
   "¿Cómo voy de fatiga?",
-  "¿Qué me falta para el boxeo?",
+  "Quiero mejorar mi pegada",
   "Registra: 6 rounds de saco y 20 min de comba",
-  "Sustituye el press banca por algo con mancuernas",
 ];
 
 export const TOOL_LABELS: Record<string, string> = {
@@ -51,6 +48,11 @@ export const TOOL_LABELS: Record<string, string> = {
   perfil_deporte: "perfil de tu deporte",
   sustituir_en_rutina: "sustitución",
   anadir_a_rutina: "añadir a rutina",
+  routine: "rutina",
+  fatigue: "fatiga",
+  nutrition: "comidas de hoy",
+  alternatives: "alternativas",
+  recommend: "mapa del deporte",
 };
 
 export function describeDraft(draft: WorkoutDraft): string {
@@ -160,7 +162,9 @@ export function useChatEngine() {
       setText("");
       pushChatMessage({ id: newMessageId(), role: "user", text: trimmed });
 
-      const guided = options.guided === true || planActive || GUIDED_RE.test(trimmed);
+      // El servidor decide el flujo (router único): solo vamos directos al flujo guiado si ya
+      // hay un plan en curso o lo pide un botón.
+      const guided = options.guided === true || planActive;
       if (!guided && GREETING_RE.test(trimmed)) {
         pushChatMessage(buildWelcome(userName));
         return;
@@ -172,12 +176,18 @@ export function useChatEngine() {
           handleGuidedResponse(await api.sendDraft(token, trimmed));
         } else {
           const reply = await api.sendAgentMessage(token, trimmed);
-          pushChatMessage(
-            assistant(reply.reply, {
-              actions: reply.actions.map((action) => ({ ...action, status: "pending" as const })),
-              tools: reply.toolsUsed,
-            }),
-          );
+          if (reply.handoff === "guided") {
+            handleGuidedResponse(await api.sendDraft(token, trimmed));
+          } else {
+            pushChatMessage(
+              assistant(reply.reply, {
+                actions: reply.actions.map((action) => ({ ...action, status: "pending" as const })),
+                tools: reply.toolsUsed,
+                cards: reply.cards ?? [],
+                source: reply.source,
+              }),
+            );
+          }
         }
       } catch (err) {
         pushChatMessage(

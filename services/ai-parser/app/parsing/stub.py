@@ -200,3 +200,60 @@ def parse_text(raw_text: str) -> ParseResponse:
         unresolved=[],
         metrics=metrics,
     )
+
+
+# --- M10: texto totalmente estructurado -> sin IA -----------------------------------------
+# «press banca 4x8 80kg, dominadas 3x10, remo 3x12 60 kg» (nombre primero) o
+# «4x8 press banca 80kg» (series primero). Si UN solo fragmento no encaja, decide la IA.
+_SEGMENT_SPLIT = re.compile(r"\s*(?:[,;\n]|\by\b)\s*")
+_NAME_FIRST = re.compile(
+    r"^(?P<name>[a-záéíóúüñ][a-záéíóúüñ .\-/]*?)\s*:?\s+"
+    r"(?P<sets>\d{1,2})\s*[x×]\s*(?P<reps>\d{1,3})"
+    r"(?:\s*(?:con|a|@)?\s*(?P<kg>\d+(?:[.,]\d+)?)\s*(?:kg|kilos?))?$",
+    re.IGNORECASE,
+)
+_SETS_FIRST = re.compile(
+    r"^(?P<sets>\d{1,2})\s*[x×]\s*(?P<reps>\d{1,3})\s+(?P<name>[a-záéíóúüñ][a-záéíóúüñ .\-/]*?)"
+    r"(?:\s+(?:con\s+)?(?P<kg>\d+(?:[.,]\d+)?)\s*(?:kg|kilos?))?$",
+    re.IGNORECASE,
+)
+
+
+def parse_structured(raw_text: str) -> ParseResponse | None:
+    """Entreno de gimnasio escrito como lista de «ejercicio series x reps (peso)».
+
+    Devuelve None si algún fragmento no es una línea de ejercicio clara (la IA decide).
+    """
+    text = raw_text.strip()
+    segments = [s for s in _SEGMENT_SPLIT.split(text) if s.strip()]
+    if not segments:
+        return None
+    exercises: list[ExerciseDraft] = []
+    for segment in segments:
+        match = _NAME_FIRST.match(segment.strip()) or _SETS_FIRST.match(segment.strip())
+        if match is None:
+            return None
+        name = match.group("name").strip(" .-/")
+        if len(name) < 3:
+            return None
+        kg = match.group("kg")
+        exercises.append(
+            ExerciseDraft(
+                name=name,
+                sets=int(match.group("sets")),
+                reps=int(match.group("reps")),
+                weight_kg=float(kg.replace(",", ".")) if kg else None,
+            )
+        )
+    return ParseResponse(
+        source="rules",
+        rawText=text,
+        discipline="gym",
+        performedAt=datetime.now(UTC).isoformat(),
+        durationMinutes=None,
+        exercises=exercises,
+        suggestedRpe=None,
+        confidence=0.95,
+        unresolved=[],
+        metrics=None,
+    )

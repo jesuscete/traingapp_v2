@@ -30,11 +30,40 @@ def _check_weights(weights: dict[str, float]) -> dict[str, float]:
     return weights
 
 
+Focus = Literal["potencia", "fuerza", "hipertrofia", "resistencia"]
+
+
+def _check_patterns(patterns: list[str]) -> list[str]:
+    unknown = set(patterns) - set(PATTERN_LABELS)
+    if unknown:
+        raise ValueError(f"Patrones desconocidos: {sorted(unknown)}")
+    return patterns
+
+
 class Quality(BaseModel):
     model_config = ConfigDict(extra="forbid")
     key: str
     label: str
     priority: int = Field(ge=1, le=5)
+    # Patrones de movimiento que desarrollan esta cualidad (enlace cualidad -> ejercicios).
+    patterns: list[str] = Field(default_factory=list)
+    focus: Focus | None = None
+
+    @field_validator("patterns")
+    @classmethod
+    def _known(cls, value: list[str]) -> list[str]:
+        return _check_patterns(value)
+
+
+class Goal(BaseModel):
+    """Objetivo que puede pedir el usuario («mejorar la pegada») -> cualidades del deporte."""
+
+    model_config = ConfigDict(extra="forbid")
+    key: str
+    label: str
+    synonyms: list[str] = Field(min_length=1)
+    qualities: list[str] = Field(min_length=1)
+    focus: Focus = "fuerza"
 
 
 class InjuryRisk(BaseModel):
@@ -64,6 +93,16 @@ class SportProfileDoc(BaseModel):
     injury_risks: list[InjuryRisk] = Field(default_factory=list)
     block_muscle_weights: dict[str, dict[str, float]] = Field(default_factory=dict)
     coach_notes: str = ""
+    goals: list[Goal] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _goals_reference_qualities(self) -> "SportProfileDoc":
+        keys = {q.key for q in self.qualities}
+        for goal in self.goals:
+            unknown = set(goal.qualities) - keys
+            if unknown:
+                raise ValueError(f"Objetivo '{goal.key}' usa cualidades desconocidas: {unknown}")
+        return self
 
     @field_validator("pattern_targets", "key_exercises")
     @classmethod

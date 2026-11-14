@@ -7,7 +7,8 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.catalog import normalize_exercise_name
-from app.analytics.patterns import PATTERN_LABELS, exercise_patterns, similarity
+from app.analytics.exercise_tags import BODY_ONLY, corrected_patterns, exercise_equipment
+from app.analytics.patterns import PATTERN_LABELS, exercise_patterns
 from app.analytics.sport_analysis import (
     GROUP_LABELS,
     Basis,
@@ -41,24 +42,6 @@ ZONE_LABELS = {
     "hipertrofia": "Hipertrofia (6-12)",
     "resistencia": "Resistencia (13+)",
 }
-SPORT_ALIASES = {
-    "boxeo": "boxing",
-    "boxing": "boxing",
-    "kickboxing": "martial_arts",
-    "muay thai": "martial_arts",
-    "mma": "martial_arts",
-    "artes marciales": "martial_arts",
-    "triatlon": "triathlon",
-    "triathlon": "triathlon",
-    "duatlon": "triathlon",
-    "running": "triathlon",
-    "correr": "triathlon",
-    "carrera": "triathlon",
-    "cycling": "triathlon",
-    "ciclismo": "triathlon",
-    "swimming": "triathlon",
-    "natacion": "triathlon",
-}
 
 
 def image_url(path: str) -> str:
@@ -72,6 +55,11 @@ class CatalogItem:
     row: ExerciseCatalog
     name: str
     patterns: frozenset[str]
+    equipment: str = BODY_ONLY
+
+    @property
+    def level(self) -> str | None:
+        return _text(self.row.details or {}, "level")
 
     @property
     def category(self) -> str | None:
@@ -94,14 +82,21 @@ def _text(details: dict[str, object], key: str) -> str | None:
 def catalog_item(row: ExerciseCatalog) -> CatalogItem:
     details = row.details or {}
     name_es = _text(details, "nameEs")
-    patterns = exercise_patterns(
+    category = _text(details, "category")
+    deduced = exercise_patterns(
         row.name,
         row.muscle_map,
-        category=_text(details, "category"),
+        category=category,
         force=_text(details, "force"),
         name_es=name_es,
     )
-    return CatalogItem(row=row, name=name_es or row.name, patterns=patterns)
+    key = row.normalized_name if row.owner_user_id is None else ""
+    return CatalogItem(
+        row=row,
+        name=name_es or row.name,
+        patterns=corrected_patterns(key, deduced, category, _text(details, "mechanic")),
+        equipment=exercise_equipment(key, details, (row.name, name_es or "")),
+    )
 
 
 def main_sport(user: User, requested: str | None) -> str:
@@ -110,10 +105,11 @@ def main_sport(user: User, requested: str | None) -> str:
     for sport in [user.primary_sport, *(user.sports or [])]:
         if not sport:
             continue
-        alias = SPORT_ALIASES.get(normalize_exercise_name(str(sport)))
+        alias = sport_registry.resolve_sport(str(sport))
         if alias:
             return alias
-    return "boxing"
+    # Sin deporte con mapa propio (p. ej. solo gimnasio): perfil genérico, no boxeo.
+    return sport_registry.DEFAULT_SPORT
 
 
 def _history_work(
@@ -181,6 +177,7 @@ PATTERN_MUSCLES: dict[str, frozenset[str]] = {
     "tiron_horizontal": frozenset({"back"}),
     "pliometria": frozenset({"quadriceps", "calves", "glutes", "chest", "shoulders"}),
     "olimpico": frozenset({"quadriceps", "glutes", "hamstrings", "back", "shoulders"}),
+    "gemelo": frozenset({"calves"}),
 }
 
 
@@ -293,7 +290,17 @@ async def analyze_user(
     else:
         work, chosen, span = [], "sin_datos", 1.0
     result = analyze(work, profile, weeks=span, sport_days=sport_days)
-    out = to_out(result, chosen, catalog)
+    # Las sugerencias solo con el material del usuario (no proponer balón medicinal a quien no
+    # lo tiene).
+    from app.services.exercise_engine import too_advanced, user_allowed_equipment
+
+    allowed = user_allowed_equipment(user)
+    usable = [
+        c
+        for c in catalog
+        if (allowed is None or c.equipment in allowed) and not too_advanced(c, user.fitness_level)
+    ]
+    out = to_out(result, chosen, usable)
     if routine_id and routine_work:
         out.adherence = adherence(
             routine_work,
@@ -460,37 +467,41 @@ async def week_feedback_for(session: AsyncSession, user: User) -> WeekFeedbackOu
 
 
 async def alternatives(
-    session: AsyncSession, user: User, exercise_id: uuid.UUID, *, limit: int
+    session: AsyncSession,
+    user: User,
+    exercise_id: uuid.UUID,
+    *,
+    limit: int,
+    exclude_equipment: list[str] | None = None,
 ) -> list[AlternativeOut] | None:
+    """Alternativas por condición (mismo patrón o músculo principal), con el material del
+    usuario y sin el que falta («no tengo balón medicinal»). Sin IA."""
+    from app.services import exercise_engine
+
     rows = await catalog_crud.list_visible(session, user.id)
     catalog = [catalog_item(r) for r in rows]
     source = next((c for c in catalog if c.row.id == exercise_id), None)
     if source is None:
         return None
-    skip_stretch = source.category != "stretching"
-    scored = [
-        (
-            similarity(
-                source.row.muscle_map,
-                source.patterns,
-                source.force,
-                c.row.muscle_map,
-                c.patterns,
-                c.force,
-            ),
-            c,
-        )
-        for c in catalog
-        if c.row.id != exercise_id and not (skip_stretch and c.category == "stretching")
-    ]
-    scored.sort(key=lambda pair: (-pair[0], pair[1].name))
+    ranked = exercise_engine.rank_alternatives(
+        source,
+        catalog,
+        allowed=exercise_engine.user_allowed_equipment(user),
+        exclude_equipment=exclude_equipment or [],
+        user_level=user.fitness_level,
+        limit=limit,
+    )
     return [
         AlternativeOut(
-            exercise_id=c.row.id,
-            name=c.name,
-            similarity=score,
-            image_url=c.first_image,
-            is_custom=c.row.owner_user_id is not None,
+            exercise_id=a.item.row.id,
+            name=a.item.name,
+            similarity=a.score,
+            image_url=a.item.first_image,
+            is_custom=a.item.row.owner_user_id is not None,
+            equipment=a.item.equipment,
+            equipment_label=exercise_engine.equipment_label(a.item.equipment),
+            reason=a.reason,
+            same_condition=a.same_condition,
         )
-        for score, c in scored[:limit]
+        for a in ranked
     ]

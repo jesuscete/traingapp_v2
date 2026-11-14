@@ -306,7 +306,11 @@ def _other_gaps(a: SportAnalysis) -> list[Gap]:
                 severity="media",
                 message=(
                     f"Más empuje que tirón ({a.push_sets:g} vs {a.pull_sets:g} series/semana). "
-                    "El golpeo ya carga el empuje: compensa con tirones."
+                    + (
+                        "El golpeo ya carga el empuje: compensa con tirones."
+                        if a.sport == "boxing"
+                        else "Compensa con tirones para proteger los hombros."
+                    )
                 ),
             )
         )

@@ -86,6 +86,7 @@ async def parse_with_llm(provider: LLMProvider, raw_text: str) -> ParseResponse:
         with_user_data_rule(build_system_prompt()),
         user_data(raw_text),
         LlmWorkoutDraft,
+        task="parse",
     )
     return _response_from(draft, raw_text)
 

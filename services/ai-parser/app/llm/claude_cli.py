@@ -7,14 +7,18 @@ salida estructurada con `--json-schema` (llega en `structured_output`).
 
 import asyncio
 import json
+import logging
 import tempfile
+import time
 from pathlib import Path
 
 from app.core.config import settings
 from app.llm.base import JsonSchema
 from app.llm.errors import LLMError, LLMTimeoutError, LLMUsageLimitError
+from app.llm.tasks import claude_model_for, current_task
 
 STDERR_EXCERPT = 500
+logger = logging.getLogger(__name__)
 
 
 class ClaudeCliProvider:
@@ -24,19 +28,22 @@ class ClaudeCliProvider:
         self,
         *,
         executable: str = settings.claude_cli_path,
-        model: str = settings.claude_model,
+        model: str | None = None,
         timeout: float = settings.llm_timeout_seconds,
     ) -> None:
         self._executable = executable
-        self._model = model
+        self._model = model  # None = modelo según la tarea (M10)
         self._timeout = timeout
+
+    def _model_for_call(self) -> str:
+        return self._model or claude_model_for(current_task.get())
 
     def _command(self, schema: JsonSchema, system_file: Path) -> list[str]:
         return [
             self._executable,
             "-p",
             "--model",
-            self._model,
+            self._model_for_call(),
             "--output-format",
             "json",
             "--json-schema",
@@ -57,6 +64,7 @@ class ClaudeCliProvider:
         max_tokens: int | None = None,
     ) -> dict[str, object]:
         # max_tokens no se expone en el CLI; la longitud la acota el propio esquema.
+        started = time.perf_counter()
         with tempfile.TemporaryDirectory(prefix="ai-parser-claude-") as workdir:
             system_file = Path(workdir) / "system.txt"
             system_file.write_text(system, encoding="utf-8")
@@ -80,7 +88,9 @@ class ClaudeCliProvider:
                 raise LLMTimeoutError(f"claude no respondió en {self._timeout}s") from exc
         if process.returncode != 0:
             raise cli_failure(process.returncode, stdout, stderr)
-        return _structured_output(stdout)
+        output = _structured_output(stdout)
+        _log_usage(stdout, self._model_for_call(), time.perf_counter() - started)
+        return output
 
 
 USAGE_LIMIT_HINTS = ("usage limit", "limit reached", "rate limit", "5-hour", "quota")
@@ -100,6 +110,30 @@ def cli_failure(code: int | None, stdout: bytes, stderr: bytes) -> LLMError:
     if any(hint in detail.lower() for hint in USAGE_LIMIT_HINTS):
         return LLMUsageLimitError(f"Límite de uso de Claude: {detail[:STDERR_EXCERPT]}")
     return LLMError(f"claude terminó con código {code}: {detail[:STDERR_EXCERPT]}")
+
+
+def _log_usage(stdout: bytes, model: str, seconds: float) -> None:
+    """Medición permanente (M10): tarea, modelo, latencia y tokens de cada llamada."""
+    try:
+        envelope = json.loads(stdout)
+    except json.JSONDecodeError:
+        return
+    usage = envelope.get("usage") if isinstance(envelope, dict) else None
+    usage = usage if isinstance(usage, dict) else {}
+    tokens_in = sum(
+        int(usage.get(k) or 0)
+        for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+    )
+    logger.info(
+        "llm_call provider=claude_cli task=%s model=%s seconds=%.1f tokens_in=%d tokens_out=%s "
+        "cost_usd=%s",
+        current_task.get(),
+        model,
+        seconds,
+        tokens_in,
+        usage.get("output_tokens"),
+        envelope.get("total_cost_usd") if isinstance(envelope, dict) else None,
+    )
 
 
 def _structured_output(stdout: bytes) -> dict[str, object]:

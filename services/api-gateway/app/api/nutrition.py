@@ -2,7 +2,6 @@ import uuid
 from datetime import UTC, date, datetime
 from typing import Annotated
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -125,12 +124,9 @@ async def add_meal_batch(body: MealBatchIn, db: Db, user: CurrentUser) -> list[M
 
 @router.post("/meals/parse", response_model=ParseMealOut)
 async def parse_meal(body: ParseMealIn, db: Db, user: CurrentUser) -> ParseMealOut:
-    """Texto libre -> propuesta (no se guarda). La IA estima; USDA y tus alimentos corrigen."""
-    try:
-        parsed = await fetch_meal_parse(body.text)
-    except (httpx.HTTPError, ValueError):
-        return ParseMealOut(items=[], unresolved=[body.text], source="fallback")
-    return await nutrition.parse_meal_text(db, user.id, parsed)
+    """Texto libre -> propuesta (no se guarda). Primero el diccionario de comidas (lo ya
+    aprendido y tus alimentos); la IA solo estima lo desconocido y queda guardado."""
+    return await nutrition.parse_meal(db, user.id, body.text, fetch_meal_parse)
 
 
 @router.put("/meals/{entry_id}", response_model=MealEntryOut)

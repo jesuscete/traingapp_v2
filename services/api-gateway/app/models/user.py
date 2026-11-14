@@ -36,6 +36,9 @@ class User(Base):
     goals: Mapped[list[str] | None] = mapped_column(_JSONB, nullable=True)
     # Pasos recomendados de la bienvenida que el usuario ha omitido (garmin, goal…).
     onboarding_skipped: Mapped[list[str] | None] = mapped_column(_JSONB, nullable=True)
+    # Material con el que entrena: {"preset": gimnasio|casa|sin_material, "extra": [...],
+    # "missing": [...]} (códigos de exercise_tags.EQUIPMENT_LABELS). None = gimnasio completo.
+    equipment: Mapped[dict[str, object] | None] = mapped_column(_JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

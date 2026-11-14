@@ -13,11 +13,13 @@ from app.analytics.catalog_seed import (
     MUSCLE_ZONE_MEMBERS,
     MUSCLE_ZONES,
 )
+from app.analytics.exercise_tags import exercise_equipment
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.crud import catalog as catalog_crud
 from app.crud import routine as routine_crud
 from app.models import ExerciseCatalog, Muscle, User
+from app.schemas.auth import EquipmentCode
 from app.schemas.exercise_history import ExerciseHistoryOut
 from app.schemas.routine import DisciplineOut
 from app.schemas.sport_analysis import AlternativeOut
@@ -46,6 +48,8 @@ class CatalogExerciseOut(BaseModel):
     is_favorite: bool = False
     is_custom: bool = False
     details: dict[str, object] | None = None
+    # Material (mapa M10: corrección > dato del catálogo > reglas), siempre informado.
+    equipment: str | None = None
 
     @field_validator("images", mode="before")
     @classmethod
@@ -68,6 +72,13 @@ def _exercise_out(exercise: ExerciseCatalog, favorites: set[uuid.UUID]) -> Catal
     item.image_urls = [image_url(path) for path in item.images]
     item.is_favorite = exercise.id in favorites
     item.is_custom = exercise.owner_user_id is not None
+    details = exercise.details or {}
+    name_es = details.get("nameEs")
+    item.equipment = exercise_equipment(
+        exercise.normalized_name if exercise.owner_user_id is None else "",
+        details,
+        (exercise.name, name_es if isinstance(name_es, str) else ""),
+    )
     return item
 
 
@@ -262,9 +273,15 @@ async def get_exercise_alternatives(
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
     limit: Annotated[int, Query(ge=1, le=30)] = 8,
+    without: Annotated[
+        list[EquipmentCode] | None,
+        Query(description="Material que no tienes (p. ej. medicine ball)"),
+    ] = None,
 ) -> list[AlternativeOut]:
-    """Ejercicios parecidos (músculos, tipo de fuerza y patrón) para sustituir."""
-    result = await alternatives(session, current_user, exercise_id, limit=limit)
+    """Alternativas por condición: mismo patrón (o músculo), con tu material y sin el que falta."""
+    result = await alternatives(
+        session, current_user, exercise_id, limit=limit, exclude_equipment=list(without or [])
+    )
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exercise not found")
     return result

@@ -208,56 +208,41 @@ Lo encontrado al usar la app instalada en el móvil (2026-11-12). Orden propuest
   - Se detecta por el tamaño de pantalla y si la app está instalada.
 - **Indicador «N» de Next.js** abajo a la izquierda: solo sale en modo desarrollo. Se oculta (`devIndicators: false`) y desaparecería del todo con una compilación de producción.
 
-### M10 · Arquitectura de IA: mínimo LLM, máximo dato ⏳ (aprobado como plan; sin empezar)
+### M10 · App casi sin IA: conocimiento + motores deterministas 🟡 (P0-P5 hechos 2026-11-13, sin commitear; rama `feature/ai-architecture`) · [ADR-011](decisions/ADR-011-app-casi-sin-ia.md)
+**Objetivo:** que la app funcione prácticamente igual sin IA. El núcleo es el mapa de conocimiento (perfiles de deporte + etiquetas de ejercicios) y los motores deterministas; la IA es una capa opcional (lenguaje libre, comidas nuevas, redactar). Sin LangGraph/Neo4j/pgvector (funciones tipadas; revisar LangGraph si llegan flujos largos con pausas).
 
-> **Entrada desde `feature/corrections` (2026-11-13, [ADR-010](decisions/ADR-010-correcciones-uso-real.md))**: hay piezas que hacen de puente y que M10 debe absorber o extender:
-> - `plan_repair.complete_plan` (completa el plan del LLM hasta ~80) → lo sustituye F5, el generador determinista. Reutilizar su lógica de elección de patrón, día y repeticiones.
-> - `week_feedback` y `adherence` en `services/sport_analysis.py` → herramientas del agente y entrada del recomendador F4. El recomendador debe ponderar más lo practicado que lo planificado.
-> - Hoy las sesiones de deporte (boxeo, carrera, WOD) no cuentan para patrones ni músculos → F3, con datos estructurados por deporte (`goal_map`/`patterns`).
-> - Modo de actividad: proponer `registro`/`estimado` automáticamente según la constancia de registro, y la actividad diaria con los pasos de Garmin (hoy no se guardan).
-> - "Preparar rutina con estos cambios" sigue yendo al chat del LLM → que lo haga F4/F5 sin LLM.
-Análisis del 2026-11-13. **Objetivo:** cada función resuelta con datos y reglas; el LLM solo para lo que de verdad lo necesita (texto libre, redactar). Que la app siga funcionando si la IA se encarece, se cae o hay que cambiar de proveedor.
+**Medición real (mismos 11 escenarios, Claude por CLI):** antes 17 llamadas · 72k tokens · 107 s · 0,32 $ → ahora 6 llamadas · 19k tokens · 53 s · 0,09 $. Rutina, fatiga, «mejorar mi pegada», «no tengo balón medicinal», plan, entreno estructurado y comida repetida: 0 IA, al instante.
 
-- **Problemas detectados:**
-  - **El agente gasta muchos tokens:**
-    - Hace de 3 a 5 llamadas por pregunta y en cada una reenvía las 13 herramientas.
-    - Guarda en el historial los resultados de las herramientas en bruto (hasta 12k caracteres).
-    - Usa ids UUID.
-  - **El LLM elige los ejercicios del plan** a partir de una lista enorme de nombres, sin tener en cuenta el perfil de deporte, la fatiga, el nivel ni el material.
-  - **Los splits se piden al LLM** aunque se resuelven con plantillas.
-  - **El conocimiento por deporte está en 4 sitios:** `training_prompt`, `sport_profiles`, `plan_stub` y alias repetidos.
-  - **Los patrones se deducen por nombre en cada petición.**
-  - **No se sabe qué material tiene el usuario.**
-- **Decisiones:**
-  - **Se queda:** Postgres como único almacén (el "grafo" de conocimiento va en tablas y arrays), Redis y Pydantic.
-  - **No se adopta por ahora:** LangGraph, Neo4j, pgvector, LlamaIndex ni Pydantic AI.
-  - **Cuándo revisar LangGraph:** si llegan flujos largos con pausas (plan de varias semanas que se reajusta) junto con cadenas de varios pasos de LLM, o tras pasar a la API de Anthropic.
-  - **Los handlers serán funciones tipadas,** para poder convertirlos en nodos de un grafo sin reescribirlos.
-- **Principios:**
-  - **Coste de las consultas:** una consulta a Postgres cuesta ~1 ms y es coste fijo de servidor; una llamada al LLM cuesta segundos y dinero por uso.
-  - **El LLM se usa al construir, no al ejecutar:** Claude ayuda a crear y revisar el mapeo de conocimiento (perfiles, etiquetas de ejercicios), que se guarda y se valida; en ejecución todo es determinista.
-  - **Tareas de IA pequeñas y con salida cerrada,** para que las pueda hacer un modelo barato o local.
-  - **El crítico de un plan es código** (un validador), no otro LLM.
+**Hecho (P0-P5):**
+- **P0** Copia de BD (`backups/traingapp-20261113-2140.dump`, verificada). Tests bloquean llamadas reales a la IA (`tests/conftest.py`); arreglado el test del token interno.
+- **P1** Mapa: `data/exercise_tags.json` + `app/analytics/exercise_tags.py` (material y patrones corregidos, reglas, presets); perfiles con cualidad→patrones→foco y `goals` (pegada, aguante…); los 59 ejercicios clave ahora existen (test); registro de deportes único (`resolve_sport`). `users.equipment` (migración `l3m4n5o6p7q8`).
+- **P2** Motores: `services/exercise_engine.py` (alternativas por condición: mismo patrón, sin el material que falta, variedad de material; prescripción), `services/recommendations.py` + `GET /analysis/recommend`, `services/plan_builder.py` (plan por árbol: días libres, split, explosivo primero, nada de pierna la víspera del deporte, relleno de músculos, presupuesto de minutos). `APP_PLAN_ENGINE=rules` (por defecto) | `llm` (el anterior).
+- **P3** Chat: router único en el servidor (`chat/intent_router.py`) delante del agente + tarjetas (`chat/cards.py`) + traspaso al flujo guiado; quitado `GUIDED_RE` del frontend. Interruptor por nodo `APP_CHAT_RULE_NODES`. Web: tarjetas en el chat, «Tu material» en Cuenta→Perfil, «No tengo X» en alternativas.
+- **P4** Comidas: diccionario que aprende (`food_alias`, migración `m4n5o6p7q8r9`; `services/meal_dictionary.py`). La IA solo para frases nuevas; lo que calcula queda compartido («Estimado IA»); tu ración corregida se recuerda solo para ti. USDA apagado (`APP_USDA_ENABLED`).
+- **P5** IA como capa: modelo por tarea (`ai-parser/app/llm/tasks.py`, `APP_LLM_FAST_TASKS`, vacío por defecto: Haiku por CLI no fue más rápido), registro `llm_call` de tokens/latencia, historial del agente compacto, narrativa compacta con caché 24 h, entreno estructurado sin IA.
+- Verificado: gateway 431 tests, ai-parser 83, ruff + mypy limpios, `tsc` limpio. **Falta la prueba visual en la app/móvil.**
 
-| Fase | Entregable | Riesgo |
-|---|---|---|
-| F0 · Medir | Tokens, latencia y proveedor por tarea; tests en verde como punto de partida | Muy bajo |
-| F1 · Contrato de IA | `AiTask` declarativo (esquema, nivel de modelo small/large, alternativa sin IA, máx. tokens); proveedor elegible por tarea | Bajo |
-| F2 · Limpieza del agente | Historial sin resultados en bruto, ids cortos, herramientas por intención, router previo para consultas triviales | Bajo |
-| F3 · Datos estructurados | Migración reversible: `patterns[]`, `equipment` y `level` en el catálogo; `users.equipment`; `injuries` estructurado; `goal_map` (objetivo → cualidades → patrones → zona) en los perfiles; `key_exercises` como ids; registro de deportes único | **Medio** (datos reales: copia de la BD antes) |
-| F4 · Recomendador | Objetivo → candidatos (SQL) → filtros (material, nivel, lesiones) → ranking (carencias, prioridad, fatiga, familiaridad) → prescripción → explicación por plantilla. Incluye "no tengo este material" → alternativas con el material disponible. Endpoint, herramienta del agente y tarjeta en la UI | Bajo |
-| F5 · Plan determinista | Ver abajo. Estado y versiones del plan en Postgres. Se retiran `plan_session.py`, `training_prompt`, `plan_stub` y `/plan/splits` **solo cuando el nuevo funcione igual o mejor** | **Medio** |
-| F6 · API de Anthropic | Adaptador del SDK con tool use nativo y *prompt caching*, elegible por tarea; el CLI sigue para uso personal | Bajo (cuando haga falta) |
+**Mapas de deporte (2026-11-14, investigados en literatura y guías):**
+- **Boxeo**: se mantiene (completo).
+- **Triatlón y resistencia v2** (running, ciclismo, natación, trail): fuerza máxima pesada 3-6 reps (mejora la economía de bici y carrera), pliometría suave, gemelo/sóleo, glúteo medio y hombro; 5 objetivos (10k, ciclismo, larga distancia, natación, lesiones).
+- **Explosivos (nuevo)**: fútbol, baloncesto, balonmano, rugby, voleibol, hockey, béisbol, atletismo y raqueta. Aceleración, salto, fuerza máxima, cambios de dirección, curl nórdico y aductor; calendario según el partido (pierna pesada a 3-4 días, potencia a 2 días, tren superior el día después).
+- **HYROX/CrossFit (nuevo, `hybrid`)**: aeróbico como limitante, fuerza base, potencia, resistencia muscular local, acarreos y trineo, gimnásticos estrictos; hombro y lumbar como riesgos.
+- **Genérico**: pendiente (objetivos estéticos: brazos, hombros, glúteo; tirará más de la IA).
+- Motor: patrón nuevo **«gemelo y tobillo»**. Nada que cargue piernas la víspera del deporte (saltos, olímpicos, gemelo). Máximo 2 explosivos por día. Los huecos se ordenan por la prioridad del mapa. Sin deporte → perfil genérico (antes caía en boxeo). Etiquetas corregidas (curl nórdico = bisagra, trineos = acarreo, rotaciones de hombro ≠ rotación, aislamiento a una pierna ≠ unilateral).
+- Tests sensibles a la hora: 4 tests de fatiga/peso fallan entre las 00:00 y la 01:00 (mezclan fecha local y UTC). Pasan con `TZ=UTC`. Hay que arreglarlos.
+- La app en marcha (`dev-up`, sin recarga automática) sigue con el código anterior hasta reiniciarla (`dev-down` + `dev-up`). La base de datos ya está migrada y es compatible.
 
-**Generador de planes determinista (F5):**
-1. **Presupuesto de tiempo:** días de gimnasio × minutos → series por sesión (tiempo por serie = reps × ~3-4 s + descanso según la zona; + calentamiento y transiciones).
-2. **Prioridades del usuario** (p. ej. atletismo: potencia de salto 5, fuerza de piernas 4, torso 1) → reparto de las series semanales por cualidad y patrón (`goal_map` + `pattern_targets` del perfil).
-3. **Huecos por día:** potencia y pliometría al principio, sin cargar el mismo grupo en días seguidos ni la víspera del deporte (`load_rules`, `conflict_groups`).
-4. **Ejercicios por puntuación** en cada hueco: encaje con el patrón, material, nivel, fatiga y recuperación, variedad y familiaridad.
-5. **Prescripción** por zona (`rep_zones_by_phase`): potencia 3-5 reps explosivas con descansos largos, fuerza 3-6, hipertrofia 8-12…
-6. **Validador:** series por músculo, ratio tirón/empuje y reglas de calendario. El LLM solo interviene, de forma opcional, para redactar la explicación o corregir si el validador falla, eligiendo entre candidatos ya filtrados.
+**QA de extremo a extremo (2026-11-14)** → [informe](qa/QA-2026-11-14.md), script `scripts/qa/battery.py`, base de datos `traingapp_qa`. Con los mapas nuevos y las correcciones, el modo reglas **iguala la nota media del juez a ciegas (6,1 frente a 6,1)** con 12 llamadas a IA frente a 60 y 81 s frente a 422 s. Gana en planes, objetivos de deporte, fatiga y alternativas. Pierde en el gimnasio genérico (objetivos estéticos), en el plan de HYROX y en la redacción del análisis. Las comidas aprenden como se diseñó (2.ª vez en 0,03 s sin IA).
 
-**Antes de empezar:** commit de lo pendiente en `feature/refactor`, rama `feature/ai-architecture`, copia de la BD antes de F3, tests en verde y un commit por fase. Primer bloque propuesto: F0 + F1 + F2.
+**Pendiente (siguiente sesión, en este orden):**
+0. **Siguiente (según el QA):** (a) mapa genérico con objetivos por músculo (brazos, hombros, glúteo) y regresiones para principiantes; (b) HYROX: recuperación tras el día de deporte y bloques de acondicionamiento; (c) plantilla del análisis sin IA más rica; (d) pliometría de carrera por tiempo o contactos. Repetir la batería (`--reuse-ai` ahorra las llamadas del modo IA).
+1. **Commit** de la rama (lo haces tú) y prueba real en el móvil: chat (rutina, fatiga, pegada, «no tengo balón»), crear plan guiado, comidas por texto, Tu material.
+2. **Nodo «apuntar comida» en el chat** (hoy pasa por el agente: 3 llamadas, 17 s): router detecta «he desayunado/apunta… café con leche» → diccionario → propuesta con botón; IA solo si es nuevo.
+3. Ajustar la puntuación del análisis por nivel y tiempo (M11.1) y revisar con uso real la calidad del plan por reglas frente al de Claude (`APP_PLAN_ENGINE=llm` para comparar).
+4. Retirar código antiguo por nodo tras ~14 días sin incidencias: `plan_stub`, `/plan/splits`, `training_prompt`, regex de `plan_session`.
+5. Más perfiles de deporte (running propio, gym estética, crossfit/hyrox) con `goals` y ejercicios clave.
+6. Base de alimentos: importar supermercados (OFF) para que el diccionario tenga más semilla.
+7. Cuando la app sea pública: adaptador de la API de Anthropic (el contrato ya permite elegir proveedor/modelo por tarea).
 
 ### M11 · Afinar recomendación y análisis de rutinas ⏳ (al final, tras M10)
 Feedback del uso real (2026-11-13). Se deja para el final porque depende de F3-F5 de M10; junta los puntos parecidos dispersos (puentes de `feature/corrections`, F4, F5).

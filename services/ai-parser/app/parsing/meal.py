@@ -30,6 +30,9 @@ Para cada alimento devuelve:
 - "kcal_100g", "protein_100g", "carbs_100g", "fat_100g", "fiber_100g": valores típicos por
   100 g del alimento tal y como se come (cocido si está cocinado).
 
+- "phrase": si el texto llega en fragmentos separados por " | ", el número del fragmento
+  (empezando en 0) al que pertenece el alimento; si es un solo fragmento, 0.
+
 Reglas:
 - Separa los ingredientes visibles: "tostada con aceite" = pan + aceite.
 - Si una cantidad es ambigua, elige la ración típica y añádelo a "unresolved".
@@ -46,6 +49,7 @@ class LlmMealItem(BaseModel):
     carbs_100g: float = Field(default=0, ge=0, le=100)
     fat_100g: float = Field(default=0, ge=0, le=100)
     fiber_100g: float | None = Field(default=None, ge=0, le=100)
+    phrase: int | None = Field(default=None, ge=0, le=30)
 
 
 class LlmMeal(BaseModel):
@@ -54,7 +58,9 @@ class LlmMeal(BaseModel):
 
 
 async def parse_meal_with_llm(provider: LLMProvider, text: str) -> MealParseResponse:
-    meal = await generate(provider, with_user_data_rule(SYSTEM_PROMPT), user_data(text), LlmMeal)
+    meal = await generate(
+        provider, with_user_data_rule(SYSTEM_PROMPT), user_data(text), LlmMeal, task="meal"
+    )
     return MealParseResponse(
         source="llm",
         items=[MealItem(**item.model_dump()) for item in meal.items],

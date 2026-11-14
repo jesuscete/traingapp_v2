@@ -27,8 +27,18 @@ MEMORY_MAX_MESSAGES = 30
 CONTEXT_MESSAGES = 16
 MAX_TOOL_STEPS = 4
 MAX_TOOL_CONTENT = 12000
+# M10: en memoria los resultados de herramientas se guardan recortados y al LLM solo le
+# llegan los del turno en curso (los de turnos anteriores ya están resumidos en su respuesta).
+MAX_STORED_TOOL_CONTENT = 1200
 UNAVAILABLE = "El asistente no está disponible ahora mismo. Inténtalo en un rato."
-SPORT_LABELS = {"boxing": "boxeo", "martial_arts": "artes marciales", "triathlon": "triatlón"}
+SPORT_LABELS = {
+    "boxing": "boxeo",
+    "martial_arts": "artes marciales",
+    "triathlon": "triatlón / resistencia",
+    "explosive": "deportes explosivos (equipo, atletismo, raqueta)",
+    "hybrid": "HYROX / CrossFit",
+    "generic": "gimnasio (sin deporte principal)",
+}
 
 
 def _key(user_id: uuid.UUID) -> str:
@@ -41,10 +51,30 @@ async def load_history(redis: aioredis.Redis, user_id: uuid.UUID) -> list[dict[s
     return data if isinstance(data, list) else []
 
 
+def _stored(message: dict[str, str]) -> dict[str, str]:
+    if message.get("role") != "herramienta":
+        return message
+    content = message.get("content", "")
+    if len(content) <= MAX_STORED_TOOL_CONTENT:
+        return message
+    return {**message, "content": content[:MAX_STORED_TOOL_CONTENT] + " …[resumido]"}
+
+
+def context_messages(history: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Mensajes para el LLM: sin resultados de herramientas de turnos anteriores."""
+    last_user = max(
+        (i for i, m in enumerate(history) if m.get("role") == "usuario"), default=-1
+    )
+    kept = [
+        m for i, m in enumerate(history) if m.get("role") != "herramienta" or i > last_user
+    ]
+    return kept[-CONTEXT_MESSAGES:]
+
+
 async def save_history(
     redis: aioredis.Redis, user_id: uuid.UUID, history: list[dict[str, str]]
 ) -> None:
-    trimmed = history[-MEMORY_MAX_MESSAGES:]
+    trimmed = [_stored(m) for m in history[-MEMORY_MAX_MESSAGES:]]
     await redis.setex(_key(user_id), MEMORY_TTL_SECONDS, json.dumps(trimmed))
 
 
@@ -115,7 +145,7 @@ async def run_turn(
         payload: dict[str, object] = {
             "context": _context(user, goals),
             "tools": specs,
-            "messages": history[-CONTEXT_MESSAGES:],
+            "messages": context_messages(history),
             "forceAnswer": step == MAX_TOOL_STEPS,
         }
         try:

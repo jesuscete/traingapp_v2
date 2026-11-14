@@ -4,8 +4,10 @@ import logging
 import re
 import uuid
 from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime, time, timedelta
 
+import httpx
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
@@ -17,6 +19,7 @@ from app.core.config import settings
 from app.models import (
     BodyWeightLog,
     Food,
+    FoodAlias,
     MealEntry,
     MealTemplate,
     NutritionGoal,
@@ -48,6 +51,7 @@ from app.schemas.nutrition import (
     WeightOut,
     WeightPointOut,
 )
+from app.services import meal_dictionary
 
 logger = logging.getLogger(__name__)
 
@@ -384,6 +388,7 @@ async def add_batch(
         )
         session.add(entry)
         created.append(entry)
+    await learn_from_saved(session, user_id, items)
     await session.commit()
     return [MealEntryOut.model_validate(e) for e in created]
 
@@ -848,3 +853,214 @@ async def parse_meal_text(
         unresolved=[str(u) for u in unresolved] if isinstance(unresolved, list) else [],
         source="llm" if parsed.get("source") == "llm" else "fallback",
     )
+
+
+# --- M10: texto libre con diccionario que aprende (IA solo para lo desconocido) ----------
+
+MealFetcher = Callable[[str], Awaitable[dict[str, object]]]
+PORTION_CORRECTION_RATIO = 0.15  # diferencia que cuenta como «mi ración es otra»
+
+
+def _proposed(
+    food: Food, grams: float, phrase: meal_dictionary.Phrase | None, single: bool
+) -> ProposedItem:
+    source = food.source if food.source in ("usda", "ia", "off", "custom") else "ia"
+    return ProposedItem(
+        name=food.name,
+        grams=max(1.0, round(grams, 1)),
+        kcal_100g=food.kcal_100g,
+        protein_100g=food.protein_100g,
+        carbs_100g=food.carbs_100g,
+        fat_100g=food.fat_100g,
+        fiber_100g=food.fiber_100g,
+        source=source,
+        food_id=food.id,
+        alias=phrase.key if phrase is not None and single else None,
+        quantity=phrase.quantity if phrase is not None and single else None,
+    )
+
+
+async def _alias(session: AsyncSession, user_id: uuid.UUID, key: str) -> FoodAlias | None:
+    """Alias del usuario si existe; si no, el compartido."""
+    rows = (
+        await session.scalars(
+            select(FoodAlias).where(
+                FoodAlias.alias == key,
+                or_(FoodAlias.owner_user_id == user_id, FoodAlias.owner_user_id.is_(None)),
+            )
+        )
+    ).all()
+    own = next((r for r in rows if r.owner_user_id is not None), None)
+    return own or (rows[0] if rows else None)
+
+
+async def _resolve_phrase(
+    session: AsyncSession, user_id: uuid.UUID, phrase: meal_dictionary.Phrase
+) -> list[ProposedItem] | None:
+    alias = await _alias(session, user_id, phrase.key)
+    if alias is None or not alias.items:
+        return None
+    foods: list[tuple[Food, float]] = []
+    for food_id, grams in meal_dictionary.scale_items(phrase, alias.items):
+        try:
+            food = await visible_food(session, user_id, uuid.UUID(food_id))
+        except (NutritionError, ValueError):
+            return None  # alimento borrado: se vuelve a preguntar a la IA
+        foods.append((food, grams))
+    alias.uses = (alias.uses or 0) + 1
+    single = len(foods) == 1
+    return [_proposed(food, grams, phrase, single) for food, grams in foods]
+
+
+async def _food_for_ai_item(
+    session: AsyncSession, user_id: uuid.UUID, raw: dict[str, object]
+) -> Food:
+    """Alimento propio > ya aprendido > (USDA si está activado) > nuevo compartido «IA»."""
+    name = str(raw.get("name") or "").strip()
+    own = await _own_match(session, user_id, name)
+    if own is not None:
+        return own
+    known = await _alias(session, user_id, meal_dictionary.alias_key(name))
+    if known is not None and len(known.items) == 1:
+        try:
+            return await visible_food(session, user_id, uuid.UUID(str(known.items[0]["food_id"])))
+        except (NutritionError, ValueError):
+            pass
+    name_en = str(raw.get("name_en") or "").strip()
+    if settings.usda_enabled and name_en:
+        try:
+            matches = await food_sources.usda_search(name_en, limit=USDA_CANDIDATES)
+        except food_sources.FoodSourceError:
+            matches = []
+        best = plausible_match(matches, _num(raw.get("kcal_100g")))
+        if best is not None:
+            return await _cache(session, best)
+    food = Food(
+        owner_user_id=None,  # lo calculó la IA una vez: queda para todos («estimado IA»)
+        source="ia",
+        name=name[:200],
+        kcal_100g=_num(raw.get("kcal_100g")) or 0.0,
+        protein_100g=_num(raw.get("protein_100g")) or 0.0,
+        carbs_100g=_num(raw.get("carbs_100g")) or 0.0,
+        fat_100g=_num(raw.get("fat_100g")) or 0.0,
+        fiber_100g=_num(raw.get("fiber_100g")),
+        servings=[],
+    )
+    session.add(food)
+    await session.flush()
+    key = meal_dictionary.alias_key(name)
+    if key and await _alias(session, user_id, key) is None:
+        session.add(
+            FoodAlias(
+                alias=key,
+                owner_user_id=None,
+                items=[{"food_id": str(food.id), "grams": _num(raw.get("grams")) or 100.0}],
+                source="ia",
+            )
+        )
+        await session.flush()
+    return food
+
+
+def _unit_factor(phrase: meal_dictionary.Phrase) -> float:
+    """Cuántas «unidades del alias» hay en la frase (para guardar gramos por unidad)."""
+    if phrase.grams is not None:
+        return 1.0
+    return phrase.quantity or 1.0
+
+
+async def _learn_phrases(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    unknown: list[meal_dictionary.Phrase],
+    parsed: dict[str, object],
+) -> dict[int, list[ProposedItem]]:
+    raw_list = parsed.get("items")
+    raw_items = [
+        r
+        for r in (raw_list if isinstance(raw_list, list) else [])
+        if isinstance(r, dict) and r.get("name") and r.get("grams")
+    ]
+    by_phrase: dict[int, list[tuple[Food, float]]] = {}
+    for raw in raw_items:
+        index = raw.get("phrase")
+        if not isinstance(index, int) or not 0 <= index < len(unknown):
+            index = 0 if len(unknown) == 1 else -1
+        food = await _food_for_ai_item(session, user_id, raw)
+        by_phrase.setdefault(index, []).append((food, float(str(raw["grams"]))))
+    result: dict[int, list[ProposedItem]] = {}
+    for index, foods in by_phrase.items():
+        phrase = unknown[index] if index >= 0 else None
+        single = len(foods) == 1
+        result[index] = [_proposed(food, grams, phrase, single) for food, grams in foods]
+        if phrase is None or await _alias(session, user_id, phrase.key) is not None:
+            continue
+        factor = _unit_factor(phrase)
+        session.add(
+            FoodAlias(
+                alias=phrase.key,
+                owner_user_id=None,
+                items=[{"food_id": str(f.id), "grams": round(g / factor, 1)} for f, g in foods],
+                source="ia",
+            )
+        )
+        await session.flush()
+    return result
+
+
+async def parse_meal(
+    session: AsyncSession, user_id: uuid.UUID, text: str, fetch: MealFetcher
+) -> ParseMealOut:
+    """Texto libre -> propuesta. Primero el diccionario; la IA solo para lo desconocido."""
+    phrases = meal_dictionary.split_phrases(text)
+    known: dict[int, list[ProposedItem]] = {}
+    unknown_idx: list[int] = []
+    for i, phrase in enumerate(phrases):
+        found = await _resolve_phrase(session, user_id, phrase)
+        if found is None:
+            unknown_idx.append(i)
+        else:
+            known[i] = found
+    source = "rules"
+    unresolved: list[str] = []
+    extra: list[ProposedItem] = []
+    if unknown_idx or not phrases:
+        unknown = [phrases[i] for i in unknown_idx]
+        prompt = " | ".join(p.raw for p in unknown) if unknown else text
+        try:
+            parsed = await fetch(prompt)
+        except (httpx.HTTPError, ValueError):
+            parsed = {"source": "fallback", "items": [], "unresolved": [p.raw for p in unknown]}
+        learned = await _learn_phrases(session, user_id, unknown, parsed)
+        for position, i in enumerate(unknown_idx):
+            known[i] = learned.get(position, [])
+        extra = learned.get(-1, [])
+        raw_unresolved = parsed.get("unresolved")
+        unresolved = [str(u) for u in raw_unresolved] if isinstance(raw_unresolved, list) else []
+        source = "llm" if parsed.get("source") == "llm" else "fallback"
+    await session.commit()
+    items = [item for i in sorted(known) for item in known[i]] + extra
+    return ParseMealOut(items=items, unresolved=unresolved, source=source)
+
+
+async def learn_from_saved(
+    session: AsyncSession, user_id: uuid.UUID, items: list[ProposedItem]
+) -> None:
+    """Si guardas otra ración para una frase conocida, se recuerda como tuya."""
+    for item in items:
+        if not item.alias or item.food_id is None:
+            continue
+        per_unit = item.grams / (item.quantity or 1.0)
+        alias = await _alias(session, user_id, item.alias)
+        if alias is None or len(alias.items) != 1:
+            continue
+        current = float(str(alias.items[0].get("grams") or 0)) or per_unit
+        if abs(per_unit - current) / current <= PORTION_CORRECTION_RATIO:
+            continue
+        payload = [{"food_id": str(item.food_id), "grams": round(per_unit, 1)}]
+        if alias.owner_user_id == user_id:
+            alias.items = payload
+        else:
+            session.add(
+                FoodAlias(alias=item.alias, owner_user_id=user_id, items=payload, source="user")
+            )

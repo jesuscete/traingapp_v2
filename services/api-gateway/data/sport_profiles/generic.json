@@ -5,8 +5,8 @@
   "version": 1,
   "summary": "Perfil por defecto: fuerza y salud general con los patrones básicos equilibrados.",
   "qualities": [
-    {"key": "fuerza", "label": "Fuerza general", "priority": 4},
-    {"key": "hipertrofia", "label": "Masa muscular", "priority": 3},
+    {"key": "fuerza", "label": "Fuerza general", "priority": 4, "patterns": ["sentadilla", "bisagra", "empuje_horizontal", "tiron_horizontal", "tiron_vertical", "empuje_vertical"], "focus": "fuerza"},
+    {"key": "hipertrofia", "label": "Masa muscular", "priority": 3, "patterns": ["empuje_horizontal", "tiron_vertical", "sentadilla", "empuje_vertical", "tiron_horizontal", "unilateral"], "focus": "hipertrofia"},
     {"key": "aerobica", "label": "Condición aeróbica", "priority": 3}
   ],
   "energy_systems": {},
@@ -17,7 +17,19 @@
     "bisagra": 4,
     "anti_rotacion": 2
   },
-  "key_exercises": {},
+  "goals": [
+    {"key": "fuerza", "label": "Ganar fuerza", "synonyms": ["fuerza", "mas fuerte", "ponerme fuerte", "levantar mas"], "qualities": ["fuerza"], "focus": "fuerza"},
+    {"key": "musculo", "label": "Ganar músculo", "synonyms": ["musculo", "masa muscular", "hipertrofia", "volumen", "definir", "estetica"], "qualities": ["hipertrofia"], "focus": "hipertrofia"}
+  ],
+  "key_exercises": {
+    "sentadilla": ["Sentadilla", "Prensa", "Sentadilla goblet", "Sentadilla con mancuernas"],
+    "bisagra": ["Peso muerto rumano", "Hip thrust", "Peso muerto rumano con mancuernas"],
+    "empuje_horizontal": ["Press banca", "Press con mancuernas"],
+    "tiron_horizontal": ["Remo con barra", "Remo con mancuerna a un brazo"],
+    "tiron_vertical": ["Dominadas", "Jalón al pecho"],
+    "empuje_vertical": ["Press militar", "Press de hombros con mancuernas", "Press sentado con kettlebell"],
+    "anti_rotacion": ["Press Pallof", "Plancha lateral"]
+  },
   "muscle_targets": {
     "back": [8, 18],
     "chest": [6, 16],

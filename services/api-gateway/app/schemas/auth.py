@@ -16,6 +16,29 @@ Goals = Literal[
     "maintenance",
 ]
 FitnessLevel = Literal["beginner", "intermediate", "advanced"]
+EquipmentPreset = Literal["gimnasio", "casa", "sin_material"]
+EquipmentCode = Literal[
+    "barbell",
+    "e-z curl bar",
+    "dumbbell",
+    "kettlebells",
+    "cable",
+    "machine",
+    "bands",
+    "medicine ball",
+    "exercise ball",
+    "foam roll",
+    "body only",
+    "other",
+]
+
+
+class EquipmentIn(BaseModel):
+    """Material del usuario: un preset más excepciones («en mi gimnasio no hay balón»)."""
+
+    preset: EquipmentPreset = "gimnasio"
+    extra: list[EquipmentCode] = Field(default_factory=list, max_length=12)
+    missing: list[EquipmentCode] = Field(default_factory=list, max_length=12)
 
 
 class CamelModel(BaseModel):
@@ -59,6 +82,7 @@ class UserOut(CamelModel):
     resting_hr: int | None = None
     injuries: list[object] | None = None
     goals: list[Goals] | None = None
+    equipment: EquipmentIn | None = None
     created_at: datetime
 
 
@@ -81,6 +105,7 @@ class ProfileIn(CamelModel):
     resting_hr: int | None = Field(default=None, ge=30, le=110)
     injuries: list[object] | None = None
     goals: list[Goals] | None = None
+    equipment: EquipmentIn | None = None
 
 
 class EmailChangeIn(BaseModel):

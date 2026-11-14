@@ -7,6 +7,7 @@ from pydantic import BaseModel, ValidationError
 
 from app.llm.base import LLMProvider
 from app.llm.errors import LLMOutputError
+from app.llm.tasks import current_task
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,22 @@ async def generate[T: BaseModel](
     model: type[T],
     *,
     max_tokens: int | None = None,
+    task: str = "llm",
+) -> T:
+    token = current_task.set(task)
+    try:
+        return await _generate(provider, system, user, model, max_tokens=max_tokens)
+    finally:
+        current_task.reset(token)
+
+
+async def _generate[T: BaseModel](
+    provider: LLMProvider,
+    system: str,
+    user: str,
+    model: type[T],
+    *,
+    max_tokens: int | None,
 ) -> T:
     schema = model.model_json_schema()
     data = await provider.complete_json(system, user, schema=schema, max_tokens=max_tokens)

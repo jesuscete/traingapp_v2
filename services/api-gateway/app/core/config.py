@@ -1,4 +1,4 @@
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     ai_parser_url: str = "http://localhost:8100"
     # Debe cubrir el timeout del LLM en ai-parser (90 s) más un reintento de reparación.
     ai_parser_timeout_seconds: float = 200
+    # M10: "rules" = generador de planes por árbol de decisión (sin IA, por defecto);
+    # "llm" = generación anterior con Claude (splits + plan) y relleno determinista.
+    plan_engine: Literal["rules", "llm"] = "rules"
+    # Nodos deterministas del chat activos (delante del agente). Quitar uno = ese tipo de
+    # mensaje vuelve al agente con IA, sin desplegar nada.
+    chat_rule_nodes: str = "guided,routine,fatigue,nutrition,alternatives,recommend"
     chat_draft_ttl_seconds: int = 1800
     live_session_ttl_seconds: int = 14400
     plan_session_ttl_seconds: int = 3600
@@ -40,6 +46,8 @@ class Settings(BaseSettings):
     off_remote_search: bool = False
     usda_base_url: str = "https://api.nal.usda.gov/fdc/v1"
     usda_api_key: str = "DEMO_KEY"
+    # M10: las comidas por texto usan el diccionario propio (+ OFF); USDA apagado.
+    usda_enabled: bool = False
     food_api_timeout_seconds: float = 8
     # Garmin (M6.2): API personal oficial; sondeo periódico (0 = desactivado).
     garmin_base_url: str = "https://personal.connectapi.garmin.com"

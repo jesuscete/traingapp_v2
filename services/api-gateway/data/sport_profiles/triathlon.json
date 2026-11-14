@@ -1,54 +1,66 @@
 {
   "sport": "triathlon",
-  "label": "Triatlón",
-  "aliases": ["running", "cycling", "swimming", "duathlon"],
-  "version": 1,
-  "summary": "Deporte de resistencia aeróbica que encadena natación, ciclismo y carrera (de sprint a Ironman). El rendimiento depende de la base aeróbica y la economía de movimiento; el gimnasio sirve para hacer más resistentes los tejidos, prevenir lesiones por sobreuso y mejorar la economía, no para ganar masa. El volumen de gimnasio debe ceder ante el volumen de los tres deportes.",
+  "label": "Resistencia (running, ciclismo, natación y triatlón)",
+  "aliases": ["running", "cycling", "swimming", "duathlon", "triatlon", "duatlon", "correr", "carrera", "ciclismo", "bici", "natacion", "trail", "maraton"],
+  "version": 2,
+  "summary": "Deportes de resistencia aeróbica (carrera, ciclismo, natación y su combinación, de 5 km a Ironman). El rendimiento depende sobre todo de la base aeróbica y de la economía de movimiento. El gimnasio no busca masa: la fuerza máxima pesada con pocas series mejora la economía de pedaleo y de carrera, la pliometría suave mejora la rigidez del tobillo al correr, y el trabajo de gemelo, glúteo medio y hombro previene las lesiones por sobreuso (80-85 % de las lesiones del triatlón). El volumen de gimnasio cede siempre ante el de los tres deportes.",
   "qualities": [
-    {"key": "aerobica", "label": "Base aeróbica y umbral", "priority": 5},
-    {"key": "economia", "label": "Economía de carrera y pedaleo (rigidez de tobillo, fuerza de cadera)", "priority": 5},
-    {"key": "fuerza_maxima", "label": "Fuerza máxima de pierna con poco volumen", "priority": 4},
-    {"key": "resistencia_tejidos", "label": "Resistencia de tendones (Aquiles, rotuliano) y gemelo/sóleo", "priority": 4},
-    {"key": "core", "label": "Core anti-rotación y estabilidad pélvica", "priority": 4},
-    {"key": "hombro_natacion", "label": "Tirón y salud del hombro para nadar", "priority": 3},
-    {"key": "movilidad", "label": "Movilidad de cadera, torácica y tobillo", "priority": 3}
+    {"key": "aerobica", "label": "Base aeróbica y umbral (se entrena nadando, pedaleando y corriendo)", "priority": 5},
+    {"key": "fuerza_maxima", "label": "Fuerza máxima de pierna con poco volumen (mejora la economía de pedaleo y carrera)", "priority": 5, "patterns": ["sentadilla", "bisagra", "unilateral"], "focus": "fuerza"},
+    {"key": "economia_carrera", "label": "Economía y rigidez de tobillo al correr (pliometría suave)", "priority": 4, "patterns": ["pliometria", "unilateral"], "focus": "potencia"},
+    {"key": "tendon_gemelo", "label": "Capacidad de gemelo, sóleo y tendón de Aquiles", "priority": 4, "patterns": ["gemelo", "unilateral"], "focus": "resistencia"},
+    {"key": "estabilidad_cadera", "label": "Core anti-rotación y estabilidad pélvica (glúteo medio)", "priority": 4, "patterns": ["anti_rotacion", "unilateral"], "focus": "resistencia"},
+    {"key": "traccion_natacion", "label": "Fuerza de tracción para la brazada (dorsal y espalda)", "priority": 3, "patterns": ["tiron_vertical", "tiron_horizontal"], "focus": "hipertrofia"},
+    {"key": "salud_hombro", "label": "Salud del hombro del nadador (escápula y manguito)", "priority": 3, "patterns": ["tiron_horizontal"], "focus": "resistencia"},
+    {"key": "movilidad", "label": "Movilidad de cadera, torácica y tobillo", "priority": 2}
   ],
   "energy_systems": {
-    "formato": "esfuerzos continuos de 1 h (sprint) a 8-17 h (Ironman)",
+    "formato": "esfuerzos continuos de 20 min (5 km) a 8-17 h (Ironman); triatlón sprint ≈ 1 h",
     "aerobico": "muy alto",
-    "glucolitico": "medio (cambios de ritmo, cuestas, sprint)",
+    "glucolitico": "medio (cambios de ritmo, cuestas, salidas y remates)",
     "fosfagenos": "bajo"
   },
   "pattern_targets": {
-    "unilateral": 6,
+    "sentadilla": 4,
     "bisagra": 4,
-    "sentadilla": 3,
+    "unilateral": 6,
+    "pliometria": 4,
     "anti_rotacion": 4,
     "tiron_vertical": 4,
     "tiron_horizontal": 4,
-    "pliometria": 3
+    "empuje_horizontal": 2,
+    "gemelo": 6
   },
+  "goals": [
+    {"key": "rendimiento_carrera", "label": "Correr mejor y más rápido", "synonyms": ["correr mas rapido", "mejorar marca", "mejorar mi marca", "ritmo", "economia de carrera", "correr mejor", "bajar tiempo", "10k", "5k", "media maraton"], "qualities": ["economia_carrera", "fuerza_maxima", "tendon_gemelo"], "focus": "potencia"},
+    {"key": "ciclismo", "label": "Pedalear con más fuerza", "synonyms": ["pedalear", "pedaleo", "bici", "ciclismo", "vatios", "watios", "subir puertos", "puertos", "cuestas en bici"], "qualities": ["fuerza_maxima", "estabilidad_cadera"], "focus": "fuerza"},
+    {"key": "larga_distancia", "label": "Aguantar la larga distancia", "synonyms": ["maraton", "ironman", "larga distancia", "ultra", "trail", "aguantar mas", "llegar entero", "fatiga muscular"], "qualities": ["tendon_gemelo", "estabilidad_cadera", "fuerza_maxima"], "focus": "resistencia"},
+    {"key": "natacion", "label": "Nadar mejor", "synonyms": ["nadar", "natacion", "brazada", "piscina", "aguas abiertas"], "qualities": ["traccion_natacion", "salud_hombro", "estabilidad_cadera"], "focus": "hipertrofia"},
+    {"key": "lesiones", "label": "Prevenir lesiones por sobreuso", "synonyms": ["lesiones", "prevenir lesiones", "tendinitis", "rodilla", "aquiles", "periostitis", "cintilla", "fascitis", "hombro"], "qualities": ["tendon_gemelo", "estabilidad_cadera", "salud_hombro"], "focus": "resistencia"}
+  ],
   "key_exercises": {
-    "unilateral": ["sentadilla búlgara", "step-up", "peso muerto rumano a una pierna", "zancadas"],
-    "bisagra": ["peso muerto rumano", "hip thrust"],
-    "sentadilla": ["sentadilla", "prensa"],
-    "anti_rotacion": ["press Pallof", "plancha lateral", "dead bug"],
-    "tiron_vertical": ["dominadas", "jalón al pecho"],
-    "tiron_horizontal": ["remo con mancuerna", "face pull"],
-    "pliometria": ["saltos a la comba", "saltos al cajón bajos", "skipping"]
+    "sentadilla": ["Sentadilla", "Sentadilla goblet", "Prensa"],
+    "bisagra": ["Peso muerto rumano", "Peso muerto con barra hexagonal", "Hip thrust", "Curl nórdico de isquios"],
+    "unilateral": ["Sentadilla búlgara con mancuernas", "Subidas al cajón con mancuernas", "Peso muerto a una pierna con kettlebell", "Zancada hacia atrás con mancuernas"],
+    "pliometria": ["Comba (saltos simples)", "Skipping rápido", "Saltos al cajón", "Salto de longitud desde parado"],
+    "anti_rotacion": ["Press Pallof", "Plancha lateral", "Dead bug"],
+    "tiron_vertical": ["Dominadas", "Jalón al pecho"],
+    "tiron_horizontal": ["Remo con mancuerna a un brazo", "Face pull", "Remo sentado"],
+    "empuje_horizontal": ["Flexiones", "Press con mancuernas"],
+    "gemelo": ["Elevación de gemelos con mancuerna", "Elevación de gemelo sentado a una pierna con mancuerna", "Press de gemelos", "Elevaciones de gemelos con bandas"]
   },
   "muscle_targets": {
     "quadriceps": [6, 12],
     "hamstrings": [6, 10],
     "glutes": [8, 14],
-    "calves": [8, 14],
+    "calves": [8, 16],
     "core": [8, 14],
     "back": [6, 12],
     "shoulders": [4, 8],
     "chest": [2, 6]
   },
   "rep_zones_by_phase": {
-    "general": {"fuerza": [0.25, 0.50], "hipertrofia": [0.15, 0.40], "resistencia": [0.20, 0.45]},
+    "general": {"fuerza": [0.30, 0.55], "hipertrofia": [0.10, 0.35], "resistencia": [0.20, 0.45]},
     "especifica": {"fuerza": [0.40, 0.65], "hipertrofia": [0.05, 0.25], "resistencia": [0.15, 0.40]},
     "precompeticion": {"fuerza": [0.45, 0.75], "hipertrofia": [0.0, 0.15], "resistencia": [0.10, 0.35]},
     "descarga": {"fuerza": [0.20, 0.50], "hipertrofia": [0.0, 0.30], "resistencia": [0.20, 0.50]}
@@ -56,17 +68,19 @@
   "min_pull_push_ratio": 1.2,
   "conflict_groups": ["quadriceps", "hamstrings", "glutes", "calves"],
   "load_rules": [
-    "Pierna pesada lejos de las series de calidad de carrera o bici (al menos 48 h antes).",
-    "Mejor gimnasio el mismo día que una sesión intensa (por la tarde) que el día de descanso.",
-    "2 sesiones de fuerza por semana en base, 1 en la fase específica, ninguna pesada la semana de la prueba.",
-    "Pocas series cerca del fallo: fuerza sin agujetas que estropeen los entrenos de resistencia."
+    "Fuerza 2 sesiones por semana en la fase de base y 1 de mantenimiento en temporada de competición.",
+    "Fuerza pesada: 3-6 repeticiones con cargas altas y pocas series, sin llegar al fallo (sin agujetas que estropeen la carrera o la bici).",
+    "Pierna pesada lejos de las series de calidad y de la tirada larga: al menos 48 h antes.",
+    "Mejor hacer el gimnasio el mismo día que una sesión intensa (días duros duros, días suaves suaves) que el día de descanso.",
+    "Pliometría al principio de la sesión y con pocos contactos (unos 40-80 saltos); se quita la última semana antes de una prueba.",
+    "Semana de la prueba: nada de fuerza pesada; como mucho una activación ligera."
   ],
   "injury_risks": [
-    {"zona": "tendón de Aquiles y gemelo", "riesgo": "sobreuso por volumen de carrera", "prehab": ["elevación de talones excéntrica", "elevación de talones con rodilla flexionada (sóleo)"]},
-    {"zona": "rodilla", "riesgo": "síndrome de la cintilla y dolor rotuliano", "prehab": ["step-up", "trabajo de glúteo medio con banda", "sentadilla búlgara"]},
-    {"zona": "hombro", "riesgo": "hombro del nadador", "prehab": ["rotación externa con banda", "face pull", "Y-T-W"]},
-    {"zona": "zona lumbar", "riesgo": "postura de acople en la bici", "prehab": ["dead bug", "puente de glúteo", "movilidad de cadera"]}
+    {"zona": "tendón de Aquiles y gemelo", "riesgo": "tendinopatía por subir de golpe el volumen o la intensidad de carrera", "prehab": ["elevación de talones a una pierna", "elevación de gemelos sentado (sóleo)", "elevación de talones excéntrica"]},
+    {"zona": "rodilla", "riesgo": "dolor rotuliano y síndrome de la cintilla iliotibial", "prehab": ["sentadilla búlgara", "subida al cajón", "plancha lateral con elevación de pierna (glúteo medio)", "peso muerto a una pierna"]},
+    {"zona": "hombro", "riesgo": "hombro del nadador (manguito rotador y escápula)", "prehab": ["rotación externa con banda", "face pull", "Y-T-W"]},
+    {"zona": "zona lumbar y cadera", "riesgo": "postura de acople mantenida en la bici", "prehab": ["dead bug", "puente de glúteo", "movilidad de flexores de cadera"]}
   ],
   "block_muscle_weights": {},
-  "coach_notes": "La fuerza va en rangos de 3-6 reps con pocas series y técnica limpia, y algo de pliometría suave para la economía de carrera. Evita la hipertrofia en piernas que añada peso. Gemelo/sóleo y glúteo medio siempre, por prevención. Si el volumen de resistencia sube, el gimnasio baja."
+  "coach_notes": "Lo que más evidencia tiene: fuerza máxima pesada (3-6 reps) combinada con el entrenamiento de resistencia mejora la economía de pedaleo y de carrera sin ganar peso, y la pliometría mejora la economía de carrera. En natación la evidencia es más débil: tracción y salud del hombro. Gemelo/sóleo, glúteo medio y hombro siempre, por prevención. Si el volumen de resistencia sube, el gimnasio baja."
 }

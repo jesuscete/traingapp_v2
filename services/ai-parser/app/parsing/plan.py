@@ -148,7 +148,11 @@ async def suggest_splits_with_llm(
         indent=2,
     )
     splits = await generate(
-        provider, with_user_data_rule(SPLIT_SYSTEM_PROMPT), user_data(user_prompt), LlmSplits
+        provider,
+        with_user_data_rule(SPLIT_SYSTEM_PROMPT),
+        user_data(user_prompt),
+        LlmSplits,
+        task="splits",
     )
     data = splits.model_dump()
     options: list[SplitOption] = []
@@ -237,7 +241,9 @@ async def generate_plan_with_llm(
                 ),
             },
         )
-    plan = await generate(provider, with_user_data_rule(system), user_data(user_prompt), LlmPlan)
+    plan = await generate(
+        provider, with_user_data_rule(system), user_data(user_prompt), LlmPlan, task="plan"
+    )
     return _plan_from(plan.model_dump(), catalog, sports)
 
 

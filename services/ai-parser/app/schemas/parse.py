@@ -79,7 +79,8 @@ class ParseRequest(BaseModel):
 
 
 class ParseResponse(CamelModel):
-    source: Literal["llm", "fallback"] = "llm"
+    # "rules" = texto totalmente estructurado, resuelto sin IA (M10).
+    source: Literal["llm", "fallback", "rules"] = "llm"
     rawText: str
     discipline: Discipline
     performedAt: str

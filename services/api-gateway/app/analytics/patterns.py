@@ -22,6 +22,7 @@ PATTERN_LABELS: dict[str, str] = {
     "olimpico": "Levantamientos explosivos",
     "cuello": "Cuello",
     "acarreo": "Acarreos / agarre",
+    "gemelo": "Gemelo y tobillo",
 }
 
 PUSH_PATTERNS = frozenset({"empuje_horizontal", "empuje_vertical"})
@@ -74,6 +75,7 @@ _KEYWORDS: dict[str, tuple[str, ...]] = {
         "side plank",
     ),
     "cuello": ("neck", "cuello"),
+    "gemelo": ("calf", "calves", "gemelo", "talones", "soleo", "heel raise", "pantorrilla"),
     "acarreo": ("farmer", "carry", "paseo del granjero", "suitcase carry", "acarreo"),
     "unilateral": (
         "lunge",

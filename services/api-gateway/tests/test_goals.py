@@ -47,14 +47,15 @@ def test_goals_crud_and_single_primary(client: TestClient) -> None:
 def test_primary_sport_drives_analysis_and_home(client: TestClient) -> None:
     headers = _headers(client, "primary-sport@example.com")
     home = client.get("/stats/home", headers=headers).json()
-    assert home["sport"] == "boxing" and home["primaryGoal"] is None
+    # Sin deporte principal: perfil genérico (antes caía en boxeo por defecto).
+    assert home["sport"] == "generic" and home["primaryGoal"] is None
 
     client.put("/profile", json={"sports": ["boxeo"], "primarySport": "triatlon"}, headers=headers)
     assert client.get("/profile", headers=headers).json()["primarySport"] == "triatlon"
     assert client.get("/analysis/sport", headers=headers).json()["sport"] == "triathlon"
     client.post("/goals", json={"kind": "weight", "title": "Bajar a 75 kg"}, headers=headers)
     home = client.get("/stats/home", headers=headers).json()
-    assert home["sportLabel"] == "Triatlón"
+    assert home["sportLabel"] == "Resistencia (running, ciclismo, natación y triatlón)"
     assert home["primaryGoal"]["title"] == "Bajar a 75 kg"
 
 

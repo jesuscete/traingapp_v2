@@ -85,10 +85,10 @@ def test_parse_workout_falls_back_to_stub(monkeypatch) -> None:
     from app.llm import factory
 
     monkeypatch.setattr(factory, "get_provider", lambda: FakeProvider(error=True))
-    result = asyncio.run(parse_workout("5x5 press banca 80kg"))
+    # Texto no del todo estructurado («Hoy:»): va a la IA, que falla, y cae al stub.
+    result = asyncio.run(parse_workout("Hoy: 5x5 press banca 80kg"))
     assert result.discipline == "gym"
     assert result.exercises[0].reps == 5
-    assert result.source == "fallback"
     assert result.source == "fallback"
 
 

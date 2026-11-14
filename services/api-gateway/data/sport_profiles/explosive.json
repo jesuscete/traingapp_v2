@@ -1,0 +1,92 @@
+{
+  "sport": "explosive",
+  "label": "Deportes explosivos (equipo, atletismo y raqueta)",
+  "aliases": ["football", "futbol", "soccer", "futbol sala", "basketball", "baloncesto", "basket", "handball", "balonmano", "rugby", "volleyball", "voleibol", "voley", "hockey", "baseball", "beisbol", "cricket", "atletismo", "athletics", "tennis", "tenis", "padel", "badminton", "squash"],
+  "version": 1,
+  "summary": "Deportes intermitentes decididos por acciones cortas y máximas: aceleraciones, sprints, saltos, cambios de dirección y, en algunos, contacto. El gimnasio busca fuerza máxima de pierna y su conversión en potencia (saltos, cargadas, lanzamientos), piernas robustas frente a las lesiones típicas (isquiotibiales, aductor, rodilla y tobillo) y un tren superior suficiente para el contacto. La resistencia a sprints repetidos se entrena sobre todo en el propio deporte.",
+  "qualities": [
+    {"key": "aceleracion", "label": "Aceleración y velocidad de sprint (empuje de cadera)", "priority": 5, "patterns": ["pliometria", "unilateral", "bisagra"], "focus": "potencia"},
+    {"key": "salto", "label": "Potencia de salto (tren inferior explosivo)", "priority": 5, "patterns": ["pliometria", "olimpico", "sentadilla"], "focus": "potencia"},
+    {"key": "fuerza_maxima", "label": "Fuerza máxima de pierna (la base de la potencia)", "priority": 4, "patterns": ["sentadilla", "bisagra", "unilateral"], "focus": "fuerza"},
+    {"key": "cambio_direccion", "label": "Cambios de dirección y frenada (fuerza a una pierna y tobillo)", "priority": 4, "patterns": ["unilateral", "pliometria", "gemelo"], "focus": "potencia"},
+    {"key": "robustez", "label": "Isquiotibiales y aductores resistentes a las lesiones (excéntricos)", "priority": 4, "patterns": ["bisagra"], "focus": "fuerza"},
+    {"key": "core_contacto", "label": "Core para el contacto, el golpeo y el lanzamiento", "priority": 3, "patterns": ["anti_rotacion", "rotacion"], "focus": "potencia"},
+    {"key": "tren_superior", "label": "Tren superior para el contacto y el lanzamiento", "priority": 3, "patterns": ["empuje_horizontal", "tiron_horizontal", "tiron_vertical", "empuje_vertical"], "focus": "hipertrofia"},
+    {"key": "sprints_repetidos", "label": "Capacidad de repetir sprints (se trabaja en el campo)", "priority": 3}
+  ],
+  "energy_systems": {
+    "formato": "esfuerzos de 2-6 s repetidos durante 60-90 min con pausas incompletas",
+    "aerobico": "medio-alto (recuperar entre acciones)",
+    "glucolitico": "medio-alto (secuencias de sprints)",
+    "fosfagenos": "muy alto (sprints, saltos, cambios de dirección)"
+  },
+  "pattern_targets": {
+    "pliometria": 6,
+    "olimpico": 3,
+    "sentadilla": 4,
+    "bisagra": 5,
+    "unilateral": 6,
+    "anti_rotacion": 4,
+    "tiron_horizontal": 4,
+    "tiron_vertical": 3,
+    "empuje_horizontal": 3,
+    "gemelo": 3
+  },
+  "goals": [
+    {"key": "salto", "label": "Saltar más", "synonyms": ["saltar mas", "salto vertical", "saltar", "salto", "machacar", "mates", "rematar", "rebote", "rebotes", "bloquear"], "qualities": ["salto", "fuerza_maxima"], "focus": "potencia"},
+    {"key": "velocidad", "label": "Ser más rápido en el sprint", "synonyms": ["ser mas rapido", "mas rapido", "sprint", "sprintar", "velocidad", "aceleracion", "acelerar", "explosividad", "explosivo", "correr mas rapido"], "qualities": ["aceleracion", "fuerza_maxima"], "focus": "potencia"},
+    {"key": "agilidad", "label": "Cambiar de dirección más rápido", "synonyms": ["cambios de direccion", "cambio de direccion", "agilidad", "regate", "regatear", "esquivar", "frenar", "desplazamientos"], "qualities": ["cambio_direccion", "aceleracion"], "focus": "potencia"},
+    {"key": "lesiones", "label": "Prevenir lesiones (isquio, ingle, rodilla, tobillo)", "synonyms": ["lesiones", "prevenir lesiones", "isquios", "isquiotibiales", "aductor", "aductores", "ingle", "pubalgia", "rodilla", "cruzado", "tobillo", "esguince"], "qualities": ["robustez", "cambio_direccion", "core_contacto"], "focus": "fuerza"},
+    {"key": "contacto", "label": "Ganar los contactos y los choques", "synonyms": ["contacto", "choques", "placar", "placaje", "ganar balones", "fuerza tren superior", "fisico", "empujar"], "qualities": ["tren_superior", "core_contacto", "fuerza_maxima"], "focus": "fuerza"},
+    {"key": "golpeo", "label": "Golpear o lanzar más fuerte", "synonyms": ["golpeo", "chutar", "chut", "disparo", "lanzar", "lanzamiento", "saque", "smash", "potencia de golpeo"], "qualities": ["core_contacto", "salto"], "focus": "potencia"}
+  ],
+  "key_exercises": {
+    "pliometria": ["Saltos al cajón", "Salto de longitud desde parado", "Salto lateral (bound lateral)", "Depth jump lineal"],
+    "olimpico": ["Cargada de potencia", "Balanceo con kettlebell", "Arrancada con mancuerna"],
+    "sentadilla": ["Sentadilla", "Sentadilla frontal con barra", "Sentadilla goblet"],
+    "bisagra": ["Peso muerto con barra hexagonal", "Curl nórdico de isquios", "Peso muerto rumano", "Hip thrust"],
+    "unilateral": ["Sentadilla búlgara con mancuernas", "Subidas al cajón con mancuernas", "Zancada hacia atrás con mancuernas", "Peso muerto a una pierna con kettlebell"],
+    "anti_rotacion": ["Press Pallof", "Plancha lateral", "Dead bug"],
+    "rotacion": ["Lanzamiento de balón medicinal", "Leñador con polea alta"],
+    "tiron_horizontal": ["Remo con barra", "Remo con mancuerna a un brazo", "Face pull"],
+    "tiron_vertical": ["Dominadas", "Jalón al pecho"],
+    "empuje_horizontal": ["Press banca", "Flexiones"],
+    "empuje_vertical": ["Press militar", "Landmine press"],
+    "gemelo": ["Elevación de gemelos con mancuerna", "Press de gemelos", "Elevación de gemelo sentado a una pierna con mancuerna"]
+  },
+  "muscle_targets": {
+    "quadriceps": [8, 14],
+    "hamstrings": [8, 14],
+    "glutes": [8, 14],
+    "calves": [6, 12],
+    "core": [6, 12],
+    "back": [6, 12],
+    "chest": [4, 10],
+    "shoulders": [4, 10]
+  },
+  "rep_zones_by_phase": {
+    "general": {"fuerza": [0.35, 0.60], "hipertrofia": [0.20, 0.45], "resistencia": [0.0, 0.20]},
+    "especifica": {"fuerza": [0.45, 0.70], "hipertrofia": [0.10, 0.35], "resistencia": [0.0, 0.20]},
+    "precompeticion": {"fuerza": [0.50, 0.80], "hipertrofia": [0.0, 0.25], "resistencia": [0.0, 0.20]},
+    "descarga": {"fuerza": [0.30, 0.60], "hipertrofia": [0.10, 0.40], "resistencia": [0.0, 0.30]}
+  },
+  "min_pull_push_ratio": 1.0,
+  "conflict_groups": ["quadriceps", "hamstrings", "glutes", "calves"],
+  "load_rules": [
+    "Pretemporada: 2-3 sesiones de fuerza por semana; en temporada, 1-2 de mantenimiento sin perder intensidad.",
+    "Pierna pesada lejos del partido: 3-4 días antes (MD-4/MD-3), junto al entrenamiento más duro de campo.",
+    "Potencia (saltos, cargadas, lanzamientos) a bajo volumen y máxima intención 2 días antes del partido (MD-2); la víspera, nada o solo activación.",
+    "Tren superior el día después del partido (MD+1), cuando las piernas aún se recuperan.",
+    "Saltos y potencia siempre al principio de la sesión, sin fatiga previa.",
+    "Curl nórdico y trabajo de aductor todo el año: 2-3 veces por semana en pretemporada y 1 en temporada."
+  ],
+  "injury_risks": [
+    {"zona": "isquiotibiales", "riesgo": "rotura al sprintar (la lesión más frecuente en deportes de sprint)", "prehab": ["curl nórdico de isquios", "peso muerto rumano", "puente de glúteo a una pierna"]},
+    {"zona": "ingle y aductores", "riesgo": "pubalgia y lesión de aductor por cambios de dirección y golpeo", "prehab": ["plancha de Copenhague", "zancada lateral", "aducción con banda"]},
+    {"zona": "rodilla", "riesgo": "ligamento cruzado anterior en aterrizajes y frenadas (rodilla hacia dentro)", "prehab": ["aterrizajes controlados", "sentadilla búlgara", "subida al cajón", "peso muerto a una pierna"]},
+    {"zona": "tobillo", "riesgo": "esguince en apoyos y cambios de dirección", "prehab": ["equilibrio a una pierna", "elevación de gemelos a una pierna", "saltos laterales controlados"]},
+    {"zona": "hombro", "riesgo": "contacto (rugby) y lanzamiento o remate repetido", "prehab": ["face pull", "rotación externa con banda", "remo con mancuerna"]}
+  ],
+  "block_muscle_weights": {},
+  "coach_notes": "La fuerza sola no basta para saltar y acelerar más: hay que combinarla con trabajo de velocidad y potencia. Primero construir fuerza máxima y, al acercarse la competición, dar más peso a la pliometría. Los excéntricos de isquio (curl nórdico) reducen mucho las lesiones y deben estar todo el año. En temporada, mantener la intensidad bajando el volumen y respetar el calendario de partidos."
+}

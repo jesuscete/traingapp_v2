@@ -22,6 +22,7 @@ import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.catalog import normalize_exercise_name
+from app.analytics.sport_analysis import analyze
 from app.chat.conversation import (
     is_end as _is_live_end,
 )
@@ -51,7 +52,7 @@ from app.schemas.routine import (
     RoutineIn,
     RoutineSetIn,
 )
-from app.services import plan_repair, sport_registry
+from app.services import exercise_engine, plan_builder, plan_repair, sport_registry
 from app.services import sport_analysis as sport_service
 
 PLAN_KEY = "plan:session"
@@ -691,8 +692,11 @@ def _build_summary(
     data: dict[str, object],
     catalog: dict[str, CatalogExercise],
     disciplines: dict[str, Discipline],
+    known: dict[str, CatalogExercise] | None = None,
 ) -> PlanSummaryOut:
+    """`known`: ejercicios por id (generador por reglas), con su nombre en español."""
     raw_days = data.get("days")
+    by_id = known or {}
     days: list[PlanDayOut] = []
     for raw in raw_days if isinstance(raw_days, list) else []:
         if not isinstance(raw, dict):
@@ -733,7 +737,9 @@ def _build_summary(
                 name = raw_exercise.get("name")
                 if not isinstance(name, str):
                     continue
-                entry = catalog.get(normalize_exercise_name(name))
+                entry = by_id.get(str(raw_exercise.get("exerciseId"))) or catalog.get(
+                    normalize_exercise_name(name)
+                )
                 if entry is None:
                     continue
                 sets: list[PlanSetTargetOut] = []
@@ -847,6 +853,8 @@ async def _generate_and_summarize(
     session: AsyncSession,
     plan: PlanSession,
 ) -> PlanResult:
+    if settings.plan_engine == "rules":
+        return await _build_with_rules(redis, user_id, session, plan)
     split_id: str | None = None
     split_name: str | None = None
     if plan.gym_days and plan.gym_days > 0:
@@ -894,6 +902,64 @@ async def _generate_and_summarize(
     plan.step = "summary"
     await _persist(redis, user_id, plan)
     return _question(plan, note + _summary_message(plan), status="ready")
+
+
+async def _build_with_rules(
+    redis: aioredis.Redis,
+    user_id: uuid.UUID,
+    session: AsyncSession,
+    plan: PlanSession,
+) -> PlanResult:
+    """Plan por árbol de decisión (M10): perfil del deporte + catálogo + reglas, sin IA."""
+    user = await session.get(User, user_id)
+    if user is None:
+        return _question(plan, "No he encontrado tu perfil.")
+    sport_key = sport_service.main_sport(user, None)
+    for sport in plan.sports:
+        resolved = sport_registry.resolve_sport(sport.name)
+        if resolved:
+            sport_key = resolved
+            break
+    doc = sport_registry.profile_doc(sport_key)
+    rows = await catalog_crud.list_visible(session, user_id)
+    catalog_items = [sport_service.catalog_item(r) for r in rows]
+    request = plan_builder.PlanRequest(
+        sports=[(s.name, s.days, s.duration_min) for s in plan.sports],
+        gym_days=plan.gym_days or 0,
+        split=plan.split_choice,
+        performance=_goal_for(plan) == "performance",
+        level=user.fitness_level,
+        allowed=exercise_engine.user_allowed_equipment(user),
+    )
+    built = plan_builder.build_plan(
+        request, catalog_items, doc, sport_registry.profile_doc(sport_registry.DEFAULT_SPORT)
+    )
+    data = built.data
+    data["name"] = _plan_display_name(plan.sports, built.split_name or None)
+    catalog = await catalog_lookup(session)
+    disciplines = await routine_crud.list_disciplines(session)
+    disciplines_map = {d.normalized_name: d for d in disciplines}
+    known = {
+        str(c.row.id): CatalogExercise(
+            id=c.row.id,
+            name=c.name,
+            uses_bodyweight=c.row.uses_bodyweight,
+            unilateral=c.row.unilateral,
+        )
+        for c in catalog_items
+        if c.row.owner_user_id is None
+    }
+    plan.plan = _build_summary(data, catalog, disciplines_map, known)
+    by_id = {c.row.id: c for c in catalog_items}
+    work, sport_days = plan_repair.plan_work(plan.plan, by_id)
+    profile = sport_registry.sport_profile(sport_key)
+    score = analyze(work, profile, weeks=1, sport_days=sport_days).score
+    plan.step = "summary"
+    await _persist(redis, user_id, plan)
+    note = f"Plan montado con el mapa de {doc.label.lower()} (encaje con tu deporte: {score}/100)."
+    if built.notes:
+        note += " He añadido " + "; ".join(built.notes) + "."
+    return _question(plan, f"{note}\n\n{_summary_message(plan)}", status="ready")
 
 
 async def _complete_plan(session: AsyncSession, user_id: uuid.UUID, plan: PlanSession) -> str:

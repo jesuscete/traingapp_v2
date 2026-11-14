@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.chat import intent_router
 from app.core.database import get_db
 from app.core.redis import get_redis
 from app.models import User
@@ -22,7 +23,11 @@ async def agent_message(
     redis: Annotated[aioredis.Redis, Depends(get_redis)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> AgentReplyOut:
-    """Un turno del entrenador conversacional (puede usar varias herramientas)."""
+    """Un turno del entrenador: primero el router determinista (tarjetas, sin IA); si el
+    mensaje no encaja en ningún nodo, el agente conversacional con herramientas."""
+    routed = await intent_router.handle(session, redis, current_user, body.text)
+    if routed is not None:
+        return routed
     return await agent.run_turn(session, redis, current_user, body.text)
 
 

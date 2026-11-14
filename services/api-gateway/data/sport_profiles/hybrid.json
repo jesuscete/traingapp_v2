@@ -1,0 +1,92 @@
+{
+  "sport": "hybrid",
+  "label": "HYROX y CrossFit (fitness híbrido)",
+  "aliases": ["hyrox", "crossfit", "cross fit", "fitness funcional", "entrenamiento funcional", "functional fitness", "wod", "metcon"],
+  "version": 1,
+  "summary": "Competiciones de fitness híbrido que mezclan resistencia y fuerza. HYROX: 8 × 1 km de carrera alternados con 8 estaciones (SkiErg 1000 m, empuje de trineo 50 m, arrastre de trineo 50 m, burpees con salto horizontal 80 m, remo 1000 m, paseo del granjero 200 m, zancadas con saco 100 m y 100 wall balls); el mejor predictor es la capacidad aeróbica, y la fuerza es un requisito de entrada para que las estaciones no sean máximas. CrossFit: trabajo variado de alta intensidad (halterofilia, gimnásticos y metcons), donde la potencia, la fuerza y el VO2máx explican la mayor parte del rendimiento. El gimnasio construye fuerza base, potencia y resistencia muscular local sin quitar sitio al aeróbico.",
+  "qualities": [
+    {"key": "aerobica", "label": "Capacidad aeróbica (carrera, remo, SkiErg): el principal limitante", "priority": 5},
+    {"key": "resistencia_muscular", "label": "Resistencia muscular local (wall balls, zancadas, sentadillas repetidas)", "priority": 5, "patterns": ["sentadilla", "unilateral", "empuje_vertical"], "focus": "resistencia"},
+    {"key": "fuerza_maxima", "label": "Fuerza máxima base (trineos, cargas altas en los WOD)", "priority": 4, "patterns": ["sentadilla", "bisagra", "empuje_vertical", "tiron_vertical"], "focus": "fuerza"},
+    {"key": "potencia", "label": "Potencia (halterofilia, saltos, burpees)", "priority": 4, "patterns": ["olimpico", "pliometria"], "focus": "potencia"},
+    {"key": "agarre_acarreo", "label": "Agarre, acarreos y trineo", "priority": 4, "patterns": ["acarreo", "tiron_horizontal"], "focus": "resistencia"},
+    {"key": "gimnasticos", "label": "Fuerza gimnástica estricta (dominadas, flexiones en pino, core)", "priority": 3, "patterns": ["tiron_vertical", "empuje_vertical", "anti_rotacion"], "focus": "hipertrofia"},
+    {"key": "core", "label": "Core estable bajo fatiga (proteger la zona lumbar)", "priority": 3, "patterns": ["anti_rotacion"], "focus": "resistencia"},
+    {"key": "movilidad", "label": "Movilidad de hombro, cadera, tobillo y muñeca (posiciones de halterofilia)", "priority": 2}
+  ],
+  "energy_systems": {
+    "formato": "HYROX: 55-90 min continuos a alta intensidad; CrossFit: WOD de 3-30 min, a menudo varios en el día",
+    "aerobico": "muy alto",
+    "glucolitico": "alto (estaciones, metcons)",
+    "fosfagenos": "medio-alto (halterofilia, saltos, levantamientos pesados)"
+  },
+  "pattern_targets": {
+    "sentadilla": 6,
+    "bisagra": 5,
+    "unilateral": 5,
+    "empuje_vertical": 5,
+    "tiron_vertical": 5,
+    "tiron_horizontal": 4,
+    "olimpico": 4,
+    "pliometria": 4,
+    "acarreo": 3,
+    "anti_rotacion": 3,
+    "empuje_horizontal": 3
+  },
+  "goals": [
+    {"key": "hyrox", "label": "Rendir en HYROX", "synonyms": ["hyrox", "estaciones", "trineo", "sled", "simulacro", "wall balls", "zancadas con saco", "paseo del granjero"], "qualities": ["resistencia_muscular", "agarre_acarreo", "fuerza_maxima"], "focus": "resistencia"},
+    {"key": "fuerza", "label": "Ganar fuerza", "synonyms": ["mas fuerte", "fuerza", "subir pesos", "subir peso", "1rm", "rm", "marca personal", "levantar mas"], "qualities": ["fuerza_maxima", "potencia"], "focus": "fuerza"},
+    {"key": "halterofilia", "label": "Mejorar la halterofilia", "synonyms": ["halterofilia", "olimpicos", "cargada", "arrancada", "snatch", "clean", "jerk", "envion"], "qualities": ["potencia", "fuerza_maxima"], "focus": "potencia"},
+    {"key": "gimnasticos", "label": "Mejorar los gimnásticos", "synonyms": ["gimnasticos", "dominadas", "muscle up", "muscle ups", "pino", "handstand", "toes to bar", "flexiones en pino", "anillas"], "qualities": ["gimnasticos", "core"], "focus": "hipertrofia"},
+    {"key": "metcon", "label": "Aguantar mejor los WOD", "synonyms": ["wod", "wods", "metcon", "aguantar", "aguantar mas", "resistencia", "fondo", "no reventar"], "qualities": ["resistencia_muscular", "potencia", "agarre_acarreo"], "focus": "resistencia"}
+  ],
+  "key_exercises": {
+    "sentadilla": ["Sentadilla frontal con barra", "Thruster con barra", "Wall ball (lanzamiento a diana)", "Sentadilla"],
+    "bisagra": ["Peso muerto", "Swing americano con kettlebell", "Peso muerto rumano"],
+    "unilateral": ["Zancadas con saco", "Zancada caminando con barra", "Subidas al cajón con mancuernas"],
+    "empuje_vertical": ["Press militar", "Press de hombros con mancuernas", "Flexiones en pino contra la pared"],
+    "tiron_vertical": ["Dominadas", "Dominada pecho a la barra (C2B)", "Jalón al pecho"],
+    "tiron_horizontal": ["Remo con barra", "Remo con mancuerna a un brazo"],
+    "olimpico": ["Cargada de potencia", "Arrancada de potencia", "Arrancada con mancuerna", "Dos tiempos (clean & jerk)"],
+    "pliometria": ["Burpee con salto horizontal", "Saltos al cajón", "Burpee", "Dobles de comba (double unders)"],
+    "acarreo": ["Paseo del granjero", "Empuje de trineo", "Arrastre de trineo con cuerda (sled pull)"],
+    "anti_rotacion": ["Plancha lateral", "Press Pallof", "Dead bug"],
+    "empuje_horizontal": ["Flexiones", "Press banca"]
+  },
+  "muscle_targets": {
+    "quadriceps": [10, 16],
+    "glutes": [8, 14],
+    "hamstrings": [6, 12],
+    "back": [8, 14],
+    "shoulders": [8, 14],
+    "core": [8, 14],
+    "forearms": [4, 10],
+    "chest": [4, 10],
+    "calves": [4, 8],
+    "triceps": [3, 8]
+  },
+  "rep_zones_by_phase": {
+    "general": {"fuerza": [0.25, 0.45], "hipertrofia": [0.25, 0.45], "resistencia": [0.20, 0.40]},
+    "especifica": {"fuerza": [0.25, 0.45], "hipertrofia": [0.15, 0.35], "resistencia": [0.30, 0.50]},
+    "precompeticion": {"fuerza": [0.20, 0.40], "hipertrofia": [0.05, 0.25], "resistencia": [0.35, 0.60]},
+    "descarga": {"fuerza": [0.20, 0.45], "hipertrofia": [0.15, 0.40], "resistencia": [0.20, 0.45]}
+  },
+  "min_pull_push_ratio": 1.0,
+  "conflict_groups": ["quadriceps", "glutes", "hamstrings"],
+  "load_rules": [
+    "La fuerza pesada (3-6 reps) y la técnica de halterofilia van al principio de la sesión o en otra sesión, nunca con fatiga del metcon.",
+    "HYROX: 2 sesiones de fuerza por semana más trabajo de estaciones; la carrera es el mayor limitante y no se recorta por hacer más fuerza.",
+    "No más de 2 días seguidos de alta intensidad (WOD o simulacro); después, un día suave o de descanso.",
+    "Pierna pesada al menos 48 h antes de un simulacro, una competición o una sesión de carrera de calidad.",
+    "Movimientos con kipping solo con fuerza estricta suficiente (por ejemplo, 5 dominadas estrictas); si no, versión estricta o escalada.",
+    "Semana de competición: bajar el volumen un 40 % y mantener algo de intensidad."
+  ],
+  "injury_risks": [
+    {"zona": "hombro", "riesgo": "la lesión más frecuente: kipping, fondos en anillas, muscle-ups y trabajo por encima de la cabeza con fatiga", "prehab": ["face pull", "rotación externa con banda", "dominadas estrictas", "movilidad torácica"]},
+    {"zona": "zona lumbar", "riesgo": "levantamientos pesados y halterofilia con fatiga o mala técnica", "prehab": ["peso muerto rumano técnico", "dead bug", "plancha lateral", "movilidad de cadera"]},
+    {"zona": "rodilla", "riesgo": "volumen alto de zancadas, wall balls y saltos", "prehab": ["sentadilla búlgara", "subida al cajón", "aterrizajes controlados"]},
+    {"zona": "muñeca y mano", "riesgo": "posición de rack, flexiones en pino y agarre", "prehab": ["curl de muñeca", "movilidad de muñeca", "paseo del granjero"]}
+  ],
+  "block_muscle_weights": {},
+  "coach_notes": "Primero aeróbico y fuerza suficiente; después, resistencia específica de las estaciones o de los WOD. La fuerza es un requisito de entrada: cuanto más fuerte, más submáximas son las estaciones. Combinar fuerza y resistencia provoca interferencia, así que la fuerza pesada va antes y con poco volumen. Técnica antes que carga en halterofilia y gimnásticos."
+}

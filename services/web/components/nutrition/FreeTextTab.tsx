@@ -16,6 +16,7 @@ export function FreeTextTab({ token, day, meal, onSaved }: Props) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [unresolved, setUnresolved] = useState<string[]>([]);
   const [fallback, setFallback] = useState(false);
+  const [fromDictionary, setFromDictionary] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +30,7 @@ export function FreeTextTab({ token, day, meal, onSaved }: Props) {
       setRows(res.items.map((item) => ({ item, gramsText: String(Math.round(item.grams * 10) / 10) })));
       setUnresolved(res.unresolved);
       setFallback(res.source === "fallback");
+      setFromDictionary(res.source === "rules");
     } catch (err) {
       setError(errMsg(err, "No se pudo calcular la comida"));
     } finally {
@@ -92,7 +94,12 @@ export function FreeTextTab({ token, day, meal, onSaved }: Props) {
   return (
     <div className="nu-form">
       {fallback && (
-        <p className="nu-warn">La IA no estaba disponible: resultado aproximado, revísalo con cuidado.</p>
+        <p className="nu-warn">
+          La IA no estaba disponible: solo aparece lo que ya conocía. Revísalo con cuidado.
+        </p>
+      )}
+      {fromDictionary && rows && rows.length > 0 && (
+        <p className="muted">Reconocido al instante con tus comidas anteriores, sin IA.</p>
       )}
       {unresolved.length > 0 && (
         <p className="nu-warn">

@@ -16,6 +16,7 @@ class MealItem(BaseModel):
     carbs_100g: float = 0
     fat_100g: float = 0
     fiber_100g: float | None = None
+    phrase: int | None = None  # fragmento del texto (separado por " | ") al que pertenece
 
 
 class MealParseResponse(BaseModel):

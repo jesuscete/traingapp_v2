@@ -10,11 +10,13 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -52,6 +54,39 @@ class Food(Base):
     sugar_100g: Mapped[float | None] = mapped_column(Float, nullable=True)
     # Raciones típicas: [{"label": "1 huevo", "grams": 50}]
     servings: Mapped[list[dict[str, object]]] = mapped_column(_JSONB, default=list)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class FoodAlias(Base):
+    """Diccionario de comidas que aprende (M10): frase normalizada -> alimentos y gramos.
+
+    `items` = [{"food_id": "...", "grams": 30}] por UNA unidad de la frase («tostada con
+    aceite» = pan 30 g + aceite 5 g). owner NULL = compartido (lo calculó la IA una vez);
+    con owner = corrección de ese usuario, que manda sobre la compartida.
+    """
+
+    __tablename__ = "food_alias"
+    __table_args__ = (
+        UniqueConstraint("owner_user_id", "alias", name="uq_food_alias_owner_alias"),
+        Index(
+            "uq_food_alias_global",
+            "alias",
+            unique=True,
+            postgresql_where=text("owner_user_id IS NULL"),
+            sqlite_where=text("owner_user_id IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    alias: Mapped[str] = mapped_column(String(200), index=True)
+    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    items: Mapped[list[dict[str, object]]] = mapped_column(_JSONB, default=list)
+    source: Mapped[str] = mapped_column(String(10), default="ia")  # ia | user
+    uses: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

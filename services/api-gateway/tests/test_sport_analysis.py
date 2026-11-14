@@ -161,16 +161,22 @@ def test_alternatives_and_one_click_swap(client: TestClient, seed_catalog) -> No
     )
 
 
-def test_sport_analysis_narrative(client: TestClient, seed_catalog, monkeypatch) -> None:
+def test_sport_analysis_narrative(
+    client: TestClient, seed_catalog, monkeypatch, _fake_redis
+) -> None:
     headers = _headers(client, "narrative@example.com")
     ids = _ids(client, headers)
     routine = {"name": "R", "days": [_day(1, [ids["press banca"]])]}
     assert client.post("/routines", json=routine, headers=headers).status_code == 201
 
+    calls: list[dict[str, object]] = []
+
     async def fake(label: str, analysis: dict[str, object]) -> dict[str, object]:
-        json.dumps(analysis)  # el cliente real lo envía como JSON
-        assert analysis["sport"] == "boxing" and "gaps" in analysis
+        calls.append(analysis)
+        sent = json.dumps(analysis)  # el cliente real lo envía como JSON
+        assert "gaps" in analysis and "score" in analysis
         assert str(analysis["perfilDeporte"]).startswith("PERFIL DE BOXEO")
+        assert "exerciseId" not in sent and "imageUrl" not in sent  # payload compacto (M10)
         return {
             "source": "llm",
             "resumen": f"Diagnóstico para {label}.",
@@ -185,8 +191,13 @@ def test_sport_analysis_narrative(client: TestClient, seed_catalog, monkeypatch)
         "prioridades": ["Rotación"],
     }
 
+    again = client.get("/analysis/sport?sport=boxing&narrative=true", headers=headers).json()
+    assert again["narrative"] == data["narrative"] and len(calls) == 1  # de la caché
+
     async def down(label: str, analysis: dict[str, object]) -> dict[str, object]:
         raise httpx.ConnectError("ai-parser caído")
+
+    _fake_redis.lists.clear()
 
     monkeypatch.setattr("app.api.analysis.fetch_sport_narrative", down)
     data = client.get("/analysis/sport?sport=boxing&narrative=true", headers=headers).json()

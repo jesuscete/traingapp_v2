@@ -513,11 +513,19 @@ export const api = {
     request<WeekFeedback>("/analysis/week-feedback", {
       headers: { Authorization: `Bearer ${token}` },
     }),
-  getExerciseAlternatives: (token: string, exerciseId: string, limit = 8) =>
-    request<ExerciseAlternative[]>(
-      `/catalog/exercises/${exerciseId}/alternatives?limit=${limit}`,
+  getExerciseAlternatives: (
+    token: string,
+    exerciseId: string,
+    limit = 8,
+    without: string[] = [],
+  ) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    without.forEach((code) => params.append("without", code));
+    return request<ExerciseAlternative[]>(
+      `/catalog/exercises/${exerciseId}/alternatives?${params.toString()}`,
       { headers: { Authorization: `Bearer ${token}` } },
-    ),
+    );
+  },
   swapRoutineExercise: (
     token: string,
     routineId: string,
